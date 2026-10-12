@@ -5,6 +5,7 @@ import { MenuSwitch } from "@/components/MenuSwitch";
 import { PixelSprite } from "@/components/PixelSprite";
 import { Toast, type ToastShow } from "@/components/Toast";
 import { chime } from "@/lib/chime";
+import { musicState } from "@/lib/music";
 import { FACE, MOON } from "@/lib/sprites";
 
 // A working copy of Wham's menu bar item, at its real size in points: the
@@ -27,7 +28,9 @@ const STARS = [
   [12, 86, 2],
 ] as const;
 
-export function MenuBarDemo() {
+export type DemoLabels = Record<"switch" | "hint" | "caption" | "finder" | "file" | "edit" | "view" | "go" | "window" | "day", string>;
+
+export function MenuBarDemo({ labels }: { labels: DemoLabels }) {
   const [on, setOn] = useState(false);
   const [toast, setToast] = useState<ToastShow | null>(null);
   const [touched, setTouched] = useState(false);
@@ -66,7 +69,8 @@ export function MenuBarDemo() {
     setOn(next);
     setTouched(true);
     setToast((t) => ({ kind: next ? "on" : "off", id: (t?.id ?? 0) + 1 }));
-    chime(next);
+    // The speaker in the header mutes the whole page, this too.
+    if (musicState() !== "off") chime(next);
   }
 
   const label = on ? "text-ink" : "text-white";
@@ -100,12 +104,12 @@ export function MenuBarDemo() {
           } ${label}`}
         >
           <div aria-hidden="true" className="flex items-center gap-4 sm:gap-5">
-            <span className="font-bold">Finder</span>
-            <span className="hidden sm:inline">File</span>
-            <span className="hidden sm:inline">Edit</span>
-            <span className="hidden md:inline">View</span>
-            <span className="hidden md:inline">Go</span>
-            <span className="hidden lg:inline">Window</span>
+            <span className="font-bold">{labels.finder}</span>
+            <span className="hidden sm:inline">{labels.file}</span>
+            <span className="hidden sm:inline">{labels.edit}</span>
+            <span className="hidden md:inline">{labels.view}</span>
+            <span className="hidden md:inline">{labels.go}</span>
+            <span className="hidden lg:inline">{labels.window}</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <button
@@ -113,7 +117,8 @@ export function MenuBarDemo() {
               type="button"
               role="switch"
               aria-checked={on}
-              aria-label="Keep this Mac awake, even with the lid closed"
+              data-sound="none"
+              aria-label={labels.switch}
               onClick={flip}
               className={`relative flex h-8 cursor-pointer items-center rounded-full px-2 focus-visible:outline-2 ${
                 on ? "focus-visible:outline-ink" : "focus-visible:outline-white"
@@ -124,7 +129,7 @@ export function MenuBarDemo() {
             <WifiIcon />
             <BatteryIcon />
             <span aria-hidden="true" className="font-medium tabular-nums">
-              <span className="hidden sm:inline">Mon </span>9:41
+              <span className="hidden sm:inline">{labels.day} </span>9:41
             </span>
           </div>
         </div>
@@ -155,7 +160,7 @@ export function MenuBarDemo() {
                 same element it would undo the centering. */}
             <div className="hint flex flex-col items-center gap-2">
               <PixelSprite rows={ARROW} cell={2} />
-              <span className="font-pixel text-pixel">Click me</span>
+              <span className="whitespace-nowrap font-pixel text-pixel">{labels.hint}</span>
             </div>
           </div>
         )}
@@ -165,7 +170,7 @@ export function MenuBarDemo() {
         </div>
       </div>
       <figcaption className="mt-4 text-center text-small text-muted">
-        Sound on: that is the real chime, an 8-bit arpeggio played by your browser.
+        {labels.caption}
       </figcaption>
     </figure>
   );

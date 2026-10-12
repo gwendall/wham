@@ -11,9 +11,12 @@ export type Scenario = {
   progress: { total: number; label?: string; unit?: string; decimals?: number; percent?: boolean };
   // The last line, once the job is done.
   done: string;
-  // The HUD floating over the shut laptop.
-  hud: { title: string; caption: string; done: string };
+  // The HUD floating over the shut laptop, in English: each language's words
+  // are in messages/<code>.json under hud.<id>.
+  hud: Hud;
 };
+
+export type Hud = { title: string; caption: string; done: string };
 
 const CODING = "Lid closed. Still coding.";
 

@@ -14,7 +14,7 @@ const RELEASE = 0.002;
 const waves = new Map<number, PeriodicWave>();
 
 // A band-limited 25% pulse: harmonics a_n = 2/(n pi) sin(n pi 0.25), up to 18 kHz.
-function pulse(audio: AudioContext, freq: number): PeriodicWave {
+export function pulse(audio: AudioContext, freq: number): PeriodicWave {
   const cached = waves.get(freq);
   if (cached) return cached;
   const count = Math.floor(18_000 / freq);

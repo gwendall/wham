@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - dein Mac bleibt wach, Deckel zu",
+    "description": "Deckel zu. Dein Mac bleibt wach. Ein Menüleisten-Schalter mit einem Klick, der deinen Mac wirklich wach hält, auch bei geschlossenem Deckel. Kostenlos und Open Source.",
+    "keywords": "Mac wach halten, macOS, Deckel zu, Clamshell-Modus, Menüleiste, pmset, caffeinate, Amphetamine Alternative",
+    "app": "Ein Menüleisten-Schalter mit einem Klick, der deinen Mac wirklich wach hält, auch bei geschlossenem Deckel.",
+    "os": "macOS 11 oder neuer",
+    "image": "Wham: Deckel zu, dein Mac bleibt wach.",
+    "free": "Kostenlos und Open Source"
+  },
+  "nav": {
+    "skip": "Zum Inhalt springen",
+    "home": "Wham, zurück nach oben",
+    "main": "Hauptinhalt",
+    "how": "So funktioniert's",
+    "compare": "Vergleich",
+    "faq": "FAQ",
+    "download": "Download",
+    "github": "Wham auf GitHub",
+    "language": "Sprache",
+    "footer": "Fußzeile"
+  },
+  "sound": {
+    "label": "Ton",
+    "on": "Ton an",
+    "off": "Ton aus"
+  },
+  "hero": {
+    "eyebrow": "Menüleisten-App für macOS",
+    "title": "Deckel zu.",
+    "mark": "Dein Mac bleibt wach.",
+    "lead": "Ein Menüleisten-Schalter mit einem Klick, der deinen Mac wirklich wach hält, auch bei geschlossenem Deckel.",
+    "download": "Für Mac herunterladen",
+    "note": "Kostenlos. macOS 11 oder neuer. Apple Silicon und Intel.",
+    "stage": "Ein MacBook klappt zu, während eine lange Aufgabe weiterläuft: Coding-Agenten wie Claude Code, ein Filmexport, ein Download, ein Rendering, ein Backup. Beim Aufklappen ist die Aufgabe fertig."
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "Deckel zu. Codet weiter.", "done": "Tests bestanden!" },
+    "export": { "title": "Exportieren", "caption": "Deckel zu. Exportiert weiter.", "done": "Fertig!" },
+    "codex": { "title": "Codex", "caption": "Deckel zu. Codet weiter.", "done": "Fertig!" },
+    "ollama": { "title": "Herunterladen", "caption": "Deckel zu. Lädt weiter.", "done": "Abgerufen!" },
+    "opencode": { "title": "OpenCode", "caption": "Deckel zu. Codet weiter.", "done": "Migriert!" },
+    "blender": { "title": "Rendern", "caption": "Deckel zu. Rendert weiter.", "done": "Gerendert!" },
+    "grok": { "title": "Grok", "caption": "Deckel zu. Codet weiter.", "done": "Fertig!" },
+    "backup": { "title": "Sichern", "caption": "Deckel zu. Sichert weiter.", "done": "Gesichert!" }
+  },
+  "try": {
+    "eyebrow": "Ausprobieren",
+    "title": "Ein Schalter in deiner Menüleiste.",
+    "lead": "Das ist die ganze App. Eine Sonne, wenn dein Mac wach bleibt, ein Mond, wenn er schlafen darf, dazu ein kleiner Klang. Los, klick drauf."
+  },
+  "demo": {
+    "switch": "Diesen Mac wach halten, auch bei geschlossenem Deckel",
+    "hint": "Klick mich",
+    "caption": "Ton an: Das ist der echte Klang, ein 8-Bit-Arpeggio, gespielt von deinem Browser.",
+    "finder": "Finder",
+    "file": "Ablage",
+    "edit": "Bearbeiten",
+    "view": "Darstellung",
+    "go": "Gehe zu",
+    "window": "Fenster",
+    "day": "Mo."
+  },
+  "uses": {
+    "eyebrow": "Wofür es gut ist",
+    "title": "Gemacht für lange Aufgaben.",
+    "lead": "Starten, Deckel zu, losgehen. Alles, was länger dauert, als du zusehen willst, läuft weiter, bis es fertig ist.",
+    "agents": {
+      "title": "KI-Coding-Agenten",
+      "text": "Gib Claude Code, Codex, OpenCode oder Grok eine lange Aufgabe, klapp den Deckel zu und geh. Sie arbeiten weiter, bis sie fertig sind."
+    },
+    "jobs": [
+      {
+        "title": "Exporte und Renderings",
+        "text": "Final Cut, Premiere, DaVinci Resolve oder Blender, bis zum letzten Frame."
+      },
+      {
+        "title": "Downloads und Backups",
+        "text": "Ein großes Modell, ein frisches Xcode, Time Machine oder Backblaze. Deckel zu bei 3 %, wieder auf bei 100 %."
+      },
+      {
+        "title": "Fernzugriff",
+        "text": "Bildschirmfreigabe, SSH, AirPlay auf die Lautsprecher, der Dev-Server, den du vom Handy aus aufrufst: Dein Mac antwortet weiterhin."
+      },
+      {
+        "title": "Ein Heimserver, 24/7",
+        "text": "Ein alter Mac im Regal, Deckel zu, Tag und Nacht an: Plex, Home Assistant oder Homebridge, erreichbar von überall."
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "So funktioniert's",
+    "title": "Drei Schritte. Der dritte ist die Pointe.",
+    "steps": [
+      {
+        "title": "Wham herunterladen und öffnen",
+        "text": "In den Ordner „Programme“ ziehen und öffnen. Es wohnt in deiner Menüleiste, direkt neben der Uhr."
+      },
+      {
+        "title": "Auf den Schalter klicken",
+        "text": "Die Sonne geht auf, und der Klang spielt. Beim allerersten Mal fragt macOS einmal nach deinem Passwort."
+      },
+      {
+        "title": "Deckel zu",
+        "text": "Dein Mac läuft weiter. Claude Code beendet seine Aufgabe, der Export erreicht den letzten Frame, der Download kommt auf 100 %."
+      }
+    ],
+    "note": "Die meisten Wachhalte-Apps bitten macOS nur, wach zu bleiben, was ignoriert wird, sobald der Deckel zu ist. Wham schaltet den Ruhezustand deshalb selbst aus, und wieder ein, wenn du fertig bist."
+  },
+  "tiny": {
+    "eyebrow": "Winzig",
+    "title": "Du wirst vergessen, dass es läuft.",
+    "lead": "Wham macht eine Sache: Alle zwei Sekunden liest es ein Kernel-Flag. Solange es an ist, achtet es außerdem auf Akku, Temperatur und Deckel, die macOS meldet. Den Rest der Zeit tut es gar nichts, und CI hält es an ein Budget.",
+    "stats": [
+      { "value": "1,4", "unit": "MB", "text": "Die ganze App, auf der Platte. Der Download ist 2,7 MB." },
+      { "value": "10", "unit": "MB", "text": "Arbeitsspeicher, während es läuft." },
+      { "value": "0,03", "unit": "%", "text": "Eines CPU-Kerns, im Leerlauf: eine Hundertstelsekunde Arbeit alle 30 Sekunden." },
+      { "value": "0", "unit": "", "text": "Abhängigkeiten. Keine Analytics, keine Tracker, kein Hintergrunddienst." }
+    ],
+    "scale": "Zum Vergleich: KeepingYouAwake belegt 7,6 MB auf der Platte, und Amphetamine ist ein 6,7-MB-Download, noch vor seinen Helper-Apps. Gemessen auf einem MacBook Air, macOS 26.6; die Details stehen in <doc>docs/compatibility.md</doc>."
+  },
+  "compare": {
+    "eyebrow": "Vergleich",
+    "title": "Die meisten Wachhalte-Apps scheitern am Deckel.",
+    "lead": "Einen Mac bei offenem Deckel wach zu halten ist einfach. Klapp ihn zu, und macOS ignoriert die höfliche Bitte. So gehen die bekannten Apps mit geschlossenem Deckel um, im Akkubetrieb, ohne angeschlossenen Bildschirm.",
+    "source": "Quelle",
+    "wham": {
+      "tag": "Ja, ganz allein",
+      "text": "Schaltet das Ruhezustand-Flag des Kernels aus, den einzigen Schalter, den macOS bei geschlossenem Deckel respektiert, und wieder ein, wenn du fertig bist: so lange du willst, nie bis zum leeren Akku, nie über kritische Hitze hinaus. Herunterladen, ziehen, klicken. macOS 11 oder neuer, auch Intel, signiert und notarisiert.",
+      "meta": "1,4 MB auf der Platte · Kostenlos, Open Source"
+    },
+    "amphetamine": {
+      "tag": "Mit Helper-Apps",
+      "text": "Sandboxed durch den App Store. Für einen geschlossenen Deckel bietet es Amphetamine Enhancer an, eine separate App von außerhalb des Stores, und auf Apple-Silicon-Laptops Power Protect, einen weiteren separaten Download.",
+      "meta": "6,7-MB-Download, plus Helper · Kostenlos"
+    },
+    "caffeine": {
+      "tag": "Nur bei offenem Deckel",
+      "text": "Hält eine Power Assertion: die höfliche Bitte, wach zu bleiben, die macOS fallen lässt, sobald der Deckel zuklappt.",
+      "meta": "0,8 MB auf der Platte · Kostenlos"
+    },
+    "keepingyouawake": {
+      "tag": "Nur bei offenem Deckel",
+      "text": "Ein freundlicher Schalter für <code>caffeinate</code>. In den eigenen Worten „verhindert es den Ruhezustand nur bei Desktop-Macs und bei tragbaren Macs mit offenem Deckel“.",
+      "meta": "7,6 MB auf der Platte · Kostenlos, Open Source"
+    },
+    "caffeinate": {
+      "tag": "Nur bei offenem Deckel",
+      "text": "In macOS integriert, mit denselben Power Assertions. Sogar seine stärkste Option, <code>-s</code>, ist „nur gültig, wenn das System am Netzstrom läuft“.",
+      "meta": "Integriert · man caffeinate"
+    },
+    "lungo": "Allein können App-Store-Apps das nicht, und die ehrlichen sagen es auch: Lungo „verhindert nicht, dass dein Computer in den Ruhezustand wechselt, wenn du den Deckel schließt. Das ist eine Einschränkung des Mac App Store.“"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Gute Fragen.",
+    "items": [
+      {
+        "q": "Brauche ich das Terminal?",
+        "a": "Nein. Lade Wham herunter, öffne es, und alles passiert in der Menüleiste: ein Klick, um deinen Mac wach zu halten, ein Klick, um ihn schlafen zu lassen. Die Befehle unten auf dieser Seite sind nur für alle, die gern tippen."
+      },
+      {
+        "q": "Ist es sicher?",
+        "a": "Ja. Den Ruhezustand abzuschalten braucht Administratorrechte: Beim ersten Klick fragt macOS einmal nach deinem Passwort, damit Wham die Ruhezustand-Einstellung ändern kann, ohne erneut zu fragen. Das ist das Einzige, was es darf. Die App ist von ihrem Entwickler signiert und von Apple notarisiert, und jede einzelne Zeile steht auf <github>GitHub</github>."
+      },
+      {
+        "q": "Kann ich es nur für eine Weile einschalten?",
+        "a": "Ja. Rechtsklick auf den Schalter und „Turn On For“ für 1, 2, 4 oder 8 Stunden wählen: Das Menü zeigt an, bis wann, danach schläft dein Mac wie gewohnt. Im Terminal geht das mit <code>wham on 2h</code>, oder <code>wham run</code> vor einem Befehl, um nur während dessen Laufzeit wach zu bleiben."
+      },
+      {
+        "q": "Überhitzt mein Mac in einer Tasche?",
+        "a": "Wham lässt ihn nicht überhitzen: Sobald macOS deinen Mac als kritisch heiß einstuft, schaltet Wham ab und lässt ihn schlafen. Trotzdem hat ein beschäftigter Laptop in einer geschlossenen Tasche keinen Platz für seine Wärme, und Wham ist für Schreibtische, Docks und Regale gedacht, wo Luft zirkulieren kann. Bevor du einpackst, schalte es aus, dann schläft dein Mac beim Zuklappen wie immer."
+      },
+      {
+        "q": "Und der Akku?",
+        "a": "Wham selbst kostet fast nichts. Aber ein wacher Mac verbraucht Akku wie ein wacher Mac, Deckel zu oder nicht, deshalb gibt Wham im Akkubetrieb bei 10 % nach: Dein Mac schläft mit gespeicherter Arbeit, statt leerzulaufen. Für lange Aufgaben: ans Netzteil anschließen."
+      },
+      {
+        "q": "Ist mein Mac bei geschlossenem Deckel gesperrt?",
+        "a": "Wie immer. Ohne weiteren Bildschirm schaltet Wham das eingebaute Display wenige Sekunden nach dem Zuklappen aus, und dein Mac sperrt sich gemäß den Einstellungen „Sperrbildschirm“. Mit angeschlossenem Monitor lässt Wham die Bildschirme in Ruhe."
+      },
+      {
+        "q": "Brauche ich einen externen Bildschirm, eine Tastatur oder Netzstrom?",
+        "a": "Nein. Das verlangt macOS für seinen eigenen „Clamshell-Modus“, aber Wham braucht nichts davon. Klapp den Deckel an einem nackten Laptop zu, und er bleibt wach."
+      },
+      {
+        "q": "Was passiert, wenn ich Wham beende?",
+        "a": "Der Ruhezustand kommt zurück. Beim Beenden wird die Einstellung automatisch zurückgesetzt, egal ob du es über das Menü beendest (Rechtsklick auf den Schalter), per Skript oder durch Abmelden. Und falls Wham je ohne ordentliches Beenden verschwindet, bei einem Absturz oder einem erzwungenen Beenden, gibt sein Watchdog den Ruhezustand innerhalb einer Sekunde zurück."
+      },
+      {
+        "q": "Wie deinstalliere ich es?",
+        "a": "Beende Wham über sein Menü, das gibt den Ruhezustand zurück, und zieh Wham dann vom Ordner „Programme“ in den Papierkorb. Für eine vollständige Entfernung, inklusive der Passwortregel, nutze den Einzeiler unter <dev>Für Entwickler</dev>."
+      },
+      {
+        "q": "Warum nicht der Mac App Store?",
+        "a": "App-Store-Apps leben in einer Sandbox, und eine Sandbox-App kann die Ruhezustand-Einstellung des Mac nicht ändern. Die, die es versuchen, begnügen sich damit, macOS zu bitten, wach zu bleiben, und genau das funktioniert nicht mehr, sobald der Deckel zu ist."
+      }
+    ]
+  },
+  "dev": {
+    "title": "Für Entwickler",
+    "subtitle": "Terminal, Homebrew, npm und der wham-Befehl.",
+    "install": "Installieren",
+    "installText": "Dieselbe signierte App wie der Download, plus der <code>wham</code>-Befehl. Zum Aktualisieren einfach erneut ausführen.",
+    "curious": "Erst mal neugierig? <script>Lies install.sh</script>: Es lädt die neueste Version herunter, prüft ihre Signatur, legt sie in „Programme“ ab und öffnet sie.",
+    "command": "Der wham-Befehl",
+    "runComment": "# wach, während make läuft, danach wie vorher",
+    "uninstall": "Deinstallieren",
+    "uninstallText": "Es beendet Wham, was den Ruhezustand zurückgibt, und entfernt dann die App, den <code>wham</code>-Befehl, seine Einstellungen und die Sudoers-Regel unten. Mit Homebrew: <code>brew uninstall --zap wham</code>. <script>Lies uninstall.sh</script>.",
+    "sudoersComment": "# /private/etc/sudoers.d/wham, für Benutzer-ID 501 (dich)"
+  },
+  "copy": {
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "label": "Kopieren: {command}",
+    "status": "In die Zwischenablage kopiert"
+  },
+  "footer": {
+    "title": "Deckel zu und los.",
+    "subtitle": "Dein Mac muss nicht geweckt werden.",
+    "madeWith": "Gemacht mit <heart></heart> von",
+    "madeLabel": "Gemacht von Gwendall, gwendall.com",
+    "license": "Wham ist kostenlos und Open Source, unter der <mit>MIT</mit>-Lizenz."
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "Seite nicht gefunden",
+      "title": "Hier ist nichts.",
+      "mark": "Diese Seite schläft.",
+      "text": "Der Link ist vielleicht alt oder vertippt. Alles andere auf wham.sh ist hellwach.",
+      "home": "Zurück zu wham.sh"
+    },
+    "failed": {
+      "wordmark": "Hoppla",
+      "eyebrow": "Etwas ist schiefgelaufen",
+      "title": "Da ist was kaputt.",
+      "mark": "Nicht dein Mac.",
+      "text": "Diese Seite ist beim Laden gestolpert. Versuch es gleich noch mal, und wenn es wieder passiert, <github>sag uns auf GitHub Bescheid</github>.",
+      "retry": "Noch mal versuchen",
+      "home": "Zurück zu wham.sh",
+      "code": "Fehlercode {digest}"
+    }
+  }
+}

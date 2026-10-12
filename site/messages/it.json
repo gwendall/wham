@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - il tuo Mac resta sveglio, coperchio chiuso",
+    "description": "Chiudi il coperchio. Il tuo Mac resta sveglio. Un interruttore nella barra dei menu, un clic, che tiene davvero sveglio il tuo Mac, anche a coperchio chiuso. Gratuito e open source.",
+    "keywords": "Mac sempre sveglio, macOS, coperchio chiuso, modalità clamshell, barra dei menu, pmset, caffeinate, alternativa ad Amphetamine",
+    "app": "Un interruttore nella barra dei menu, un clic, che tiene davvero sveglio il tuo Mac, anche a coperchio chiuso.",
+    "os": "macOS 11 o successivo",
+    "image": "Wham: chiudi il coperchio, il tuo Mac resta sveglio.",
+    "free": "Gratuito e open source"
+  },
+  "nav": {
+    "skip": "Vai al contenuto",
+    "home": "Wham, torna in cima",
+    "main": "Contenuto principale",
+    "how": "Come funziona",
+    "compare": "Confronto",
+    "faq": "FAQ",
+    "download": "Download",
+    "github": "Wham su GitHub",
+    "language": "Lingua",
+    "footer": "Piè di pagina"
+  },
+  "sound": {
+    "label": "Audio",
+    "on": "Audio acceso",
+    "off": "Audio spento"
+  },
+  "hero": {
+    "eyebrow": "App da barra dei menu per macOS",
+    "title": "Chiudi il coperchio.",
+    "mark": "Il tuo Mac resta sveglio.",
+    "lead": "Un interruttore nella barra dei menu, un clic, che tiene davvero sveglio il tuo Mac, anche a coperchio chiuso.",
+    "download": "Scarica per Mac",
+    "note": "Gratuito. macOS 11 o successivo. Apple silicon e Intel.",
+    "stage": "Un MacBook chiude il coperchio mentre un lavoro lungo continua: agenti di coding come Claude Code, l'esportazione di un filmato, un download, un rendering, un backup. Il coperchio si riapre sul lavoro finito."
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "Coperchio chiuso. Continua a programmare.", "done": "Test superati!" },
+    "export": { "title": "Esportazione", "caption": "Coperchio chiuso. Continua a esportare.", "done": "Pronto!" },
+    "codex": { "title": "Codex", "caption": "Coperchio chiuso. Continua a programmare.", "done": "Fatto!" },
+    "ollama": { "title": "Download", "caption": "Coperchio chiuso. Continua a scaricare.", "done": "Scaricato!" },
+    "opencode": { "title": "OpenCode", "caption": "Coperchio chiuso. Continua a programmare.", "done": "Migrato!" },
+    "blender": { "title": "Rendering", "caption": "Coperchio chiuso. Continua a renderizzare.", "done": "Renderizzato!" },
+    "grok": { "title": "Grok", "caption": "Coperchio chiuso. Continua a programmare.", "done": "Fatto!" },
+    "backup": { "title": "Backup", "caption": "Coperchio chiuso. Continua il backup.", "done": "Backup fatto!" }
+  },
+  "try": {
+    "eyebrow": "Provalo",
+    "title": "Un interruttore nella barra dei menu.",
+    "lead": "Ecco tutta l'app. Un sole quando il tuo Mac resta sveglio, una luna quando può dormire, e un piccolo suono in entrambi i casi. Forza, clicca."
+  },
+  "demo": {
+    "switch": "Tieni sveglio questo Mac, anche a coperchio chiuso",
+    "hint": "Clicca qui",
+    "caption": "Audio acceso: è il suono vero, un arpeggio a 8 bit riprodotto dal tuo browser.",
+    "finder": "Finder",
+    "file": "Archivio",
+    "edit": "Composizione",
+    "view": "Vista",
+    "go": "Vai",
+    "window": "Finestra",
+    "day": "lun"
+  },
+  "uses": {
+    "eyebrow": "A cosa serve",
+    "title": "Pensato per i lavori lunghi.",
+    "lead": "Avvialo, chiudi il coperchio, vai pure. Tutto quello che dura più di quanto tu voglia stare a guardare continua finché non è finito.",
+    "agents": {
+      "title": "Agenti di coding IA",
+      "text": "Affida un compito lungo a Claude Code, Codex, OpenCode o Grok, chiudi il coperchio e vai. Continuano a lavorare finché non hanno finito."
+    },
+    "jobs": [
+      {
+        "title": "Esportazioni e rendering",
+        "text": "Final Cut, Premiere, DaVinci Resolve o Blender, fino all'ultimo fotogramma."
+      },
+      {
+        "title": "Download e backup",
+        "text": "Un modello pesante, un Xcode appena scaricato, Time Machine o Backblaze. Chiudi il coperchio al 3%, riaprilo al 100%."
+      },
+      {
+        "title": "Accesso remoto",
+        "text": "Condivisione schermo, SSH, AirPlay verso le casse, il server di sviluppo che apri dal telefono: il tuo Mac risponde comunque."
+      },
+      {
+        "title": "Un server domestico, 24/7",
+        "text": "Un vecchio Mac su una mensola, coperchio chiuso, acceso giorno e notte: Plex, Home Assistant o Homebridge, raggiungibili da ovunque."
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "Come funziona",
+    "title": "Tre passi. Il terzo è quello che conta.",
+    "steps": [
+      {
+        "title": "Scarica e apri Wham",
+        "text": "Trascinalo nella cartella Applicazioni e aprilo. Vive nella tua barra dei menu, proprio accanto all'orologio."
+      },
+      {
+        "title": "Clicca sull'interruttore",
+        "text": "Esce il sole e suona il segnale. La primissima volta, macOS chiede la tua password, una sola volta."
+      },
+      {
+        "title": "Chiudi il coperchio",
+        "text": "Il tuo Mac continua a lavorare. Claude Code finisce il suo compito, l'esportazione arriva all'ultimo fotogramma, il download raggiunge il 100%."
+      }
+    ],
+    "note": "La maggior parte delle app per restare svegli si limita a chiedere a macOS di non dormire, una richiesta che viene ignorata appena chiudi il coperchio. Wham invece disattiva da sé la sospensione, e la riattiva quando hai finito."
+  },
+  "tiny": {
+    "eyebrow": "Minuscolo",
+    "title": "Dimenticherai che è in esecuzione.",
+    "lead": "Wham fa una cosa sola: ogni due secondi legge un flag del kernel. Mentre è attivo, ascolta anche batteria, temperatura e coperchio, che macOS segnala. Per il resto del tempo non fa nulla, e la CI lo tiene entro un budget.",
+    "stats": [
+      { "value": "1,4", "unit": "MB", "text": "L'app intera, su disco. Il download è di 2,7 MB." },
+      { "value": "10", "unit": "MB", "text": "Di memoria mentre è in esecuzione." },
+      { "value": "0,03", "unit": "%", "text": "Di un core della CPU, da inattivo: un centesimo di secondo di lavoro ogni 30 secondi." },
+      { "value": "0", "unit": "", "text": "Dipendenze. Nessun analytics, nessun tracker, nessun demone in background." }
+    ],
+    "scale": "Per fare un confronto: KeepingYouAwake occupa 7,6 MB su disco, e Amphetamine è un download di 6,7 MB prima delle sue app di supporto. Misurato su un MacBook Air, macOS 26.6; i dettagli sono in <doc>docs/compatibility.md</doc>."
+  },
+  "compare": {
+    "eyebrow": "Confronto",
+    "title": "La maggior parte delle app per restare svegli si arrende al coperchio.",
+    "lead": "Tenere sveglio un Mac a coperchio aperto è facile. Chiudilo, e macOS ignora la richiesta educata. Ecco come se la cavano le app più conosciute con il coperchio chiuso, a batteria, senza schermo collegato.",
+    "source": "Fonte",
+    "wham": {
+      "tag": "Sì, da solo",
+      "text": "Disattiva il flag di sospensione del kernel, l'unico interruttore che macOS rispetta a coperchio chiuso, e lo riattiva quando hai finito: per tutto il tempo che vuoi, mai fino alla batteria scarica, mai oltre una temperatura critica. Scarica, trascina, clicca. macOS 11 o successivo, anche Intel, firmato e notarizzato.",
+      "meta": "1,4 MB su disco · Gratuito, open source"
+    },
+    "amphetamine": {
+      "tag": "Con app di supporto",
+      "text": "In sandbox nell'App Store. Per il coperchio chiuso offre Amphetamine Enhancer, un'app separata da scaricare fuori dallo store, e sui laptop Apple silicon Power Protect, un altro download separato.",
+      "meta": "6,7 MB di download, più le app di supporto · Gratuito"
+    },
+    "caffeine": {
+      "tag": "Solo a coperchio aperto",
+      "text": "Mantiene una power assertion: la richiesta educata di restare sveglio che macOS abbandona appena il coperchio si chiude.",
+      "meta": "0,8 MB su disco · Gratuito"
+    },
+    "keepingyouawake": {
+      "tag": "Solo a coperchio aperto",
+      "text": "Un interruttore semplice per <code>caffeinate</code>. Parole sue: «impedirà la sospensione solo sui Mac desktop e sui Mac portatili con il coperchio aperto».",
+      "meta": "7,6 MB su disco · Gratuito, open source"
+    },
+    "caffeinate": {
+      "tag": "Solo a coperchio aperto",
+      "text": "Integrato in macOS, con le stesse power assertion. Anche la sua opzione più forte, <code>-s</code>, è «valida solo quando il sistema funziona a corrente alternata».",
+      "meta": "Integrato · man caffeinate"
+    },
+    "lungo": "Da sole, le app dell'App Store non possono farlo, e quelle oneste lo dicono chiaramente: Lungo «non impedirà al computer di sospendersi se chiudi il coperchio. È un limite del Mac App Store»."
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Buone domande.",
+    "items": [
+      {
+        "q": "Mi serve il Terminale?",
+        "a": "No. Scarica Wham, aprilo, e tutto avviene nella barra dei menu: un clic per tenere sveglio il tuo Mac, un clic per lasciarlo dormire. I comandi in fondo a questa pagina sono lì solo per chi ama digitarli."
+      },
+      {
+        "q": "È sicuro?",
+        "a": "Sì. Disattivare la sospensione richiede i permessi di amministratore: al primo clic, macOS chiede una volta la tua password, così Wham può modificare l'impostazione della sospensione senza richiederla di nuovo. È l'unica cosa che gli è permesso fare. L'app è firmata dal suo sviluppatore e notarizzata da Apple, e ogni riga di codice è su <github>GitHub</github>."
+      },
+      {
+        "q": "Posso attivarlo solo per un po'?",
+        "a": "Sì. Fai clic con il tasto destro sull'interruttore e scegli «Turn On For» per 1, 2, 4 o 8 ore: il menu indica fino a quando, poi il tuo Mac si sospende come sempre. Da terminale, <code>wham on 2h</code>, oppure <code>wham run</code> prima di un comando per restare sveglio solo mentre è in esecuzione."
+      },
+      {
+        "q": "Il mio Mac si surriscalda in una borsa?",
+        "a": "Wham non lo lascia friggere: quando macOS segnala che il tuo Mac è a una temperatura critica, Wham si disattiva e lo lascia dormire. Detto questo, un laptop impegnato in una borsa chiusa non ha modo di smaltire il calore, e Wham è pensato per scrivanie, dock e mensole, dove l'aria può circolare. Prima di riporlo, disattivalo: il tuo Mac si sospenderà alla chiusura, come ha sempre fatto."
+      },
+      {
+        "q": "E la batteria?",
+        "a": "Wham in sé costa quasi nulla. Ma un Mac sveglio consuma batteria come un Mac sveglio, coperchio chiuso o no, quindi a batteria Wham si arrende al 10%: il tuo Mac si sospende con il lavoro salvato, invece di scaricarsi del tutto. Per i lavori lunghi, collegalo alla corrente."
+      },
+      {
+        "q": "Il mio Mac resta bloccato a coperchio chiuso?",
+        "a": "Come sempre. Senza un altro schermo collegato, Wham disattiva il display integrato pochi secondi dopo la chiusura del coperchio, e il tuo Mac si blocca secondo le impostazioni Schermata di blocco. Con un monitor collegato, Wham lascia gli schermi in pace."
+      },
+      {
+        "q": "Mi servono uno schermo esterno, una tastiera o la corrente?",
+        "a": "No. È quello che richiede macOS per la sua «modalità clamshell», ma Wham non ha bisogno di niente di tutto ciò. Chiudi il coperchio su un laptop da solo e resterà sveglio."
+      },
+      {
+        "q": "Cosa succede se chiudo Wham?",
+        "a": "La sospensione torna normale. Chiudendolo, l'impostazione viene disattivata in uscita, sia che tu lo chiuda dal suo menu (clic destro sull'interruttore), da uno script, o disconnettendoti. E se Wham dovesse sparire senza chiudersi correttamente, per un crash o una chiusura forzata, il suo watchdog restituisce la sospensione in meno di un secondo."
+      },
+      {
+        "q": "Come lo disinstallo?",
+        "a": "Chiudi Wham dal suo menu, così la sospensione torna normale, poi trascina Wham dalla cartella Applicazioni al Cestino. Per una pulizia completa, inclusa la regola della password, usa il disinstallatore in una riga sotto <dev>Per sviluppatori</dev>."
+      },
+      {
+        "q": "Perché non il Mac App Store?",
+        "a": "Le app dell'App Store vivono in una sandbox, e un'app in sandbox non può modificare l'impostazione della sospensione del Mac. Quelle che ci provano si limitano a chiedere a macOS di restare sveglio, ed è esattamente ciò che smette di funzionare quando chiudi il coperchio."
+      }
+    ]
+  },
+  "dev": {
+    "title": "Per sviluppatori",
+    "subtitle": "Terminale, Homebrew, npm e il comando wham.",
+    "install": "Installa",
+    "installText": "La stessa app firmata del download, più il comando <code>wham</code>. Eseguilo di nuovo per aggiornare.",
+    "curious": "Prima vuoi dare un'occhiata? <script>Leggi install.sh</script>: scarica l'ultima versione, controlla la firma, la mette in Applicazioni e la apre.",
+    "command": "Il comando wham",
+    "runComment": "# sveglio mentre make è in esecuzione, poi come prima",
+    "uninstall": "Disinstalla",
+    "uninstallText": "Chiude Wham, così la sospensione torna normale, poi rimuove l'app, il comando <code>wham</code>, le sue impostazioni e la regola sudoers qui sotto. Con Homebrew: <code>brew uninstall --zap wham</code>. <script>Leggi uninstall.sh</script>.",
+    "sudoersComment": "# /private/etc/sudoers.d/wham, per l'utente con ID 501 (tu)"
+  },
+  "copy": {
+    "copy": "Copia",
+    "copied": "Copiato",
+    "label": "Copia: {command}",
+    "status": "Copiato negli appunti"
+  },
+  "footer": {
+    "title": "Chiudi il coperchio e vai.",
+    "subtitle": "Il tuo Mac non avrà bisogno di essere svegliato.",
+    "madeWith": "Fatto con <heart></heart> da",
+    "madeLabel": "Fatto da Gwendall, gwendall.com",
+    "license": "Wham è gratuito e open source, con licenza <mit>MIT</mit>."
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "Pagina non trovata",
+      "title": "Qui non c'è niente.",
+      "mark": "Questa pagina dorme.",
+      "text": "Forse il link è vecchio o scritto male. Tutto il resto di wham.sh è sveglissimo.",
+      "home": "Torna a wham.sh"
+    },
+    "failed": {
+      "wordmark": "Ops",
+      "eyebrow": "Qualcosa è andato storto",
+      "title": "Qualcosa si è rotto.",
+      "mark": "Non è il tuo Mac.",
+      "text": "Questa pagina è inciampata durante il caricamento. Riprova tra un attimo e, se succede ancora, <github>faccelo sapere su GitHub</github>.",
+      "retry": "Riprova",
+      "home": "Torna a wham.sh",
+      "code": "Codice errore {digest}"
+    }
+  }
+}

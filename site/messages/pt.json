@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - seu Mac fica acordado com a tampa fechada",
+    "description": "Feche a tampa. Seu Mac continua acordado. Um interruptor na barra de menus que mantém seu Mac acordado de verdade, mesmo com a tampa fechada. Gratuito e de código aberto.",
+    "keywords": "Mac, macOS, manter acordado, tampa fechada, modo clamshell, barra de menus, pmset, caffeinate, alternativa ao Amphetamine",
+    "app": "Um interruptor na barra de menus que mantém seu Mac acordado de verdade, mesmo com a tampa fechada.",
+    "os": "macOS 11 ou posterior",
+    "image": "Wham: feche a tampa, seu Mac continua acordado.",
+    "free": "Grátis e de código aberto"
+  },
+  "nav": {
+    "skip": "Ir para o conteúdo",
+    "home": "Wham, voltar ao topo",
+    "main": "Principal",
+    "how": "Como funciona",
+    "compare": "Comparar",
+    "faq": "FAQ",
+    "download": "Download",
+    "github": "Wham no GitHub",
+    "language": "Idioma",
+    "footer": "Rodapé"
+  },
+  "sound": {
+    "label": "Som",
+    "on": "Som ativado",
+    "off": "Som desativado"
+  },
+  "hero": {
+    "eyebrow": "App de barra de menus para macOS",
+    "title": "Feche a tampa.",
+    "mark": "Seu Mac continua acordado.",
+    "lead": "Um interruptor de um clique na barra de menus que mantém seu Mac acordado de verdade, mesmo com a tampa fechada.",
+    "download": "Baixar para Mac",
+    "note": "Gratuito. macOS 11 ou posterior. Apple silicon e Intel.",
+    "stage": "Um MacBook fecha a tampa enquanto uma tarefa longa continua rodando: agentes de código como o Claude Code, uma exportação de vídeo, um download, uma renderização, um backup. A tampa abre com a tarefa pronta."
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "Tampa fechada. Ainda codando.", "done": "Testes passaram!" },
+    "export": { "title": "Exportando", "caption": "Tampa fechada. Ainda exportando.", "done": "Pronto!" },
+    "codex": { "title": "Codex", "caption": "Tampa fechada. Ainda codando.", "done": "Feito!" },
+    "ollama": { "title": "Baixando", "caption": "Tampa fechada. Ainda baixando.", "done": "Baixado!" },
+    "opencode": { "title": "OpenCode", "caption": "Tampa fechada. Ainda codando.", "done": "Migrado!" },
+    "blender": { "title": "Renderizando", "caption": "Tampa fechada. Ainda renderizando.", "done": "Renderizado!" },
+    "grok": { "title": "Grok", "caption": "Tampa fechada. Ainda codando.", "done": "Feito!" },
+    "backup": { "title": "Backup", "caption": "Tampa fechada. Ainda fazendo backup.", "done": "Backup feito!" }
+  },
+  "try": {
+    "eyebrow": "Experimente",
+    "title": "Um interruptor na sua barra de menus.",
+    "lead": "É o app todo. Um sol quando seu Mac fica acordado, uma lua quando ele pode dormir, e um toquezinho em ambos os casos. Pode clicar."
+  },
+  "demo": {
+    "switch": "Manter este Mac acordado, mesmo com a tampa fechada",
+    "hint": "Clique aqui",
+    "caption": "Som ativado: esse é o toque de verdade, um arpejo 8-bit tocado pelo seu navegador.",
+    "finder": "Finder",
+    "file": "Arquivo",
+    "edit": "Editar",
+    "view": "Visualizar",
+    "go": "Ir",
+    "window": "Janela",
+    "day": "seg"
+  },
+  "uses": {
+    "eyebrow": "Para que serve",
+    "title": "Feito para tarefas longas.",
+    "lead": "Ative, feche a tampa e vá embora. Qualquer tarefa que demore mais do que você quer ficar olhando continua até terminar.",
+    "agents": {
+      "title": "Agentes de código com IA",
+      "text": "Dê uma tarefa longa ao Claude Code, Codex, OpenCode ou Grok, feche a tampa e vá. Eles continuam trabalhando até terminar."
+    },
+    "jobs": [
+      {
+        "title": "Exportações e renderizações",
+        "text": "Final Cut, Premiere, DaVinci Resolve ou Blender, até o último frame."
+      },
+      {
+        "title": "Downloads e backups",
+        "text": "Um modelo grande, um Xcode novinho, Time Machine ou Backblaze. Feche a tampa em 3% e abra em 100%."
+      },
+      {
+        "title": "Acesso remoto",
+        "text": "Compartilhamento de Tela, SSH, AirPlay para as caixas de som, o servidor de desenvolvimento que você abre no celular: seu Mac continua respondendo."
+      },
+      {
+        "title": "Um servidor doméstico, 24 horas",
+        "text": "Um Mac antigo na estante, tampa fechada, ligado dia e noite: Plex, Home Assistant ou Homebridge, acessível de qualquer lugar."
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "Como funciona",
+    "title": "Três passos. O terceiro é o pulo do gato.",
+    "steps": [
+      {
+        "title": "Baixe e abra o Wham",
+        "text": "Arraste para a pasta Aplicativos e abra. Ele fica na barra de menus, ao lado do relógio."
+      },
+      {
+        "title": "Clique no interruptor",
+        "text": "O sol aparece e o toque soa. Na primeira vez, o macOS pede sua senha, só uma vez."
+      },
+      {
+        "title": "Feche a tampa",
+        "text": "Seu Mac continua. O Claude Code termina a tarefa, a exportação chega ao último frame, o download chega a 100%."
+      }
+    ],
+    "note": "A maioria dos apps que mantêm o Mac acordado só pede ao macOS para continuar ligado, um pedido que ele ignora assim que a tampa fecha. Por isso o Wham desativa o modo de espera ele mesmo, e reativa quando você termina."
+  },
+  "tiny": {
+    "eyebrow": "Minúsculo",
+    "title": "Você vai esquecer que ele está rodando.",
+    "lead": "O Wham faz uma coisa só: a cada dois segundos, lê uma flag do kernel. Enquanto ativo, também fica de olho na bateria, no calor e na tampa, avisos que o macOS envia. No resto do tempo, não faz absolutamente nada, e a CI garante que seja assim.",
+    "stats": [
+      { "value": "1,4", "unit": "MB", "text": "O app inteiro, em disco. O download tem 2,7 MB." },
+      { "value": "10", "unit": "MB", "text": "De memória enquanto roda." },
+      { "value": "0,03", "unit": "%", "text": "De um núcleo da CPU, em repouso: um centésimo de segundo de trabalho a cada 30 segundos." },
+      { "value": "0", "unit": "", "text": "Dependências. Sem analytics, sem rastreadores, sem daemon em segundo plano." }
+    ],
+    "scale": "Para comparar: o KeepingYouAwake ocupa 7,6 MB em disco, e o Amphetamine é um download de 6,7 MB antes dos apps auxiliares. Medido em um MacBook Air, macOS 26.6; os detalhes estão em <doc>docs/compatibility.md</doc>."
+  },
+  "compare": {
+    "eyebrow": "Comparar",
+    "title": "A maioria dos apps para manter o Mac acordado para na tampa.",
+    "lead": "Manter um Mac acordado com a tampa aberta é fácil. Fechada, o macOS ignora o pedido educado. Veja como os apps mais conhecidos lidam com a tampa fechada, na bateria, sem nenhuma tela conectada.",
+    "source": "Fonte",
+    "wham": {
+      "tag": "Sim, por conta própria",
+      "text": "Desativa a flag de suspensão do kernel, o único interruptor que o macOS respeita com a tampa fechada, e reativa quando você termina: pelo tempo que você quiser, nunca até a bateria zerar, nunca além do calor crítico. Baixe, arraste, clique. macOS 11 ou posterior, Intel também, assinado e notarizado.",
+      "meta": "1,4 MB em disco · Gratuito, código aberto"
+    },
+    "amphetamine": {
+      "tag": "Com apps auxiliares",
+      "text": "Isolado pela sandbox da App Store. Para a tampa fechada, oferece o Amphetamine Enhancer, um app separado de fora da loja, e em laptops com Apple silicon o Power Protect, outro download separado.",
+      "meta": "Download de 6,7 MB, mais auxiliares · Gratuito"
+    },
+    "caffeine": {
+      "tag": "Só com a tampa aberta",
+      "text": "Mantém uma asserção de energia: o pedido educado para continuar ligado, que o macOS descarta no instante em que a tampa fecha.",
+      "meta": "0,8 MB em disco · Gratuito"
+    },
+    "keepingyouawake": {
+      "tag": "Só com a tampa aberta",
+      "text": "Um interruptor amigável para o <code>caffeinate</code>. Nas palavras do próprio app, ele “só evita a suspensão em Macs de mesa e Macs portáteis com a tampa aberta”.",
+      "meta": "7,6 MB em disco · Gratuito, código aberto"
+    },
+    "caffeinate": {
+      "tag": "Só com a tampa aberta",
+      "text": "Embutido no macOS, com as mesmas asserções de energia. Até sua flag mais forte, <code>-s</code>, é “válida apenas quando o sistema está com alimentação CA”.",
+      "meta": "Embutido · man caffeinate"
+    },
+    "lungo": "Por conta própria, apps da App Store não conseguem, e os honestos dizem isso: o Lungo “não vai impedir que seu computador suspenda se você fechar a tampa. Esta é uma limitação da Mac App Store”."
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Boas perguntas.",
+    "items": [
+      {
+        "q": "Preciso usar o Terminal?",
+        "a": "Não. Baixe o Wham, abra, e tudo acontece na barra de menus: um clique para manter seu Mac acordado, um clique para deixá-lo dormir. Os comandos no fim desta página são só para quem gosta de digitar."
+      },
+      {
+        "q": "É seguro?",
+        "a": "Sim. Desativar a suspensão exige privilégios de administrador: na primeira vez que você clica, o macOS pede sua senha uma vez, para que o Wham possa alterar essa configuração sem pedir de novo. É a única coisa que ele tem permissão para fazer. O app é assinado pelo desenvolvedor e notarizado pela Apple, e cada linha dele está no <github>GitHub</github>."
+      },
+      {
+        "q": "Posso ativar por um tempo?",
+        "a": "Sim. Clique com o botão direito no interruptor e escolha “Turn On For” por 1, 2, 4 ou 8 horas: o menu mostra até quando, e depois seu Mac dorme normalmente. No terminal, <code>wham on 2h</code>, ou <code>wham run</code> antes de um comando para ficar acordado só enquanto ele roda."
+      },
+      {
+        "q": "Meu Mac vai esquentar demais dentro de uma bolsa?",
+        "a": "O Wham não deixa seu Mac cozinhar: quando o macOS avisa que ele está perigosamente quente, o Wham se desativa e deixa o Mac dormir. Ainda assim, um laptop ocupado dentro de uma bolsa fechada não tem para onde jogar esse calor, e o Wham foi feito para mesas, docks e estantes, onde o ar circula. Antes de guardar o Mac, desative o Wham e ele volta a dormir ao fechar a tampa, como sempre fez."
+      },
+      {
+        "q": "E a bateria?",
+        "a": "O Wham em si praticamente não consome nada. Mas um Mac acordado gasta bateria como um Mac acordado, tampa fechada ou não, então na bateria o Wham solta em 10%: seu Mac dorme com o trabalho salvo, em vez de descarregar até zero. Para tarefas longas, deixe na tomada."
+      },
+      {
+        "q": "Meu Mac fica bloqueado com a tampa fechada?",
+        "a": "Como sempre foi. Sem outra tela conectada, o Wham desliga a tela embutida alguns segundos depois que você fecha a tampa, e seu Mac bloqueia conforme os ajustes de Tela Bloqueada. Com um monitor conectado, o Wham não toca em nenhuma tela."
+      },
+      {
+        "q": "Preciso de uma tela externa, um teclado ou energia?",
+        "a": "Não. Isso é o que o macOS pede para seu próprio “modo clamshell”, e o Wham não precisa de nada disso. Feche a tampa de um laptop sozinho e ele continua acordado."
+      },
+      {
+        "q": "O que acontece quando eu fecho o Wham?",
+        "a": "A suspensão volta. Ao fechar, o Wham desativa a configuração na saída, seja pelo menu (clique com o botão direito no interruptor), por um script, ou ao fazer logout. E se o Wham desaparecer sem ser fechado direito, numa falha ou num encerramento forçado, seu watchdog devolve a suspensão em menos de um segundo."
+      },
+      {
+        "q": "Como eu desinstalo?",
+        "a": "Feche o Wham pelo menu, o que devolve a suspensão, depois arraste o Wham da pasta Aplicativos para a Lixeira. Para uma limpeza completa, incluindo a regra de senha, use o desinstalador de uma linha em <dev>Para desenvolvedores</dev>."
+      },
+      {
+        "q": "Por que não está na Mac App Store?",
+        "a": "Apps da App Store vivem numa sandbox, e um app isolado não pode alterar a configuração de suspensão do Mac. Os que tentam se contentam em pedir ao macOS para continuar ligado, que é exatamente o que para de funcionar quando você fecha a tampa."
+      }
+    ]
+  },
+  "dev": {
+    "title": "Para desenvolvedores",
+    "subtitle": "Terminal, Homebrew, npm e o comando wham.",
+    "install": "Instalar",
+    "installText": "O mesmo app assinado do download, mais o comando <code>wham</code>. Rode de novo para atualizar.",
+    "curious": "Quer dar uma olhada antes? <script>Leia install.sh</script>: ele baixa a versão mais recente, verifica a assinatura, coloca na pasta Aplicativos e abre.",
+    "command": "O comando wham",
+    "runComment": "# acordado enquanto o make roda, depois como estava antes",
+    "uninstall": "Desinstalar",
+    "uninstallText": "Ele fecha o Wham, o que devolve a suspensão, depois remove o app, o comando <code>wham</code>, suas configurações e a regra do sudoers abaixo. Com o Homebrew: <code>brew uninstall --zap wham</code>. <script>Leia uninstall.sh</script>.",
+    "sudoersComment": "# /private/etc/sudoers.d/wham, para o ID de usuário 501 (você)"
+  },
+  "copy": {
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "label": "Copiar: {command}",
+    "status": "Copiado para a área de transferência"
+  },
+  "footer": {
+    "title": "Feche a tampa e vá.",
+    "subtitle": "Seu Mac não vai precisar ser acordado.",
+    "madeWith": "Feito com <heart></heart> por",
+    "madeLabel": "Feito por Gwendall, gwendall.com",
+    "license": "O Wham é gratuito e de código aberto, sob a licença <mit>MIT</mit>."
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "Página não encontrada",
+      "title": "Nada por aqui.",
+      "mark": "Esta página está dormindo.",
+      "text": "O link pode ser antigo ou ter um erro de digitação. Todo o resto do wham.sh está bem acordado.",
+      "home": "Voltar para o wham.sh"
+    },
+    "failed": {
+      "wordmark": "Ops",
+      "eyebrow": "Algo deu errado",
+      "title": "Algo quebrou.",
+      "mark": "Não é o seu Mac.",
+      "text": "Esta página tropeçou ao carregar. Tente de novo daqui a pouco e, se continuar acontecendo, <github>conte pra gente no GitHub</github>.",
+      "retry": "Tentar de novo",
+      "home": "Voltar para o wham.sh",
+      "code": "Código do erro {digest}"
+    }
+  }
+}

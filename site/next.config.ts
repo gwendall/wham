@@ -6,10 +6,22 @@ import type { NextConfig } from "next";
 // page and its preview, not a shell script.
 const CLI_AGENT = "(?:(?:curl|[Ww]get|HTTPie|xh|aria2)/.*|fetch libfetch/.*)";
 
+// English is the page at /, every other language under its code (lib/locales.ts).
+// A first visit to / goes to the browser's first language, when the site has
+// it; after that, to the one picked in the header (the wham-lang cookie).
+const OTHER = "fr|es|de|it|pt|ja|ko|zh";
+// The first language of Accept-Language: "fr-FR,fr;q=0.9,en;q=0.8" is French.
+// Chinese only in its Simplified forms: zh-TW and zh-HK readers get English.
+const FIRST = "(?<lang>fr|es|de|it|pt|ja|ko)(?:-[^,;]*)?(?:[,;].*)?";
+const FIRST_ZH = "zh(?:-(?:CN|SG|Hans)[^,;]*)?(?:[,;].*)?";
+
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   experimental: {
+    // The root layout is app/[lang]/layout.tsx: a URL no language matches gets
+    // app/global-not-found.tsx.
+    globalNotFound: true,
     // Vercel restores .next/cache before each build, and Turbopack's build cache
     // then served the previous globals.css through the Tailwind loader: new
     // pages, old stylesheet (12/10/2026). The site builds in seconds without it.
@@ -27,6 +39,7 @@ const nextConfig: NextConfig = {
     return {
       beforeFiles: [
         { source: "/", has: [{ type: "header", key: "user-agent", value: CLI_AGENT }], destination: "/install" },
+        { source: "/", destination: "/en" },
         { source: "/install.sh", destination: "/install" },
         { source: "/uninstall.sh", destination: "/uninstall" },
       ],
@@ -35,7 +48,13 @@ const nextConfig: NextConfig = {
     };
   },
   async redirects() {
+    const cli = { type: "header", key: "user-agent", value: CLI_AGENT } as const;
+    const chosen = { type: "cookie", key: "wham-lang" } as const;
     return [
+      { source: "/en", destination: "/", permanent: true },
+      { source: "/", has: [{ ...chosen, value: `(?<lang>${OTHER})` }], missing: [cli], destination: "/:lang", permanent: false },
+      { source: "/", has: [{ type: "header", key: "accept-language", value: FIRST }], missing: [chosen, cli], destination: "/:lang", permanent: false },
+      { source: "/", has: [{ type: "header", key: "accept-language", value: FIRST_ZH }], missing: [chosen, cli], destination: "/zh", permanent: false },
       {
         source: "/download",
         destination: "https://github.com/gwendall/wham/releases/latest/download/Wham.dmg",
