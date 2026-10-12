@@ -215,11 +215,12 @@ waitflag 0
 check "$(is "[ \"\$(flag)\" = 0 ] && [ -z \"\$(left)\" ]")" "a session that ran out while the app was closed ends when it opens"
 stop
 sudo -n /usr/bin/pmset -a disablesleep 1
-defaults write sh.wham.app offAt -date "$(date -u -v+3S '+%Y-%m-%d %H:%M:%S +0000')"
+# `date` drops the fraction of a second: the end is 4 to 5 s away.
+defaults write sh.wham.app offAt -date "$(date -u -v+5S '+%Y-%m-%d %H:%M:%S +0000')"
 launch
 sleep 1
 check "$(is "[ \"\$(flag)\" = 1 ]")" "one still running when the app opens goes on"
-waitflag 0 6
+waitflag 0 8
 check "$(is "[ \"\$(flag)\" = 0 ]")" "and ends on time"
 stop
 # `wham on 2h` with the app closed opens it, since the app ends the session.
@@ -277,21 +278,24 @@ stop
 guards=
 echo "ac 100" >"$fake"
 
-# The real heat signal, where macOS lets it be raised (as root, on CI).
-heat() { sudo -n notifyutil -s com.apple.system.thermalpressurelevel "$1" && sudo -n notifyutil -p com.apple.system.thermalpressurelevel; }
+# The real heat signal: macOS's thermal pressure level, which its thermal daemon
+# posts and root can raise (on CI). 3 is trapping, where Wham lets go.
+pressure=com.apple.system.thermalpressurelevel
+heat() { sudo -n notifyutil -s "$pressure" "$1" && sudo -n notifyutil -p "$pressure"; }
 if [ -n "${CI:-}" ] && heat 0 >/dev/null 2>&1; then
   launch
   "$bin" on >/dev/null
   heat 3
-  waitflag 0 4
-  if [ "$(flag)" = 0 ]; then
-    check 1 "the Mac's real thermal pressure at its peak: the app gives sleep back"
+  if [ "$(notifyutil -g "$pressure" | awk '{ print $2 }')" = 3 ]; then
+    waitflag 0 4
+    check "$(is "[ \"\$(flag)\" = 0 ]")" "the Mac's real thermal pressure at trapping: the app gives sleep back"
     "$bin" on >/dev/null 2>&1 && code=0 || code=$?
-    check "$(is "[ $code = 1 ]")" "and wham on refuses until it cools"
-  elif "$bin" on 2>&1 | grep -q "too hot"; then
-    check 0 "the command feels the heat but the app did not turn off"
+    check "$(is "[ $code = 1 ] && [ \"\$(flag)\" = 0 ]")" "and wham on refuses until it cools"
+    heat 0
+    "$bin" on >/dev/null 2>&1 && code=0 || code=$?
+    check "$(is "[ $code = 0 ] && [ \"\$(flag)\" = 1 ]")" "cooled down: it turns on again"
   else
-    echo "skip the real heat (this Mac's thermal state did not follow)"
+    echo "skip the real heat (macOS kept its thermal pressure level)"
   fi
   heat 0
   "$bin" off >/dev/null

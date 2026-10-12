@@ -205,6 +205,10 @@ if let percent = batt.range(of: #"\d+(?=%)"#, options: .regularExpression).map({
 } else {
     check(power.level == nil && !power.onBattery, "no battery on this Mac, none read")
 }
+// The heat, as macOS's thermal daemon posts it.
+let posted = shell("notifyutil -g \(Heat.name)").output.split(separator: " ").last.flatMap { UInt64($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+check(Heat.level != nil && Heat.level == posted,
+      "thermal pressure read: \(Heat.level.map(String.init) ?? "none") (notifyutil: \(posted.map(String.init) ?? "none"))")
 let standIn = NSTemporaryDirectory() + "wham-power-\(getpid())"
 try "battery 9 critical\n".write(toFile: standIn, atomically: true, encoding: .utf8)
 setenv("WHAM_FAKE_POWER", standIn, 1)

@@ -1,6 +1,7 @@
 import CoreGraphics
 import Foundation
 import IOKit.ps
+import notify
 
 // While Wham is on, three things end it on their own, and Wham says which:
 // the time it was given runs out, the battery runs low, or the Mac gets
@@ -38,7 +39,7 @@ enum Session {
         }
         let power = Power.read()
         return Reading(offAt: offAt, onBattery: power.onBattery, battery: power.level,
-                       critical: ProcessInfo.processInfo.thermalState == .critical)
+                       critical: Heat.critical)
     }
 
     // Why it ended, in a few words.
@@ -100,6 +101,25 @@ enum Session {
             CFPreferencesAppSynchronize(domain)
         }
     }
+}
+
+// How hot the Mac is. ProcessInfo's thermal state, or the pressure level that
+// macOS's thermal daemon posts through notify(3), which ProcessInfo does not
+// always follow: 3 is trapping, 4 sleeping (OSThermalPressureLevel).
+enum Heat {
+    static let name = "com.apple.system.thermalpressurelevel"
+    private static let token: Int32? = {
+        var token: Int32 = 0
+        return notify_register_check(name, &token) == 0 ? token : nil
+    }()
+
+    static var level: UInt64? {
+        var level: UInt64 = 0
+        guard let token, notify_get_state(token, &level) == 0 else { return nil }
+        return level
+    }
+
+    static var critical: Bool { ProcessInfo.processInfo.thermalState == .critical || (level ?? 0) >= 3 }
 }
 
 enum Power {

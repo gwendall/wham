@@ -1,6 +1,7 @@
 import Foundation
 import IOKit
 import IOKit.ps
+import notify
 
 // What can end a session arrives from macOS as it happens, not polled: the
 // power source (plugged in or not, and the charge), the Mac's temperature, the
@@ -10,6 +11,7 @@ final class Watch {
     private let changed: () -> Void
     private var port: IONotificationPortRef?
     private var lid: io_object_t = 0
+    private var heat: Int32 = 0
 
     // kIOPMMessageClamshellStateChange: iokit_family_msg(sub_iokit_powermanagement, 0x100).
     private nonisolated static let clamshellChanged: UInt32 = 0xE003_4100
@@ -24,6 +26,9 @@ final class Watch {
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         }
         NotificationCenter.default.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.changed() }
+        }
+        notify_register_dispatch(Heat.name, &heat, .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.changed() }
         }
         // IOPMrootDomain tells its clients when the lid opens or closes.

@@ -101,7 +101,7 @@ with the switch as it was.
 | On battery, at 10% or less | Turns off ("Battery at 10%") and will not turn on until plugged in, saying so | Test: `Session.end`; eval: the switch, the menu and `wham on` |
 | Plugged in at any charge, or no battery | The charge never stops it | Test |
 | Plugged back in after the battery stopped it | Stays off until asked | Eval |
-| Critically hot (`thermalState == .critical`) | Turns off ("Your Mac got too hot") and will not turn on until it cools. Below critical it carries on, so a busy server is left alone | Test; eval, also with macOS's own thermal signal raised as root on CI |
+| Critically hot (`thermalState` critical, or macOS's thermal pressure at trapping) | Turns off ("Your Mac got too hot") and will not turn on until it cools. Below critical it carries on, so a busy server is left alone | Test; eval, also with macOS's own thermal signal raised as root on CI |
 | `wham run` while the battery or the heat says no | Runs the command anyway and says it cannot keep the Mac awake | Eval |
 
 ## However Wham ends
