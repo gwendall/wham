@@ -15,6 +15,8 @@ cask "wham" do
     strategy :github_latest
   end
 
+  # Wham updates itself (Update Automatically in its menu).
+  auto_updates true
   depends_on :macos
 
   app "Wham.app"

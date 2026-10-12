@@ -17,6 +17,8 @@ enum Pixels {
         ".....#.....",
     ]
 
+    // Like the sun, the moon's ink fills its whole box, so centering the box
+    // centers the moon.
     static let moon = [
         "....##.....",
         "..###......",
@@ -24,8 +26,8 @@ enum Pixels {
         ".###.......",
         "####.......",
         "####.......",
-        "####.......",
-        ".#####.....",
+        "####......#",
+        ".#####...##",
         ".#########.",
         "..#######..",
         "....###....",
@@ -39,6 +41,17 @@ enum Pixels {
     ]
     static let glow = CGColor(srgbRed: 1, green: 3 / 255, blue: 180 / 255, alpha: 1)
     static let moonInk = CGColor(srgbRed: 0.75, green: 0.71, blue: 1, alpha: 1)
+
+    // The sprite's cells as squares of `cell` points, from `origin` (bottom left).
+    static func path(_ rows: [String], origin: CGPoint, cell: CGFloat = 1) -> CGPath {
+        let path = CGMutablePath()
+        for (y, row) in rows.enumerated() {
+            for (x, char) in row.enumerated() where char == "#" {
+                path.addRect(CGRect(x: origin.x + CGFloat(x) * cell, y: origin.y + CGFloat(rows.count - 1 - y) * cell, width: cell, height: cell))
+            }
+        }
+        return path
+    }
 
     // The sprite at one pixel per cell, in one color.
     static func image(_ rows: [String], color: CGColor) -> CGImage? {

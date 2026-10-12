@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 mkdir -p build
 
 swiftc -swift-version 5 -o build/wham-tests \
-  tests/main.swift app/Sources/Chime.swift app/Sources/Sleep.swift app/Sources/CLI.swift app/Sources/Pixels.swift
+  tests/main.swift app/Sources/Chime.swift app/Sources/Sleep.swift app/Sources/CLI.swift app/Sources/Pixels.swift app/Sources/Update.swift
 build/wham-tests
 
 for script in install.sh uninstall.sh scripts/*.sh; do
