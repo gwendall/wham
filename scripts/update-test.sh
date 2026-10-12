@@ -4,7 +4,8 @@
 #   scripts/update-test.sh
 #
 # - a 1.0.99 copy finds 9.9.9, swaps it in where it stands and reopens as
-#   9.9.9, with the kernel's sleep flag left as it was
+#   9.9.9, with the kernel's sleep flag left as it was: when on, the old copy's
+#   watchdog stands down and the new copy puts out its own
 # - a 9.9.9 not signed by Wham's developer is downloaded and refused
 #
 # Needs this Mac's Developer ID certificate (the updater only takes Wham signed
@@ -27,9 +28,17 @@ app="$work/Applications/Wham.app"
 served="$work/github/releases/download/v9.9.9"
 mkdir -p "$work/Applications" "$served"
 server=
+start=$(flag)
+# Killing a copy while on sets off its watchdog: the flag is put back after.
+restore() {
+  sleep 1
+  [ "$(flag)" = "$start" ] || sudo -n /usr/bin/pmset -a disablesleep "$start" >/dev/null 2>&1 \
+    || echo "note: could not put SleepDisabled back to $start"
+}
 cleanup() {
   for pid in $(running); do kill "$pid" 2>/dev/null || true; done
   [ -n "$server" ] && kill "$server" 2>/dev/null || true
+  restore
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -92,6 +101,7 @@ check "$(is "[ \"\$(version)\" = 1.0.99 ] && [ \"\$(running)\" = \"$old\" ]")" \
   "a 9.9.9 not signed by Wham's developer is refused: 1.0.99 stays, still running"
 kill "$old"
 for _ in $(seq 50); do [ -z "$(running)" ] && break; sleep 0.1; done
+restore
 
 cp "$work/genuine.zip" "$served/Wham.zip"
 before=$(flag)
@@ -107,6 +117,11 @@ check "$(is "[ \"\$(\"$app/Contents/MacOS/Wham\" version)\" = 'wham 9.9.9' ]")" 
 check "$(is "! kill -0 $old 2>/dev/null")" "the old copy is gone"
 check "$(is "[ -n \"\$(running)\" ]")" "the new copy opened in its place ($(running | tr '\n' ' '))"
 check "$(is "[ \"\$(flag)\" = $before ]")" "the sleep flag is as it was ($before)"
+sleep 2
+check "$(is "[ \"\$(flag)\" = $before ]")" "and stays so"
+if [ "$before" = 1 ]; then
+  check "$(is "pgrep -P \"\$(running | head -1)\" -f stand-down >/dev/null")" "the new copy has its watchdog out"
+fi
 
 if [ "$failures" != 0 ]; then echo "$failures failed"; exit 1; fi
 echo "all checks passed"

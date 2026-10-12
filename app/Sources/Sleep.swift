@@ -11,12 +11,17 @@ enum Sleep {
     static let pmset = "/usr/bin/pmset"
 
     // nil when the kernel does not answer.
-    static var isDisabled: Bool? {
-        let root = IOServiceGetMatchingService(0, IOServiceMatching("IOPMrootDomain"))
-        guard root != 0 else { return nil }
-        defer { IOObjectRelease(root) }
-        let value = IORegistryEntryCreateCFProperty(root, "SleepDisabled" as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
-        return value as? Bool
+    static var isDisabled: Bool? { root("SleepDisabled") }
+
+    // The lid sensor.
+    static var lidClosed: Bool { root("AppleClamshellState") ?? false }
+
+    // Looked up once: the tick reads it every two seconds.
+    private static let rootDomain = IOServiceGetMatchingService(0, IOServiceMatching("IOPMrootDomain"))
+
+    private static func root(_ key: String) -> Bool? {
+        guard rootDomain != 0 else { return nil }
+        return IORegistryEntryCreateCFProperty(rootDomain, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue() as? Bool
     }
 
     // Lets one user run exactly the two pmset commands Wham needs as root,
@@ -90,5 +95,41 @@ enum Sleep {
         do { try process.run() } catch { return -1 }
         process.waitUntilExit()
         return process.terminationStatus
+    }
+}
+
+// If whoever turned sleep off goes away without giving it back (a crash, a
+// force quit, a closed terminal), the Mac must not stay awake with nothing left
+// to show it. While on, Wham keeps a tiny shell waiting on a pipe that only Wham
+// writes to. However Wham ends, the kernel closes that pipe, and the shell gives
+// sleep back. Wham tells it to stand down when it turns off, or leaves on purpose.
+final class Watchdog {
+    private var input: FileHandle?
+    var isArmed: Bool { input != nil }
+
+    // `command` is for the tests.
+    func arm(command: String = "/usr/bin/sudo -n \(Sleep.pmset) -a disablesleep 0") {
+        guard input == nil else { return }
+        let pipe = Pipe(), shell = Process()
+        // The writing end stays in this process alone: a child holding it,
+        // the shell included, would keep the pipe open.
+        _ = fcntl(pipe.fileHandleForWriting.fileDescriptor, F_SETFD, FD_CLOEXEC)
+        _ = fcntl(pipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        // A Ctrl-C or a hangup meant for a terminal does not reach it.
+        shell.arguments = ["-c", "trap '' INT QUIT HUP; read -r word; [ \"$word\" = stand-down ] || exec \(command)"]
+        shell.standardInput = pipe
+        shell.standardOutput = FileHandle.nullDevice
+        shell.standardError = FileHandle.nullDevice
+        guard (try? shell.run()) != nil else { return }
+        input = pipe.fileHandleForWriting
+    }
+
+    func standDown() {
+        guard let input else { return }
+        // Throws rather than signals if the shell is already gone.
+        try? input.write(contentsOf: Data("stand-down\n".utf8))
+        try? input.close()
+        self.input = nil
     }
 }

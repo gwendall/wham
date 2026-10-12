@@ -34,10 +34,10 @@ const STATS = [
   { value: "1.4", unit: "MB", text: "The whole app, on disk. The download is 2.7 MB." },
   { value: "10", unit: "MB", text: "Of memory while it runs." },
   { value: "0.03", unit: "%", text: "Of one CPU core, idle: a hundredth of a second of work every 30 seconds." },
-  { value: "0", unit: "", text: "Dependencies. No analytics, no trackers, nothing else running." },
+  { value: "0", unit: "", text: "Dependencies. No analytics, no trackers, no background daemon." },
 ];
 
-type Verdict = "yes" | "setup" | "helpers" | "no";
+type Verdict = "yes" | "helpers" | "no";
 
 // Every claim here is checked against the app's own words (store listing,
 // README, man page), its binary, or a published advisory, all linked.
@@ -48,24 +48,12 @@ const RIVALS: { name: string; verdict: Verdict; tag: string; text: ReactNode; me
     tag: "Yes, on its own",
     text: (
       <>
-        Turns off the kernel&apos;s sleep flag, the one switch macOS honors with the lid shut, and back on when you are done.
-        Download, drag, click. macOS 11 or later, Intel too, signed and notarized.
+        Turns off the kernel&apos;s sleep flag, the one switch macOS honors with the lid shut, and back on when you are done:
+        for as long as you say, never down to a flat battery, never past critically hot. Download, drag, click. macOS 11 or
+        later, Intel too, signed and notarized.
       </>
     ),
     meta: "1.4 MB on disk · Free, open source",
-  },
-  {
-    name: "Insomnia",
-    verdict: "setup",
-    tag: "Yes, with setup",
-    text: (
-      <>
-        Flips the same flag, inside timed sessions with extras: it freezes apps, mutes audio, joins your hotspot. You install it
-        through your coding agent or the Terminal, on macOS 26 and Apple silicon only, and its builds are not notarized.
-      </>
-    ),
-    meta: "2.3 MB on disk · Free, open source · Experimental",
-    source: "https://github.com/krishhgg/Insomnia#readme",
   },
   {
     name: "Amphetamine",
@@ -86,7 +74,7 @@ const RIVALS: { name: string; verdict: Verdict; tag: string; text: ReactNode; me
     tag: "Lid open only",
     text: (
       <>
-        Holds a power assertion (we looked inside its binary): the polite request to stay up that macOS drops the moment the lid
+        Holds a power assertion: the polite request to stay up that macOS drops the moment the lid
         closes.
       </>
     ),
@@ -141,12 +129,22 @@ const FAQ: { q: string; a: ReactNode }[] = [
     ),
   },
   {
+    q: "Can I turn it on for a while?",
+    a: (
+      <>
+        Yes. Right-click the switch and pick Turn On For 1, 2, 4 or 8 hours: the menu says until when, then your Mac sleeps as
+        usual. From a terminal, <Code>wham on 2h</Code>, or <Code>wham run</Code> before a command to stay awake just while it
+        runs.
+      </>
+    ),
+  },
+  {
     q: "Will my Mac overheat in a bag?",
     a: (
       <>
-        It can. With Wham on, your Mac stays fully awake with the lid shut, and a busy laptop in a closed bag has nowhere to put
-        its heat. Wham is meant for desks, docks and shelves, where air can move. Before you pack up, flip it off and your Mac
-        sleeps when you close it, like it always did.
+        Wham will not let it cook: when macOS calls your Mac critically hot, Wham turns off and lets it sleep. Still, a busy
+        laptop in a closed bag has nowhere to put its heat, and Wham is meant for desks, docks and shelves, where air can move.
+        Before you pack up, flip it off and your Mac sleeps when you close it, like it always did.
       </>
     ),
   },
@@ -154,8 +152,17 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "What about the battery?",
     a: (
       <>
-        Wham itself costs next to nothing: it checks one setting every two seconds. But an awake Mac drains its battery like an
-        awake Mac, lid closed or not. For long jobs, plug it in.
+        Wham itself costs next to nothing. But an awake Mac drains its battery like an awake Mac, lid closed or not, so on
+        battery Wham lets go at 10%: your Mac sleeps with your work saved instead of running flat. For long jobs, plug it in.
+      </>
+    ),
+  },
+  {
+    q: "Is my Mac locked with the lid closed?",
+    a: (
+      <>
+        As it always is. With no other display, Wham turns the built-in screen off a few seconds after you close the lid, and
+        your Mac locks as your Lock Screen settings say. With a monitor plugged in, Wham leaves the screens alone.
       </>
     ),
   },
@@ -173,7 +180,8 @@ const FAQ: { q: string; a: ReactNode }[] = [
     a: (
       <>
         Sleep comes back. Quitting turns the setting off on the way out, whether you quit from its menu (right-click the
-        switch), from a script, or by logging out.
+        switch), from a script, or by logging out. And if Wham ever goes away without quitting, a crash or a force quit, its
+        watchdog gives sleep back within a second.
       </>
     ),
   },
@@ -364,8 +372,8 @@ function Tiny() {
   return (
     <Section id="tiny" eyebrow="Tiny" title="You will forget it is running.">
       <Lead>
-        Wham does one thing: every two seconds, it reads one kernel flag. The rest of the time it does nothing at all, and CI
-        holds it to a budget.
+        Wham does one thing: every two seconds, it reads one kernel flag. While on, it also listens for the battery, the heat
+        and the lid, which macOS announces. The rest of the time it does nothing at all, and CI holds it to a budget.
       </Lead>
       <ul className="mt-12 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         {STATS.map((stat) => (
@@ -379,8 +387,7 @@ function Tiny() {
         ))}
       </ul>
       <p className="mt-8 max-w-[44rem] text-body text-muted">
-        For scale: Insomnia takes 2.3 MB on disk for Apple silicon alone (Wham&apos;s 1.4 MB carries Intel too), KeepingYouAwake
-        7.6 MB, and Amphetamine is a 6.7 MB download before its helper apps. Measured on a MacBook Air, macOS 26.6; the details
+        For scale: KeepingYouAwake takes 7.6 MB on disk, and Amphetamine is a 6.7 MB download before its helper apps. Measured on a MacBook Air, macOS 26.6; the details
         are in{" "}
         <A href={`${GITHUB}/blob/main/docs/compatibility.md#resources`}>docs/compatibility.md</A>.
       </p>
@@ -390,7 +397,6 @@ function Tiny() {
 
 const VERDICT_STYLE: Record<Verdict, string> = {
   yes: "bg-candy text-ink",
-  setup: "bg-candy-cyan/25 text-fg",
   helpers: "bg-candy-yellow/25 text-fg",
   no: "bg-fg/7 text-muted",
 };
@@ -406,7 +412,7 @@ function Compare() {
         {RIVALS.map((app) => (
           <li
             key={app.name}
-            className={`flex flex-col rounded-3xl bg-card p-6 ${app.verdict === "yes" ? "ring-2 ring-candy-pink/60" : "ring-1 ring-line"}`}
+            className={`flex flex-col rounded-3xl bg-card p-6 ${app.verdict === "yes" ? "ring-2 ring-candy-pink/60 md:col-span-2" : "ring-1 ring-line"}`}
           >
             <p className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
               <span className="text-title font-black">{app.name}</span>
@@ -499,12 +505,20 @@ function Developers() {
               <span className="text-candy-pink">on: your Mac stays awake, even with the lid closed</span>
               {"\n"}
               <Prompt />
+              wham on 2h{"\n"}
+              <span className="text-candy-pink">on until 4:30 PM: your Mac stays awake, even with the lid closed</span>
+              {"\n"}
+              <Prompt />
               wham status{"\n"}
-              <span className="text-candy-pink">on: your Mac stays awake, even with the lid closed</span>
+              <span className="text-candy-pink">on until 4:30 PM: your Mac stays awake, even with the lid closed</span>
               {"\n"}
               <Prompt />
               wham off{"\n"}
               <span className="text-moon">off: your Mac sleeps as usual</span>
+              {"\n"}
+              <Prompt />
+              wham run make{"\n"}
+              <span className="text-white/45"># awake while make runs, then as it was before</span>
             </pre>
             <Label className="mt-12">Uninstall</Label>
             <div className="mt-6">
@@ -540,9 +554,9 @@ function Footer() {
           <PixelSprite rows={SUN_LIT} cell={4} className="text-candy-yellow" />
           <p className="mt-6 text-title font-black">
             <span className="block">
-              Wake me up before you <span className="whitespace-nowrap">go-go?</span>
+              Close the lid and go.
             </span>{" "}
-            <span className="block text-white/60">Your Mac won&apos;t need it.</span>
+            <span className="block text-white/60">Your Mac won&apos;t need waking up.</span>
           </p>
           <a
             href="https://gwendall.com"
