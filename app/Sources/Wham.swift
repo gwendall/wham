@@ -56,7 +56,7 @@ final class Wham: NSObject, NSApplicationDelegate {
         guard let button = item.button, let window = button.window, window.occlusionState.contains(.visible),
               window.screen?.frame.contains(window.frame) == true else {
             return alert("Wham is running, but its switch has no room in the menu bar (too many icons, or the notch). "
-                + "Hold ⌘ and drag other icons away to make room, or use `wham on` and `wham off` in Terminal.")
+                + "Hold ⌘ and drag a few other icons out of the menu bar to make room for it.")
         }
         toast.show(Toast.hello, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
     }

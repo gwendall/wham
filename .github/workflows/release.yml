@@ -1,0 +1,80 @@
+name: Release
+
+# A pushed tag (scripts/release.sh 1.2.0) becomes a release: the app signed
+# with Developer ID and notarized, as a zip and a disk image, on GitHub, and
+# the Homebrew cask pointing at it.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # build.sh numbers the build from the commit count
+
+      - name: Developer ID certificate
+        env:
+          P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          security create-keychain -p "" "$keychain"
+          security set-keychain-settings -lut 3600 "$keychain"
+          security unlock-keychain -p "" "$keychain"
+          echo "$P12" | base64 --decode > "$RUNNER_TEMP/id.p12"
+          security import "$RUNNER_TEMP/id.p12" -k "$keychain" -f pkcs12 -P "$P12_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/id.p12"
+          security set-key-partition-list -S apple-tool:,apple: -k "" "$keychain" >/dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+      - name: Notary key
+        env:
+          KEY: ${{ secrets.NOTARY_KEY }}
+        run: echo "$KEY" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+
+      - name: Test
+        run: scripts/test.sh
+
+      - name: Build, sign, notarize
+        env:
+          NOTARY_KEY: ${{ runner.temp }}/notary.p8
+          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.NOTARY_ISSUER }}
+        run: scripts/package.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/Wham.zip build/Wham.dmg build/checksums.txt \
+            --title "Wham ${GITHUB_REF_NAME#v}" --generate-notes
+
+      - name: Update the Homebrew cask
+        env:
+          TAP_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          echo "$TAP_KEY" > "$RUNNER_TEMP/tap-key"
+          chmod 600 "$RUNNER_TEMP/tap-key"
+          export GIT_SSH_COMMAND="ssh -i $RUNNER_TEMP/tap-key -o StrictHostKeyChecking=accept-new"
+          git clone -q git@github.com:gwendall/homebrew-tap.git build/tap
+          version=${GITHUB_REF_NAME#v}
+          sha=$(shasum -a 256 build/Wham.zip | cut -d' ' -f1)
+          mkdir -p build/tap/Casks
+          sed -e "s/@VERSION@/$version/" -e "s/@SHA256@/$sha/" packaging/wham.rb > build/tap/Casks/wham.rb
+          cd build/tap
+          git add Casks/wham.rb
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+            commit -qm "wham $version"
+          git push -q
+
+      - name: Clean up
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/notary.p8" "$RUNNER_TEMP/tap-key"

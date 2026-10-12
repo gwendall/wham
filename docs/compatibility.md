@@ -32,7 +32,7 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 | Admin account | macOS asks for the password once; Wham installs `/private/etc/sudoers.d/wham` | Test: the rule passes `visudo`; CI installs it as root with stand-in paths and checks 0440, root, exact content |
 | Standard (non-admin) account | The same prompt takes an administrator's name and password; the rule is for the standard user | Same rule, by user ID |
 | User names with spaces, dots, `@`, a domain (`DOMAIN\user`, `first.last@corp`) | The rule names the user by ID (`#501`), never by name | Test: rule text, `visudo` |
-| Managed Macs whose `/etc/sudoers` does not read `sudoers.d` | Refuses to write a rule that would do nothing and says why; `wham on` in Terminal still works with a plain `sudo` | Test: a stand-in sudoers without `includedir` is refused and nothing is written |
+| Managed Macs whose `/etc/sudoers` does not read `sudoers.d` | Refuses to write a rule that would do nothing and says why in plain words; an administrator can still run `wham on` in Terminal, which asks for the password each time | Test: a stand-in sudoers without `includedir` is refused and nothing is written |
 | `sudoers.d` missing | Created | Install script (`mkdir -p`) |
 | Cancelled password prompt | The switch slides back, nothing changes | Code path `Install.cancelled` |
 | Several users on one Mac | The flag is system-wide; each user's Wham shows it; each user gets their own rule | Kernel read every 2 s |
@@ -54,7 +54,7 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 
 | Case | What Wham does |
 | --- | --- |
-| Menu bar too full, or the switch hidden by the notch | Opening Wham again (Finder, Spotlight, `open -a Wham`) shows a toast under the switch, or, if the switch is not visible, says so and points to the `wham` command |
+| Menu bar too full, or the switch hidden by the notch | Opening Wham again (Finder, Spotlight, Launchpad) shows a toast under the switch, or, if the switch is not visible, says so and how to make room (hold ⌘ and drag other icons away) |
 | First launch | A "HI, I'M WHAM" toast points at the switch |
 | Light and dark menu bars | The glyph and outline follow the menu bar's appearance |
 | Reduce Motion | The switch changes without animating |
