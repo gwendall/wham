@@ -26,8 +26,11 @@ Anything that should keep running after you close the lid:
 - **Local AI.** Ollama or LM Studio serving your other devices, big model
   downloads, fine-tunes.
 - **Builds, tests, downloads, backups and syncs.**
-- **Servers and remote access.** A dev server you open from your phone, Plex,
-  SSH, tmux, Screen Sharing.
+- **Remote access.** A dev server you open from your phone, SSH, tmux, Screen
+  Sharing.
+- **A home server, 24/7.** An old Mac on a shelf, lid shut, up day and night:
+  Plex, Home Assistant or Homebridge for the smart home, reachable from
+  anywhere.
 
 Scripts and agents can flip it too: `wham on` before a long job, `wham off`
 after.
