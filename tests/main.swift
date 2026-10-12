@@ -79,9 +79,11 @@ check(unprivileged.status != 0 && !FileManager.default.fileExists(atPath: target
 if shell("true", root: true).status == 0 {
     let installed = shell(Sleep.installShell(sudoers: stock, file: target), root: true)
     let attributes = try? FileManager.default.attributesOfItem(atPath: target)
+    // 0440 root:wheel is unreadable to an admin user (wheel is root alone): read it as root.
+    let content = shell("cat '\(target)'", root: true).output
     check(installed.status == 0 && (attributes?[.posixPermissions] as? Int) == 0o440 && (attributes?[.ownerAccountName] as? String) == "root"
-          && (try? String(contentsOfFile: target, encoding: .utf8)) == Sleep.rule() + "\n",
-          "as root the rule lands, 0440 root, exactly the rule")
+          && content == Sleep.rule() + "\n",
+          "as root the rule lands, 0440 root, exactly the rule\(installed.status == 0 ? "" : " (\(installed.output))")")
     _ = shell("rm -rf '\(scratch.path)'", root: true)
 } else {
     print("skip installing as root (sudo asks for a password here)")
