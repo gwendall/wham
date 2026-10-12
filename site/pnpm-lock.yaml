@@ -39,6 +39,9 @@ importers:
       '@types/three':
         specifier: ^0.186.0
         version: 0.186.0
+      chipvoice:
+        specifier: 0.21.0
+        version: 0.21.0
       eslint:
         specifier: ^9
         version: 9.39.5(jiti@2.7.0)
@@ -900,6 +903,9 @@ packages:
   chalk@4.1.2:
     resolution: {integrity: sha512-oKnbhFyRIXpUuez8iBMmyEa4nbj4IOQyuhc/wy9kY7/WVPcwIO9VA668Pu8RkO7+0G76SLROeyw9CpQ061i4mA==}
     engines: {node: '>=10'}
+
+  chipvoice@0.21.0:
+    resolution: {integrity: sha512-DIM3Z/XKU3LFwtn9PjWQGxSYhqn4K+Yt9H6+7P40DVdXzIKTL2rmcdzyyhW62kdaFTg0cESKRJUUysj3xVYt1Q==}
 
   client-only@0.0.1:
     resolution: {integrity: sha512-IV3Ou0jSMzZrd3pZ48nLkT9DA7Ag1pnPzaiQhpW7c3RbcqqzvzzVu+L8gfqMp/8IM2MQtSiqaCxrrcfu8I8rMA==}
@@ -2864,6 +2870,8 @@ snapshots:
     dependencies:
       ansi-styles: 4.3.0
       supports-color: 7.2.0
+
+  chipvoice@0.21.0: {}
 
   client-only@0.0.1: {}
 

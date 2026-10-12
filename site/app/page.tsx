@@ -3,6 +3,7 @@ import { CopyCommand } from "@/components/CopyCommand";
 import { Disclosure } from "@/components/Disclosure";
 import { HeroStage } from "@/components/HeroStage";
 import { MenuBarDemo } from "@/components/MenuBarDemo";
+import { MusicToggle } from "@/components/MusicToggle";
 import { PixelSprite } from "@/components/PixelSprite";
 import { LidArt, OpenArt, SwitchArt } from "@/components/StepArt";
 import { PROMPT, Tile, UseCases } from "@/components/UseCases";
@@ -25,6 +26,97 @@ const STEPS = [
     art: <LidArt />,
     title: "Close the lid",
     text: "Your Mac keeps going. Claude Code finishes its task, the export reaches the last frame, the download hits 100%.",
+  },
+];
+
+// Measured by scripts/eval.sh (docs/compatibility.md); CI holds Wham to its budgets.
+const STATS = [
+  { value: "1.4", unit: "MB", text: "The whole app, on disk. The download is 2.7 MB." },
+  { value: "10", unit: "MB", text: "Of memory while it runs." },
+  { value: "0.03", unit: "%", text: "Of one CPU core, idle: a hundredth of a second of work every 30 seconds." },
+  { value: "0", unit: "", text: "Dependencies. No analytics, no trackers, nothing else running." },
+];
+
+type Verdict = "yes" | "setup" | "helpers" | "no";
+
+// Every claim here is checked against the app's own words (store listing,
+// README, man page), its binary, or a published advisory, all linked.
+const RIVALS: { name: string; verdict: Verdict; tag: string; text: ReactNode; meta: string; source?: string }[] = [
+  {
+    name: "Wham",
+    verdict: "yes",
+    tag: "Yes, on its own",
+    text: (
+      <>
+        Turns off the kernel&apos;s sleep flag, the one switch macOS honors with the lid shut, and back on when you are done.
+        Download, drag, click. macOS 11 or later, Intel too, signed and notarized.
+      </>
+    ),
+    meta: "1.4 MB on disk · Free, open source",
+  },
+  {
+    name: "Insomnia",
+    verdict: "setup",
+    tag: "Yes, with setup",
+    text: (
+      <>
+        Flips the same flag, inside timed sessions with extras: it freezes apps, mutes audio, joins your hotspot. You install it
+        through your coding agent or the Terminal, on macOS 26 and Apple silicon only, and its builds are not notarized.
+      </>
+    ),
+    meta: "2.3 MB on disk · Free, open source · Experimental",
+    source: "https://github.com/krishhgg/Insomnia#readme",
+  },
+  {
+    name: "Amphetamine",
+    verdict: "helpers",
+    tag: "With helper apps",
+    text: (
+      <>
+        Sandboxed by the App Store. For a closed lid it offers Amphetamine Enhancer, a separate app from outside the store, and
+        on Apple silicon laptops Power Protect, another separate download.
+      </>
+    ),
+    meta: "6.7 MB download, plus helpers · Free",
+    source: "https://apps.apple.com/us/app/amphetamine/id937984704",
+  },
+  {
+    name: "Caffeine",
+    verdict: "no",
+    tag: "Lid open only",
+    text: (
+      <>
+        Holds a power assertion (we looked inside its binary): the polite request to stay up that macOS drops the moment the lid
+        closes.
+      </>
+    ),
+    meta: "0.8 MB on disk · Free",
+    source: "https://intelliscapesolutions.com/apps/caffeine",
+  },
+  {
+    name: "KeepingYouAwake",
+    verdict: "no",
+    tag: "Lid open only",
+    text: (
+      <>
+        A friendly switch for <Code>caffeinate</Code>. In its own words, it &ldquo;will only prevent sleep on desktop Macs and
+        portable Macs with an open lid.&rdquo;
+      </>
+    ),
+    meta: "7.6 MB on disk · Free, open source",
+    source: "https://github.com/newmarcel/KeepingYouAwake#readme",
+  },
+  {
+    name: "caffeinate",
+    verdict: "no",
+    tag: "Lid open only",
+    text: (
+      <>
+        Built into macOS, with the same power assertions. Even its strongest flag, <Code>-s</Code>, is &ldquo;valid only when
+        system is running on AC power.&rdquo;
+      </>
+    ),
+    meta: "Built in · man caffeinate",
   },
 ];
 
@@ -137,6 +229,8 @@ export default function Home() {
         <TryIt />
         <Uses />
         <HowItWorks />
+        <Tiny />
+        <Compare />
         <Faq />
         <Developers />
       </main>
@@ -159,12 +253,16 @@ function Header() {
         <NavLink href="#how" className="hidden md:flex">
           How it works
         </NavLink>
+        <NavLink href="#compare" className="hidden md:flex">
+          Compare
+        </NavLink>
         <NavLink href="#faq" className="hidden md:flex">
           FAQ
         </NavLink>
         <a href="/download" className="press flex h-10 items-center rounded-full bg-candy px-4 text-ink">
           Download
         </a>
+        <MusicToggle />
         <a
           href={GITHUB}
           className="flex size-10 items-center justify-center rounded-full transition-colors hover:bg-fg/6"
@@ -254,9 +352,86 @@ function HowItWorks() {
       <p className="mt-8 flex max-w-[44rem] gap-3 text-body text-muted">
         <PixelSprite rows={MOON} cell={2} className="mt-0.5 shrink-0 text-moon" />
         <span>
-          Other keep-awake apps only ask macOS to stay up, which it ignores once the lid closes, so Wham turns sleep off itself
+          Most keep-awake apps only ask macOS to stay up, which it ignores once the lid closes, so Wham turns sleep off itself
           and back on when you are done.
         </span>
+      </p>
+    </Section>
+  );
+}
+
+function Tiny() {
+  return (
+    <Section id="tiny" eyebrow="Tiny" title="You will forget it is running.">
+      <Lead>
+        Wham does one thing: every two seconds, it reads one kernel flag. The rest of the time it does nothing at all, and CI
+        holds it to a budget.
+      </Lead>
+      <ul className="mt-12 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+        {STATS.map((stat) => (
+          <li key={stat.text} className="flex flex-col rounded-3xl bg-card p-5 ring-1 ring-line sm:p-6">
+            <p className="flex items-baseline gap-2">
+              <span className="font-pixel text-pixel-lg">{stat.value}</span>
+              {stat.unit && <span className="font-pixel text-pixel text-candy-pink">{stat.unit}</span>}
+            </p>
+            <p className="mt-4 text-body text-muted">{stat.text}</p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-8 max-w-[44rem] text-body text-muted">
+        For scale: Insomnia takes 2.3 MB on disk for Apple silicon alone (Wham&apos;s 1.4 MB carries Intel too), KeepingYouAwake
+        7.6 MB, and Amphetamine is a 6.7 MB download before its helper apps. Measured on a MacBook Air, macOS 26.6; the details
+        are in{" "}
+        <A href={`${GITHUB}/blob/main/docs/compatibility.md#resources`}>docs/compatibility.md</A>.
+      </p>
+    </Section>
+  );
+}
+
+const VERDICT_STYLE: Record<Verdict, string> = {
+  yes: "bg-candy text-ink",
+  setup: "bg-candy-cyan/25 text-fg",
+  helpers: "bg-candy-yellow/25 text-fg",
+  no: "bg-fg/7 text-muted",
+};
+
+function Compare() {
+  return (
+    <Section id="compare" eyebrow="Compare" title="Most keep-awake apps stop at the lid.">
+      <Lead>
+        Keeping a Mac awake with the lid open is easy. Shut it, and macOS ignores the polite way to ask. Here is how the
+        well-known apps handle a closed lid, on battery, with no screen plugged in.
+      </Lead>
+      <ul className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {RIVALS.map((app) => (
+          <li
+            key={app.name}
+            className={`flex flex-col rounded-3xl bg-card p-6 ${app.verdict === "yes" ? "ring-2 ring-candy-pink/60" : "ring-1 ring-line"}`}
+          >
+            <p className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <span className="text-title font-black">{app.name}</span>
+              <span className={`flex h-7 items-center gap-1.5 rounded-full px-3 text-small font-extrabold ${VERDICT_STYLE[app.verdict]}`}>
+                <PixelSprite rows={app.verdict === "no" ? MOON : SUN} cell={1} />
+                {app.tag}
+              </span>
+            </p>
+            <p className="mt-3 flex-1 text-body text-muted">{app.text}</p>
+            <p className="mt-4 text-small text-muted">
+              {app.meta}
+              {app.source && (
+                <>
+                  {" · "}
+                  <A href={app.source}>Source</A>
+                </>
+              )}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-8 max-w-[44rem] text-body text-muted">
+        On their own, App Store apps cannot, and the honest ones say so: Lungo &ldquo;will not prevent your computer from
+        sleeping if you close the lid. This is a Mac App Store limitation.&rdquo;{" "}
+        <A href="https://apps.apple.com/app/lungo/id1263070803">Source</A>
       </p>
     </Section>
   );

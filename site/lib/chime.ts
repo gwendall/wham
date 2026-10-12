@@ -2,6 +2,8 @@
 // four-note arpeggio on a 25% pulse wave. E5 G#5 B5 E6, 55 ms apart, each note
 // cut by the next, the last one ringing 160 ms. Up to switch on, down and
 // softer to switch off.
+import { audioContext } from "@/lib/audio";
+
 const ROOT = 659.26; // E5
 const STEPS = [0, 4, 7, 12];
 const GAP = 0.055;
@@ -9,7 +11,6 @@ const RING = 0.16;
 const ATTACK = 0.0015;
 const RELEASE = 0.002;
 
-let context: AudioContext | null = null;
 const waves = new Map<number, PeriodicWave>();
 
 // A band-limited 25% pulse: harmonics a_n = 2/(n pi) sin(n pi 0.25), up to 18 kHz.
@@ -27,14 +28,8 @@ function pulse(audio: AudioContext, freq: number): PeriodicWave {
 }
 
 export function chime(on: boolean) {
-  if (typeof window === "undefined") return;
-  try {
-    context ??= new AudioContext();
-  } catch {
-    return;
-  }
-  const audio = context;
-  if (audio.state === "suspended") void audio.resume();
+  const audio = audioContext();
+  if (!audio) return;
   const peak = on ? 0.25 : 0.19;
   const notes = (on ? STEPS : [...STEPS].reverse()).map((st) => ROOT * 2 ** (st / 12));
   const start = audio.currentTime + 0.01;

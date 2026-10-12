@@ -125,12 +125,39 @@ in a terminal, `pmset`, a reboot), the switch follows.
 
 ## Tiny
 
-Idle, Wham uses about 0.03 % of one CPU core and 10 MB of memory, and it is
-1.4 MB on disk. One timer reads one kernel flag every two seconds; nothing else
-runs. [docs/compatibility.md](docs/compatibility.md) has the measurements, the
+One timer reads one kernel flag every two seconds; nothing else runs.
+
+| | Wham |
+| --- | --- |
+| App on disk | 1.4 MB (536 KB of it the universal binary) |
+| Download | 2.7 MB (DMG), 1 MB (zip) |
+| Memory | 10 MB |
+| Idle CPU | about 0.03 % of one core (0.01 s every 30 s) |
+| Dependencies | none |
+
+For scale: Insomnia takes 2.3 MB on disk for Apple silicon alone (Wham's
+1.4 MB carries Intel too), KeepingYouAwake 7.6 MB, and Amphetamine is a 6.7 MB
+download before its helper apps.
+[docs/compatibility.md](docs/compatibility.md) has the measurements, the
 budgets CI holds it to, and every Mac setup we know of that could get in the
 way (old macOS versions, standard accounts, managed Macs, a full menu bar) with
 what Wham does about each.
+
+## Compared with other apps
+
+Closing the lid, on battery, with no display plugged in:
+
+| | Lid closed | Size |
+| --- | --- | --- |
+| **Wham** | **Yes, on its own.** Download, drag, click; macOS 11 or later, Intel too, notarized | 1.4 MB on disk |
+| [Insomnia](https://github.com/krishhgg/Insomnia#readme) | Yes, the same `pmset` flag, in timed sessions with extras (freezing apps, muting audio, hotspot). Installed through a coding agent or the Terminal, macOS 26 and Apple silicon only, builds not notarized, experimental | 2.3 MB on disk |
+| [Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704) | With helper apps: Amphetamine Enhancer from outside the App Store, and Power Protect on Apple silicon laptops | 6.7 MB download, plus helpers |
+| [Caffeine](https://intelliscapesolutions.com/apps/caffeine) | No: it holds a power assertion (`IOPMAssertionCreateWithDescription` in its binary) | 0.8 MB on disk |
+| [KeepingYouAwake](https://github.com/newmarcel/KeepingYouAwake#readme) | No: it "will only prevent sleep on desktop Macs and portable Macs with an open lid" | 7.6 MB on disk |
+| `caffeinate` | No: power assertions, and `-s` is "valid only when system is running on AC power" (`man caffeinate`) | built in |
+
+Checked on 2026-10-12 against each app's own store listing, README or man
+page, or its binary.
 
 ## Why not the Mac App Store?
 
