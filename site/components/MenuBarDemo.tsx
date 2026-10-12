@@ -148,11 +148,15 @@ export function MenuBarDemo() {
         {!touched && anchor !== null && (
           <div
             aria-hidden="true"
-            className="hint pointer-events-none absolute top-12 z-20 flex -translate-x-1/2 flex-col items-center gap-2 text-white"
+            className="pointer-events-none absolute top-12 z-20 -translate-x-1/2 text-white"
             style={{ left: anchor }}
           >
-            <PixelSprite rows={ARROW} cell={2} />
-            <span className="font-pixel text-pixel">Click me</span>
+            {/* The bob animates `translate` too, so it lives a level down: on the
+                same element it would undo the centering. */}
+            <div className="hint flex flex-col items-center gap-2">
+              <PixelSprite rows={ARROW} cell={2} />
+              <span className="font-pixel text-pixel">Click me</span>
+            </div>
           </div>
         )}
 

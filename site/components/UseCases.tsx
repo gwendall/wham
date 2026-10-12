@@ -42,23 +42,8 @@ const JOBS: { sprite: Sprite; title: string; text: string }[] = [
       "#.........#",
       "###########",
     ],
-    title: "Big downloads",
-    text: "Models, games, a fresh Xcode. Close the lid at 3%, open it at 100%.",
-  },
-  {
-    sprite: [
-      "....####.....",
-      "...######.##.",
-      "..##########.",
-      ".#####.######",
-      "#####...#####",
-      "####.....####",
-      "######.######",
-      "######.######",
-      ".###########.",
-    ],
-    title: "Backups and syncs",
-    text: "Time Machine, a NAS, Backblaze, iCloud or Dropbox, all the way through.",
+    title: "Downloads and backups",
+    text: "A big model, a fresh Xcode, Time Machine or Backblaze. Close the lid at 3%, open it at 100%.",
   },
   {
     sprite: [
@@ -72,8 +57,24 @@ const JOBS: { sprite: Sprite; title: string; text: string }[] = [
       "....###....",
       "....###....",
     ],
-    title: "Servers and streaming",
-    text: "Plex, AirPlay to the speakers, Screen Sharing or SSH: your Mac still answers.",
+    title: "Remote access",
+    text: "Screen Sharing, SSH, AirPlay to the speakers, the dev server you open on your phone: your Mac still answers.",
+  },
+  {
+    sprite: [
+      ".....#.....",
+      "....###....",
+      "...#####...",
+      "..#######..",
+      ".#########.",
+      "###########",
+      ".#########.",
+      ".##..#..##.",
+      ".##..#####.",
+      ".##..#####.",
+    ],
+    title: "A home server, 24/7",
+    text: "An old Mac on a shelf, lid shut, up day and night: Plex, Home Assistant or Homebridge, reachable from anywhere.",
   },
 ];
 

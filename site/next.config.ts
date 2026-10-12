@@ -9,6 +9,12 @@ const CLI_AGENT = "(?:(?:curl|[Ww]get|HTTPie|xh|aria2)/.*|fetch libfetch/.*)";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  experimental: {
+    // Vercel restores .next/cache before each build, and Turbopack's build cache
+    // then served the previous globals.css through the Tailwind loader: new
+    // pages, old stylesheet (12/10/2026). The site builds in seconds without it.
+    turbopackFileSystemCacheForBuild: false,
+  },
   turbopack: {
     rules: {
       "*.css": {
