@@ -4,9 +4,8 @@ Wham is a tiny macOS menu bar switch that keeps a Mac awake, even with the lid
 closed. The brand is small, cute and loud in the way an 8-bit game is loud:
 pixel letters, a candy gradient, a four-note chime.
 
-The name winks at "Wake Me Up Before You Go-Go". The wink stays a wink: no
-band imagery, no lyrics, no audio from the song. Always pair the name with what
-it does ("Wham - your Mac stays awake, lid closed"), because the name alone
+Wham is a sound word: short, loud, a little cartoon. No band imagery, no
+lyrics, no audio from any song. Always pair the name with what it does ("Wham - your Mac stays awake, lid closed"), because the name alone
 does not say it.
 
 ## Name
@@ -27,8 +26,8 @@ Short, plain, friendly. Say what the Mac will do, not what the app is.
   even with the lid shut.
 - On: **MAC STAYS AWAKE** - Even with the lid closed
 - Off: **MAC CAN SLEEP** - Back to normal sleep
-- The wink, used once, near the bottom: "Wake me up before you go-go? Your Mac
-  won't need it."
+- The send-off, used once, near the bottom: "Close the lid and go. Your Mac
+  won't need waking up."
 
 ## Colors
 
@@ -153,6 +152,6 @@ of truth is `app/Sources/Chime.swift`.
 
 ## Motion
 
-Springs from Punkmaker's cards: things arrive on a spring (ω 16, ζ 0.72),
+Springs: things arrive on a spring (ω 16, ζ 0.72),
 rising a few points and growing from 0.92; they leave in 0.16 s, easing in.
 Letters of a title drop in one after the other, 22 ms apart.

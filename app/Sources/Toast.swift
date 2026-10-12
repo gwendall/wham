@@ -4,8 +4,8 @@ import QuartzCore
 
 // A pill that drops out of the menu bar under the switch and says, in plain
 // words, what the Mac will do now. On: a candy gradient with a pixel sun. Off: a
-// dark pill with a pixel moon. The title is in Silkscreen, the pixel face of
-// Punkmaker's cards, and comes in letter by letter; the line under it explains.
+// dark pill with a pixel moon. The title is in Silkscreen, a pixel face, and
+// comes in letter by letter; the line under it explains.
 // Core Animation only, so it runs at the display's refresh rate.
 @MainActor
 final class Toast {
@@ -20,6 +20,12 @@ final class Toast {
         let fill: [CGColor]
         let rim: CGColor?
         let glow: CGColor?
+
+        // The same pill with another line under the title.
+        func saying(_ caption: String) -> Style {
+            Style(title: title, caption: caption, sprite: sprite, spin: spin, ink: ink, captionInk: captionInk,
+                  spriteInk: spriteInk, fill: fill, rim: rim, glow: glow)
+        }
     }
 
     static let on = Style(
@@ -186,7 +192,7 @@ final class Toast {
         if reduceMotion {
             Self.basic(stage, "opacity", from: 0, to: 1, at: now, duration: 0.2)
         } else {
-            // Punkmaker's COMING spring: ω 16, ζ 0.72.
+            // Coming in: a spring, ω 16, ζ 0.72.
             Self.spring(stage, "transform.scale", from: 0.92, to: 1, at: now, omega: 16, zeta: 0.72)
             Self.spring(stage, "transform.translation.y", from: 12, to: 0, at: now, omega: 16, zeta: 0.72)
             Self.basic(stage, "opacity", from: 0, to: 1, at: now, duration: 0.12)
@@ -214,7 +220,7 @@ final class Toast {
         }
     }
 
-    // Punkmaker's LEAVING: 0.16 s, easing in, back up toward the menu bar.
+    // Leaving: 0.16 s, easing in, back up toward the menu bar.
     private func leave(_ stage: CALayer, reduceMotion: Bool) {
         let now = CACurrentMediaTime()
         let timing = CAMediaTimingFunction(name: .easeIn)
