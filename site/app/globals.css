@@ -10,7 +10,7 @@
   --color-pill: #141414;
   --color-moon: #bfb5ff;
 
-  /* Punkmaker's COMING spring (omega 16, zeta 0.72), as a CSS easing over 600 ms. */
+  /* The arrival spring (omega 16, zeta 0.72), as a CSS easing over 600 ms. */
   --ease-coming: linear(0, 0.0657, 0.2147, 0.3926, 0.5655, 0.7148, 0.833, 0.9194, 0.9777, 1.0132, 1.0315, 1.0381, 1.0372, 1.0322, 1.0256, 1.0188, 1.0127, 1.0078, 1.004, 1.0015, 0.9999, 0.999, 0.9986, 0.9985, 1);
   /* Every UI change eases out the same way: quick to start, soft to land. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);

@@ -2,7 +2,7 @@
 // A spring is (omega, zeta): stiffness omega^2, damping 2 zeta omega, mass 1.
 export type Spring = { omega: number; zeta: number };
 
-// Punkmaker's COMING spring, the brand's arrival.
+// The brand's arrival: how things come in.
 export const COMING: Spring = { omega: 16, zeta: 0.72 };
 
 // SwiftUI-style (perceptual duration, bounce) to (omega, zeta).

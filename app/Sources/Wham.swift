@@ -20,6 +20,13 @@ final class Wham: NSObject, NSApplicationDelegate {
     private var updating = false
     private var timer: Timer?
     private var updateTimer: Timer?
+    private let watchdog = Watchdog()
+    private var watch: Watch?
+    // A timed session's end, and what ended the last session on its own.
+    private var offAt: Date?
+    private var endTimer: Timer?
+    private var ended: (why: String, at: Date)?
+    private var lidWasClosed = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.runsFromTemporaryCopy && offerToMove() { return }
@@ -34,15 +41,29 @@ final class Wham: NSObject, NSApplicationDelegate {
         button.target = self
         button.action = #selector(clicked)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        refresh()
+        offAt = Session.offAt
+        lidWasClosed = Sleep.lidClosed
+        check()
+        scheduleEnd()
         resumeAfterUpdate()
         // Catches anything else flipping the flag (`wham on` in a terminal, pmset,
         // a reboot). The tolerance lets macOS batch these wakeups with others.
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }
+            MainActor.assumeIsolated { self?.check() }
         }
         timer?.tolerance = 1
+        watch = Watch { [weak self] in self?.check() }
+        // `wham on 2h` in a terminal.
+        DistributedNotificationCenter.default().addObserver(forName: Session.changed, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.offAt = Session.offAt
+                self.scheduleEnd()
+                self.check()
+            }
+        }
         scheduleUpdates()
+        pressForEvals()
         // A menu bar switch is only useful if it is there: open at login from the
         // first launch on (the menu can turn this off), and say hello once.
         if !UserDefaults.standard.bool(forKey: "loginItemSet") && !Self.runsFromTemporaryCopy {
@@ -142,6 +163,7 @@ final class Wham: NSObject, NSApplicationDelegate {
         relaunch.arguments = ["-c", "while kill -0 \(getpid()) 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open \"$0\"",
                               Bundle.main.bundlePath]
         guard (try? relaunch.run()) != nil else { return }
+        watchdog.standDown()
         exit(0)
     }
 
@@ -152,6 +174,7 @@ final class Wham: NSObject, NSApplicationDelegate {
             // opens the new one right away: that one turns back on.
             UserDefaults.standard.set(Date().addingTimeInterval(60), forKey: "resumeBefore")
         }
+        if Sleep.isDisabled != true { watchdog.standDown() }
         return .terminateNow
     }
 
@@ -162,7 +185,7 @@ final class Wham: NSObject, NSApplicationDelegate {
         // `sudo -n` never prompts: without the rule this quietly does nothing.
         DispatchQueue.global(qos: .userInitiated).async {
             guard Sleep.set(true) else { return }
-            DispatchQueue.main.async { MainActor.assumeIsolated { self.show(true); self.announce(true) } }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self.show(true); self.announce(true); self.check() } }
         }
     }
 
@@ -170,6 +193,8 @@ final class Wham: NSObject, NSApplicationDelegate {
         toggleView.show(state, animated: true)
         let tip: String
         switch state {
+        case true? where offAt != nil:
+            tip = "Wham is on until \(Session.clock(offAt!)): your Mac stays awake, even with the lid closed. Click to turn off."
         case true?: tip = "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off."
         case false?: tip = "Wham is off: your Mac sleeps as usual. Click to turn on."
         case nil: tip = "Wham can't read your Mac's sleep setting"
@@ -178,10 +203,67 @@ final class Wham: NSObject, NSApplicationDelegate {
         item.button?.toolTip = tip
     }
 
-    private func refresh() {
+    // On every change: the tick, the power source, the heat, the lid, the
+    // `wham` command. Shows the kernel's state and, while on, ends the session
+    // if its time, the battery or the heat says so.
+    private func check() {
         guard !busy else { return }
         let state = Sleep.isDisabled
         if !toggleView.hasShown || state != toggleView.state { show(state) }
+        let lidClosed = Sleep.lidClosed
+        defer { lidWasClosed = lidClosed }
+        guard state == true else {
+            watchdog.standDown()
+            if offAt != nil { setOffAt(nil) }
+            return
+        }
+        watchdog.arm()
+        let reading = Session.read(offAt: offAt)
+        if let end = Session.end(reading) { return stop(end, battery: reading.battery) }
+        if lidClosed && !lidWasClosed { sleepScreenSoon() }
+    }
+
+    private func stop(_ end: Session.End, battery: Int?) {
+        let why = Session.why(end, battery: battery)
+        ended = (why, Date())
+        setOffAt(nil)
+        change(to: false, mayInstall: false, caption: why)
+    }
+
+    // Low battery or a hot Mac: says so instead of turning on.
+    private func refuses() -> Bool {
+        let reading = Session.read(offAt: nil)
+        guard let end = Session.end(reading) else { return false }
+        announce(false, caption: Session.refusal(end, battery: reading.battery))
+        return true
+    }
+
+    private func setOffAt(_ date: Date?) {
+        offAt = date
+        Session.offAt = date
+        scheduleEnd()
+    }
+
+    // On time even while macOS naps the app; the tick is the backstop.
+    private func scheduleEnd() {
+        endTimer?.invalidate()
+        endTimer = nil
+        guard let offAt else { return }
+        let timer = Timer(fire: offAt, interval: 0, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.check() }
+        }
+        timer.tolerance = 1
+        RunLoop.main.add(timer, forMode: .common)
+        endTimer = timer
+    }
+
+    // A few seconds after the lid closes, so a monitor plugged into a closed
+    // MacBook has taken over first, if there is one.
+    private func sleepScreenSoon() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            guard Sleep.isDisabled == true, Sleep.lidClosed, Screen.builtInAloneAndLit else { return }
+            DispatchQueue.global(qos: .utility).async { Screen.sleep() }
+        }
     }
 
     @objc private func clicked() {
@@ -194,12 +276,37 @@ final class Wham: NSObject, NSApplicationDelegate {
     }
 
     private func showMenu() {
+        // Opened under the switch rather than through the button, which would
+        // light up the menu bar's highlight around the switch while it is open.
+        guard let button = item.button, let window = button.window else { return }
+        let frame = window.convertToScreen(button.convert(button.bounds, to: nil))
+        menu().popUp(positioning: nil, at: NSPoint(x: frame.minX, y: frame.minY - 5), in: nil)
+    }
+
+    private func menu() -> NSMenu {
         let on = Sleep.isDisabled == true
         let menu = NSMenu()
-        let status = NSMenuItem(title: on ? "Mac stays awake, even with the lid closed" : "Mac sleeps as usual", action: nil, keyEquivalent: "")
+        let line: String
+        if on {
+            line = offAt.map { "Mac stays awake until \(Session.clock($0))" } ?? "Mac stays awake, even with the lid closed"
+        } else if let ended {
+            line = "\(ended.why), stopped at \(Session.clock(ended.at))"
+        } else {
+            line = "Mac sleeps as usual"
+        }
+        let status = NSMenuItem(title: line, action: nil, keyEquivalent: "")
         status.isEnabled = false
         menu.addItem(status)
         menu.addItem(NSMenuItem(title: on ? "Turn Off" : "Turn On", action: #selector(toggle), keyEquivalent: ""))
+        let timed = NSMenuItem(title: on ? "Stay Awake For" : "Turn On For", action: nil, keyEquivalent: "")
+        timed.submenu = NSMenu()
+        for hours in [1, 2, 4, 8] {
+            let entry = NSMenuItem(title: hours == 1 ? "1 Hour" : "\(hours) Hours", action: #selector(stayAwake(_:)), keyEquivalent: "")
+            entry.tag = hours
+            entry.target = self
+            timed.submenu?.addItem(entry)
+        }
+        menu.addItem(timed)
         menu.addItem(.separator())
         let sound = NSMenuItem(title: "Sound", action: #selector(toggleSound), keyEquivalent: "")
         sound.state = muted ? .off : .on
@@ -216,11 +323,33 @@ final class Wham: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q"))
         for entry in menu.items { entry.target = self }
-        // Opened under the switch rather than through the button, which would
-        // light up the menu bar's highlight around the switch while it is open.
-        guard let button = item.button, let window = button.window else { return }
-        let frame = window.convertToScreen(button.convert(button.bounds, to: nil))
-        menu.popUp(positioning: nil, at: NSPoint(x: frame.minX, y: frame.minY - 5), in: nil)
+        return menu
+    }
+
+    // For the evals: once launched, presses menu items by title, one after the
+    // other, as WHAM_PRESS lists them: "Turn On For/2 Hours,Turn Off". "Switch"
+    // is a click on the switch, "Terminate" a quit from outside (a logout).
+    private func pressForEvals() {
+        guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
+        var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
+        func next() {
+            guard !steps.isEmpty else { return }
+            guard !busy else { return DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { next() } }
+            let path = steps.removeFirst()
+            switch path {
+            case ["Switch"]: toggle()
+            case ["Terminate"]: NSApp.terminate(nil)
+            default:
+                var entry: NSMenuItem?, menu: NSMenu? = self.menu()
+                for title in path {
+                    entry = menu?.item(withTitle: title)
+                    menu = entry?.submenu
+                }
+                if let entry, let action = entry.action { NSApp.sendAction(action, to: entry.target, from: entry) }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
     }
 
     @objc private func toggleSound() { muted.toggle() }
@@ -241,11 +370,13 @@ final class Wham: NSObject, NSApplicationDelegate {
     @objc private func openSite() { NSWorkspace.shared.open(URL(string: "https://wham.sh")!) }
     @objc private func openAuthor() { NSWorkspace.shared.open(URL(string: "https://gwendall.com")!) }
 
-    // The pill under the switch says the new state in words, with its sound.
-    private func announce(_ on: Bool) {
+    // The pill under the switch says the new state in words, with its sound
+    // (not from under a closed lid).
+    private func announce(_ on: Bool, caption: String? = nil) {
         guard let button = item.button, let window = button.window else { return }
-        toast.show(on ? Toast.on : Toast.off, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
-        guard !muted, let sound = sounds[on] ?? nil else { return }
+        let style = on ? Toast.on : Toast.off
+        toast.show(caption.map(style.saying) ?? style, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
+        guard !muted, !Sleep.lidClosed, let sound = sounds[on] ?? nil else { return }
         sound.stop()
         sound.play()
     }
@@ -255,14 +386,33 @@ final class Wham: NSObject, NSApplicationDelegate {
         guard let current = Sleep.isDisabled else {
             return alert("Wham can't read your Mac's sleep setting.")
         }
+        if !current && refuses() { return }
+        ended = nil
+        setOffAt(nil)
         change(to: !current, mayInstall: true)
+    }
+
+    // "Turn On For" and "Stay Awake For": from now, for that many hours.
+    @objc private func stayAwake(_ sender: NSMenuItem) {
+        guard !busy, let current = Sleep.isDisabled else { return }
+        if !current && refuses() { return }
+        let until = Date().addingTimeInterval(TimeInterval(sender.tag) * 3600)
+        ended = nil
+        setOffAt(until)
+        let caption = "Until \(Session.clock(until))"
+        if current {
+            show(true)
+            announce(true, caption: caption)
+        } else {
+            change(to: true, mayInstall: true, caption: caption)
+        }
     }
 
     // The switch moves on the click, then pmset runs off the main thread. If the
     // Mac refuses, the switch slides back to the kernel's state.
-    private func change(to target: Bool, mayInstall: Bool) {
+    private func change(to target: Bool, mayInstall: Bool, caption: String? = nil) {
         show(target)
-        announce(target)
+        announce(target, caption: caption)
         apply(target, mayInstall: mayInstall)
     }
 
@@ -278,7 +428,7 @@ final class Wham: NSObject, NSApplicationDelegate {
 
     private func finish(_ target: Bool, ok: Bool, mayInstall: Bool) {
         busy = false
-        if ok { return }
+        if ok { return check() }
         guard mayInstall && !Sleep.hasRule else {
             revert(from: target)
             return alert(target ? "Your Mac refused the setting: it can still go to sleep." : "Your Mac refused: sleep is still blocked.")

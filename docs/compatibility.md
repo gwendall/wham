@@ -2,8 +2,16 @@
 
 Every case we know of that could stop Wham from working on a Mac, what Wham
 does about it, and how that is checked. "Test" means `scripts/test.sh`, "eval"
-means `scripts/eval.sh` (the real app against its budgets), "CI" means both on
-every push, on the GitHub runners listed below.
+means `scripts/eval.sh` (the real app, on the kernel's real flag, against its
+budgets), "CI" means both on every push, on the GitHub runners listed below.
+"Update test" is `scripts/update-test.sh` and "lid test" `scripts/lid-test.sh`,
+both run by hand on a Mac: one needs the Developer ID certificate, the other a
+lid to close.
+
+The eval reaches the battery and the heat through a stand-in file
+(`WHAM_FAKE_POWER`), and the menu through `WHAM_PRESS`, which has the app press
+its own menu items by title: no accessibility permission, the same code paths.
+Neither does anything unless set.
 
 ## Systems
 
@@ -78,12 +86,66 @@ with the switch as it was.
 | Clicking the switch, or its menu open | No menu bar highlight around it: the knob is the only feedback |
 | Reduce Motion | The switch changes without animating |
 | VoiceOver | The switch has a label and a tooltip that say the state and what a click does |
+| Lid closed | No chime: it would play inside a bag |
+
+## Sessions and guards
+
+| Case | What Wham does | Checked by |
+| --- | --- | --- |
+| Turn On For 1, 2, 4 or 8 hours; Stay Awake For, while on | Ends then; the menu and the tooltip say until when | Eval: both menu items |
+| `wham on 2h` (also `45m`, `1h30m`, `1d`, `90s`) | The same. Anything else exits 64 and changes nothing | Test: the parser; eval: `wham on 3s` ends 3 to 7 s later, `wham on 2x` is refused |
+| `wham on` or `wham off` during a timed session | Drops the end | Eval |
+| The end passes while Wham is closed | Ends as soon as Wham opens; one still to come carries on | Eval |
+| `wham on 2h` while Wham is closed | Opens Wham out of sight, since Wham is what ends the session | Eval (on CI) |
+| The clock jumps, or macOS naps the app | The end is a timer in the run loop's common modes, and every look compares it with the clock | Code: `Session.end`, the 2 s tick |
+| On battery, at 10% or less | Turns off ("Battery at 10%") and will not turn on until plugged in, saying so | Test: `Session.end`; eval: the switch, the menu and `wham on` |
+| Plugged in at any charge, or no battery | The charge never stops it | Test |
+| Plugged back in after the battery stopped it | Stays off until asked | Eval |
+| Critically hot (`thermalState == .critical`) | Turns off ("Your Mac got too hot") and will not turn on until it cools. Below critical it carries on, so a busy server is left alone | Test; eval, also with macOS's own thermal signal raised as root on CI |
+| `wham run` while the battery or the heat says no | Runs the command anyway and says it cannot keep the Mac awake | Eval |
+
+## However Wham ends
+
+While on, Wham keeps a watchdog: a `/bin/sh` waiting on a pipe that only Wham
+writes to. However Wham ends, macOS closes the pipe and the shell runs
+`sudo -n pmset -a disablesleep 0`, one of the two commands of the rule.
+
+| Case | What happens | Checked by |
+| --- | --- | --- |
+| Quit from the menu | Sleep comes back, and stays back at the next launch | Eval |
+| Quit from outside while on (logging out, `brew upgrade`, a script) | Sleep comes back; opened again within a minute, Wham turns back on | Eval |
+| A crash, a force quit, `kill -9`, `kill` | The watchdog gives sleep back within a second | Test: a process killed with -9; eval: the app killed with -9 and with TERM |
+| The same while off | Nothing changes | Eval |
+| Something Wham started outlives it | The watchdog's pipe is closed on exec, so it still fires | Test |
+| Ctrl-C, Ctrl-\ or a closed terminal reaching the watchdog | Ignored: only the pipe sets it off | Test |
+| An update while on | The old copy stands its watchdog down, the new one puts out its own: on stays on | Update test |
+| An administrator without the rule, typing a password for each `wham on` | The watchdog cannot run `pmset` without a password: sleep stays off until `wham off` | By design |
+
+## `wham run`
+
+| Case | What happens | Checked by |
+| --- | --- | --- |
+| The command ends | `wham run` exits with its status, and gives sleep back if it took it | Test, eval |
+| A command that does not exist, or a file that is not a program | 127, 126 | Test, eval |
+| Ctrl-C | Reaches the command; `wham run` waits it out, exits 130, gives sleep back | Eval |
+| `kill` (TERM) or a hangup sent to `wham run` | Passed to the command, then sleep back (143, 129) | Eval |
+| `wham run` killed with -9 | Its own watchdog gives sleep back; the command keeps running | Eval |
+| Already on | Left on | Test, eval |
+| The command turns sleep back on itself, or Wham does (battery, heat) | Left alone: `wham run` only undoes what it did | Eval |
+
+## The lid and the screen
+
+| Case | What Wham does | Checked by |
+| --- | --- | --- |
+| Lid closed, Wham on | The Mac stays awake | Lid test |
+| Lid closed, no other display | Three seconds later, turns the built-in screen off (`pmset displaysleepnow`), which locks the Mac as Lock Screen in System Settings says | Lid test: says whether the screen went dark and the Mac locked |
+| Lid closed on a MacBook driving a monitor | Leaves the screens alone | `Screen.builtInAloneAndLit` |
+| Screen Sharing wakes the screen afterwards | Not fought: Wham acts once per lid close | Code |
 
 ## What Wham cannot change
 
-- **Critically low battery.** macOS may still sleep to protect the battery.
-- **Heat.** A Mac awake in a closed bag gets warm. Turn Wham off when you do
-  not need it.
+- **Heat below critical.** Wham only lets go once macOS calls the Mac critically
+  hot. In a closed bag, turn it off before you pack up.
 - **Apple menu > Sleep.** With `SleepDisabled` set, macOS blocks that too. Turn
   Wham off to sleep on demand.
 - **The App Store.** Sandboxed apps cannot run `pmset` as root, so Wham is not
@@ -113,9 +175,13 @@ CI holds every runner to the same budgets. The first run, on 2026-10-12:
 Where the little it does goes:
 
 - One timer, every 2 s with 1 s of tolerance so macOS can batch it with other
-  wakeups, reads one IORegistry property. Nothing else runs while idle.
+  wakeups, reads one IORegistry property, and while on, the power source and
+  the thermal state.
+- The battery, the heat and the lid arrive as notifications from macOS, not
+  polls. Off, Wham reads nothing else.
+- While on, the watchdog waits on its pipe: a `/bin/sh` that uses no CPU.
 - The sounds are made on the first click, so CoreAudio is not loaded until
   there is something to play.
 - The toast window is created on first use (`defer: true`) and ordered out when it leaves.
 - One request to GitHub a few times a day for updates (off with Update
-  Automatically). No analytics, no helper process, no background daemon.
+  Automatically). No analytics, no background daemon.
