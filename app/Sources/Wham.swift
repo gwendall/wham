@@ -275,12 +275,17 @@ final class Wham: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func showMenu() {
-        // Opened under the switch rather than through the button, which would
-        // light up the menu bar's highlight around the switch while it is open.
+    // Opened under the switch rather than through the button, which would
+    // light up the menu bar's highlight around the switch while it is open. It
+    // hangs from the menu bar's bottom edge, as a status menu does: any higher
+    // and macOS tucks its first line behind a scroll arrow, which the switch's
+    // own frame would do on a Mac with a notch, where the menu bar is taller.
+    // The point given is the first line's top, 5 points inside the menu.
+    private func showMenu(_ menu: NSMenu? = nil) {
         guard let button = item.button, let window = button.window else { return }
         let frame = window.convertToScreen(button.convert(button.bounds, to: nil))
-        menu().popUp(positioning: nil, at: NSPoint(x: frame.minX, y: frame.minY - 5), in: nil)
+        let bar = min(window.frame.minY, window.screen?.visibleFrame.maxY ?? window.frame.minY)
+        (menu ?? self.menu()).popUp(positioning: nil, at: NSPoint(x: frame.minX, y: bar - 6), in: nil)
     }
 
     private func menu() -> NSMenu {
@@ -328,7 +333,8 @@ final class Wham: NSObject, NSApplicationDelegate {
 
     // For the evals: once launched, presses menu items by title, one after the
     // other, as WHAM_PRESS lists them: "Turn On For/2 Hours,Turn Off". "Switch"
-    // is a click on the switch, "Terminate" a quit from outside (a logout).
+    // is a click on the switch, "Terminate" a quit from outside (a logout),
+    // "Menu" opens the menu for real and says whether it showed whole.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -339,6 +345,10 @@ final class Wham: NSObject, NSApplicationDelegate {
             switch path {
             case ["Switch"]: toggle()
             case ["Terminate"]: NSApp.terminate(nil)
+            case ["Menu"]:
+                let menu = self.menu()
+                perform(#selector(lookAt(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
+                showMenu(menu)
             default:
                 var entry: NSMenuItem?, menu: NSMenu? = self.menu()
                 for title in path {
@@ -350,6 +360,14 @@ final class Wham: NSObject, NSApplicationDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
+    }
+
+    // The open menu's window against the menu's own height, then closes it.
+    @objc private func lookAt(_ menu: NSMenu) {
+        let shown = NSApp.windows.first { $0.isVisible && $0.className.contains("Menu") }
+        print("menu", shown.map { $0.frame.height >= menu.size.height ? "whole" : "cut, \(Int($0.frame.height)) of \(Int(menu.size.height)) points" } ?? "missing")
+        fflush(stdout)
+        menu.cancelTracking()
     }
 
     @objc private func toggleSound() { muted.toggle() }

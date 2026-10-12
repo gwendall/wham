@@ -84,6 +84,7 @@ with the switch as it was.
 | First launch | A "HI, I'M WHAM" toast points at the switch |
 | Light and dark menu bars | The track and the knob follow the menu bar's appearance |
 | Clicking the switch, or its menu open | No menu bar highlight around it: the knob is the only feedback |
+| A Mac with a notch, whose menu bar is taller than the switch | The menu hangs from the menu bar's bottom edge, whole, its first line in sight (eval: the menu opened for real, its window against its height) |
 | Reduce Motion | The switch changes without animating |
 | VoiceOver | The switch has a label and a tooltip that say the state and what a click does |
 | Lid closed | No chime: it would play inside a bag |

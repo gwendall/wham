@@ -55,7 +55,7 @@ guards=
 # given, with its battery and heat read from $fake while $guards is set.
 launch() {
   set -- ${1:+"WHAM_PRESS=$1"} ${guards:+"WHAM_FAKE_POWER=$fake"}
-  env "$@" "$bin" -muted YES >/dev/null 2>&1 &
+  env "$@" "$bin" -muted YES >>"$work/out" 2>&1 &
   pid=$!
   sleep 1
 }
@@ -108,8 +108,12 @@ idle() {
   check "$(is "kill -0 $pid 2>/dev/null")" "the app is still running ($state)"
   check "$(is "[ \"\$(echo \"$cpu < 0.1\" | bc)\" = 1 ]")" "idle CPU ($state): ${cpu} s over 30 s"
 }
-launch
+launch Menu
 idle
+# The menu, opened for real at launch, shows whole under the switch: a point
+# too high and macOS hides its first line behind a scroll arrow.
+menu=$(grep '^menu ' "$work/out" | tail -1)
+check "$(is "[ \"$menu\" = 'menu whole' ]")" "the menu opens whole under the switch (${menu:-no answer})"
 # footprint picks its unit (KB on a small process, MB above): convert to MB.
 memory=$(footprint "$pid" 2>/dev/null | awk '/phys_footprint:/ { v = $2; if ($3 == "KB") v /= 1024; if ($3 == "GB") v *= 1024; print int(v + 0.5); exit }')
 [ -n "$memory" ] || memory=$(ps -o rss= -p "$pid" | awk '{ print int($1 / 1024) }')
