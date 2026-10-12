@@ -1,0 +1,41 @@
+{
+  "name": "wham.sh",
+  "version": "1.0.0",
+  "description": "Keeps your Mac awake, even with the lid closed. Installs Wham, a menu bar switch.",
+  "keywords": [
+    "macos",
+    "menu-bar",
+    "sleep",
+    "caffeinate",
+    "amphetamine",
+    "lid",
+    "clamshell",
+    "pmset"
+  ],
+  "homepage": "https://wham.sh",
+  "bugs": "https://github.com/gwendall/wham/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gwendall/wham.git",
+    "directory": "npm"
+  },
+  "license": "MIT",
+  "author": "Gwendall (https://gwendall.com)",
+  "bin": {
+    "wham.sh": "bin/wham.js"
+  },
+  "files": [
+    "bin",
+    "install.sh",
+    "uninstall.sh"
+  ],
+  "os": [
+    "darwin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "prepack": "cp ../install.sh ../uninstall.sh ../LICENSE ."
+  }
+}

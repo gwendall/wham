@@ -1,0 +1,11 @@
+.DS_Store
+build/
+node_modules/
+.next/
+.vercel/
+.env*
+
+# Copied from the repo root when the npm package is packed.
+npm/install.sh
+npm/uninstall.sh
+npm/LICENSE

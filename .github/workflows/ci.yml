@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  app:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every macOS GitHub still runs, Apple silicon and Intel. Older systems
+        # (11 to 13) are held by the compile check below.
+        os: [macos-14, macos-15, macos-26, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compiles for macOS 11 (both architectures)
+        run: |
+          swiftc -swift-version 5 -target arm64-apple-macos11.0 -typecheck app/Sources/*.swift
+          swiftc -swift-version 5 -target x86_64-apple-macos11.0 -typecheck app/Sources/*.swift
+      - name: Test
+        run: scripts/test.sh
+      - name: Build (universal, signed ad hoc)
+        run: SIGN=- scripts/build.sh
+      - name: Check the bundle
+        run: lipo -archs build/Wham.app/Contents/MacOS/Wham | grep -q "x86_64 arm64"
+      - name: Eval (the real app, its budgets, the real flag)
+        run: scripts/eval.sh
+      - name: Check the npm package
+        run: |
+          node --check npm/bin/wham.js
+          cd npm && npm pack --dry-run
+
+  site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm build
