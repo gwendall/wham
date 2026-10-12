@@ -34,17 +34,17 @@ after.
 
 ## Install
 
-```sh
-curl -fsSL wham.sh | sh
-```
+**[Download Wham](https://wham.sh/download)**, open it and drag Wham into
+Applications. Open Wham and click its switch in the menu bar. That is all: no
+Terminal, no settings.
 
-Or pick your favorite way:
+From a terminal, if you prefer:
 
 | | |
 | --- | --- |
+| Script | `curl -fsSL wham.sh \| sh` |
 | Homebrew | `brew install gwendall/tap/wham` |
 | npm | `npx wham.sh` |
-| Disk image | [Wham.dmg](https://wham.sh/download), then drag Wham into Applications |
 
 Wham needs macOS 11 Big Sur or later, on Apple silicon or Intel. Every way
 installs the same signed and notarized app from the
@@ -156,11 +156,17 @@ open build/Wham.app
 | --- | --- |
 | `app/Sources` | The app: menu bar switch, toast, chime, `pmset` and sudoers, CLI |
 | `install.sh`, `uninstall.sh` | What `curl wham.sh` and `curl wham.sh/uninstall` run |
-| `scripts/release.sh` | Builds, notarizes and publishes a release, updates the cask |
+| `scripts/release.sh` | Tags a release; GitHub Actions (`release.yml`) runs `scripts/package.sh`, publishes it and updates the cask |
 | `packaging/wham.rb` | The Homebrew cask template |
 | `npm` | The `wham.sh` npm package |
 | `site` | [wham.sh](https://wham.sh), Next.js |
 | `docs/brand.md` | Name, voice, colors, type, sprites, sound |
+
+To release, `scripts/release.sh 1.2.0` from a clean main: it tags and pushes,
+and the release workflow builds, signs, notarizes, publishes and updates the
+Homebrew cask. The npm package only wraps the installer, which always fetches
+the latest release, so it is published by hand (`cd npm && npm publish`) only
+when the wrapper or the scripts change.
 
 `scripts/lid-test.sh` checks the real thing: run it, close the lid for two
 minutes, open it, and it tells you whether the Mac slept.

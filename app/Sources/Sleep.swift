@@ -54,7 +54,9 @@ enum Sleep {
         if (error[NSAppleScript.errorNumber] as? Int) == -128 { return .cancelled }
         let message = error[NSAppleScript.errorMessage] as? String ?? "unknown error"
         if message.contains(noIncludeDir) {
-            return .failed("this Mac's sudo settings skip /private/etc/sudoers.d (common on managed Macs). Use `wham on` in Terminal instead.")
+            // sudoers skips sudoers.d: a Mac set up by an organization, where a
+            // `wham on` from an administrator still works, asking each time.
+            return .failed("this Mac is set up by an organization in a way that does not let apps turn sleep off (common on work Macs).")
         }
         return .failed(message)
     }
