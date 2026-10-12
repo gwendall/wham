@@ -17,7 +17,9 @@ final class Wham: NSObject, NSApplicationDelegate {
     }
     private var busy = false
     private var sleepGivenBack = false
+    private var updating = false
     private var timer: Timer?
+    private var updateTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.runsFromTemporaryCopy && offerToMove() { return }
@@ -26,6 +28,9 @@ final class Wham: NSObject, NSApplicationDelegate {
         toggleView.frame = button.bounds
         toggleView.autoresizingMask = [.width, .height]
         button.addSubview(toggleView)
+        toggleView.onToggle = { [weak self] in self?.toggle() }
+        toggleView.onMenu = { [weak self] in self?.showMenu() }
+        // VoiceOver and ⌘-clicks still go through the button.
         button.target = self
         button.action = #selector(clicked)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -37,6 +42,7 @@ final class Wham: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { self?.refresh() }
         }
         timer?.tolerance = 1
+        scheduleUpdates()
         // A menu bar switch is only useful if it is there: open at login from the
         // first launch on (the menu can turn this off), and say hello once.
         if !UserDefaults.standard.bool(forKey: "loginItemSet") && !Self.runsFromTemporaryCopy {
@@ -96,6 +102,47 @@ final class Wham: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { NSApp.terminate(nil) }
         }
         return true
+    }
+
+    // A few times a day, and not right at login, while the network wakes up.
+    private func scheduleUpdates() {
+        guard !Self.runsFromTemporaryCopy else { return }
+        let delay = UserDefaults.standard.double(forKey: "updateDelay")
+        DispatchQueue.main.asyncAfter(deadline: .now() + (delay > 0 ? delay : 60)) { self.checkForUpdate() }
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 6 * 3600, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.checkForUpdate() }
+        }
+        updateTimer?.tolerance = 1800
+    }
+
+    private func checkForUpdate() {
+        guard Update.isOn && !updating else { return }
+        updating = true
+        let app = Bundle.main.bundleURL
+        // Read at launch: once the new copy is in place, the files say its version.
+        let running = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        DispatchQueue.global(qos: .utility).async {
+            let installed = Update.canReplace(app)
+                && Update.latest().map { Update.isNewer($0, than: running) && Update.install($0, over: app) } == true
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated { installed ? self.reopen() : (self.updating = false) }
+            }
+        }
+    }
+
+    // The new copy opens once this one is gone. Leaving without the quit
+    // handler keeps the switch as it is: on stays on, through the update.
+    private func reopen() {
+        guard !busy else {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { self.reopen() }
+            return
+        }
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relaunch.arguments = ["-c", "while kill -0 \(getpid()) 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open \"$0\"",
+                              Bundle.main.bundlePath]
+        guard (try? relaunch.run()) != nil else { return }
+        exit(0)
     }
 
     // Quitting gives sleep back, whoever asks: the menu, a script, logging out.
@@ -160,18 +207,28 @@ final class Wham: NSObject, NSApplicationDelegate {
         let login = NSMenuItem(title: "Open at Login", action: #selector(toggleLogin), keyEquivalent: "")
         login.state = LoginItem.isOn ? .on : .off
         menu.addItem(login)
+        let updates = NSMenuItem(title: "Update Automatically", action: #selector(toggleUpdates), keyEquivalent: "")
+        updates.state = Update.isOn ? .on : .off
+        menu.addItem(updates)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "About Wham \(CLI.version)", action: #selector(openSite), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Made by Gwendall", action: #selector(openAuthor), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q"))
         for entry in menu.items { entry.target = self }
-        item.menu = menu
-        item.button?.performClick(nil)
-        item.menu = nil
+        // Opened under the switch rather than through the button, which would
+        // light up the menu bar's highlight around the switch while it is open.
+        guard let button = item.button, let window = button.window else { return }
+        let frame = window.convertToScreen(button.convert(button.bounds, to: nil))
+        menu.popUp(positioning: nil, at: NSPoint(x: frame.minX, y: frame.minY - 5), in: nil)
     }
 
     @objc private func toggleSound() { muted.toggle() }
+
+    @objc private func toggleUpdates() {
+        Update.isOn.toggle()
+        checkForUpdate()
+    }
 
     @objc private func toggleLogin() {
         do {

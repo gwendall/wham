@@ -1,29 +1,35 @@
-// Draws Wham's app icon: a candy squircle with the pixel sun, wide awake.
+// Draws Wham's app icon: a candy squircle with the pixel sun, wide awake and
+// pleased about it.
 //
 //   swift scripts/icon.swift <out-dir>
 //
 // Writes <out-dir>/AppIcon.icns and <out-dir>/icon-1024.png. Small sizes use
-// the 11 x 11 menu bar sun; from 64 px up the sun gets its face.
+// the 11 x 11 menu bar sun; from 64 px up the sun gets its face. Cells: '#' ink,
+// 'o' butter, 'p' pink.
 import AppKit
 
 let face = [
-    "........#........",
-    "........#........",
-    "..#...........#..",
-    "...#.........#...",
-    "......#####......",
-    ".....#######.....",
-    "....#########....",
-    "....##.###.##....",
-    "##..##.###.##..##",
-    "....#########....",
-    "....###.#.###....",
-    ".....###.###.....",
-    "......#####......",
-    "...#.........#...",
-    "..#...........#..",
-    "........#........",
-    "........#........",
+    "..........#..........",
+    "..........#..........",
+    "...#......#......#...",
+    "....#...........#....",
+    "........#####........",
+    "......##ooooo##......",
+    ".....#ooooooooo#.....",
+    ".....#ooooooooo#.....",
+    "....#ooo#ooo#ooo#....",
+    "....#ooo#ooo#ooo#....",
+    "###.#ooooooooooo#.###",
+    "....#opo#ooo#opo#....",
+    "....#oooo###oooo#....",
+    ".....#ooo#p#ooo#.....",
+    ".....#ooooooooo#.....",
+    "......##ooooo##......",
+    "........#####........",
+    "....#...........#....",
+    "...#......#......#...",
+    "..........#..........",
+    "..........#..........",
 ]
 
 let small = [
@@ -31,16 +37,20 @@ let small = [
     ".#...#...#.",
     "..#.....#..",
     "....###....",
-    "...#####...",
-    "##.#####.##",
-    "...#####...",
+    "...#ooo#...",
+    "##.#ooo#.##",
+    "...#ooo#...",
     "....###....",
     "..#.....#..",
     ".#...#...#.",
     ".....#.....",
 ]
 
-let ink = CGColor(srgbRed: 0x1a / 255, green: 0x0b / 255, blue: 0x17 / 255, alpha: 1)
+let palette: [Character: CGColor] = [
+    "#": CGColor(srgbRed: 0x1a / 255, green: 0x0b / 255, blue: 0x17 / 255, alpha: 1),
+    "o": CGColor(srgbRed: 1, green: 0xf1 / 255, blue: 0xb8 / 255, alpha: 1),
+    "p": CGColor(srgbRed: 1, green: 0x8f / 255, blue: 0xc8 / 255, alpha: 1),
+]
 let candy = [
     CGColor(srgbRed: 1, green: 0x7a / 255, blue: 0xd9 / 255, alpha: 1),
     CGColor(srgbRed: 1, green: 0xd3 / 255, blue: 0x6e / 255, alpha: 1),
@@ -77,12 +87,18 @@ func render(_ size: Int) -> CGImage {
     // The sun, on whole pixels.
     let sprite = size >= 64 ? face : small
     let cells = sprite.count
-    let cell = max(1, ((body.width * 0.66) / CGFloat(cells)).rounded(.down))
+    // Whole pixels per cell, and as many pixels on each side of the sun: the
+    // nearest cell size whose sun leaves an even margin.
+    let target = body.width * 0.66 / CGFloat(cells)
+    var cell = target.rounded()
+    if (size - Int(cell) * cells) % 2 != 0 { cell += target > cell ? 1 : -1 }
+    cell = max(1, cell)
     let side = cell * CGFloat(cells)
     let origin = CGPoint(x: ((s - side) / 2).rounded(), y: ((s - side) / 2).rounded())
-    context.setFillColor(ink)
     for (y, row) in sprite.enumerated() {
-        for (x, char) in row.enumerated() where char == "#" {
+        for (x, char) in row.enumerated() {
+            guard let color = palette[char] else { continue }
+            context.setFillColor(color)
             context.fill(CGRect(x: origin.x + CGFloat(x) * cell, y: origin.y + CGFloat(cells - 1 - y) * cell, width: cell, height: cell))
         }
     }

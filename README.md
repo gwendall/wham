@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/icon.png" width="128" alt="Wham's icon: a pixel sun on a candy gradient">
+  <img src="docs/icon.png" width="128" alt="Wham's icon: a smiling pixel sun on a candy gradient">
 </p>
 
 <h1 align="center">Wham</h1>
@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <img src="docs/toast-on.png" width="294" alt="MAC STAYS AWAKE - Even with the lid closed">
-  <img src="docs/toast-off.png" width="266" alt="MAC CAN SLEEP - Back to normal sleep">
+  <img src="docs/toast-on.png" width="264" alt="MAC STAYS AWAKE - Even with the lid closed">
+  <img src="docs/toast-off.png" width="240" alt="MAC CAN SLEEP - Back to normal sleep">
 </p>
 
 ## What for
@@ -48,7 +48,8 @@ From a terminal, if you prefer:
 
 Wham needs macOS 11 Big Sur or later, on Apple silicon or Intel. Every way
 installs the same signed and notarized app from the
-[latest release](https://github.com/gwendall/wham/releases/latest).
+[latest release](https://github.com/gwendall/wham/releases/latest), and from
+then on Wham keeps itself up to date.
 
 ## Use it
 
@@ -57,7 +58,8 @@ Wham lives in your menu bar as a little switch.
 - **Click it**: the sun comes up, the switch turns candy, and your Mac stays
   awake. Close the lid, put it in a bag, unplug the screen: it keeps running.
 - **Click again**: the moon comes back and your Mac sleeps as usual.
-- **Right-click** (or control-click) for the menu: sound, open at login, quit.
+- **Right-click** (or control-click) for the menu: sound, open at login,
+  automatic updates, quit.
 
 The first time you turn it on, macOS asks for your password, once (see
 [how it works](#how-it-works)). Quitting Wham always gives sleep back.
@@ -107,11 +109,15 @@ in a terminal, `pmset`, a reboot), the switch follows.
 
 ## Is it safe?
 
-- About a thousand lines of Swift, no dependencies, no network access (the
-  menu links to this page), no analytics.
+- About a thousand lines of Swift, no dependencies, no analytics.
+- One network request, a few times a day: Wham asks GitHub which release is
+  the latest, and the request carries nothing about you or your Mac. When there
+  is a newer one, Wham downloads it, checks that it is signed by the same
+  developer and that it runs, and swaps it in; on stays on through the update.
+  **Update Automatically** in the menu turns this off.
 - Every release is built from this repo, signed with Developer ID
-  (`NQCA86NEA3`) and notarized by Apple. The `curl` installer refuses an app
-  signed by anyone else.
+  (`NQCA86NEA3`) and notarized by Apple. The `curl` installer and the updater
+  both refuse an app signed by anyone else.
 - The only privilege Wham holds is the rule above. Uninstalling removes it.
 
 ## Tiny
@@ -154,7 +160,7 @@ open build/Wham.app
 
 | Path | What |
 | --- | --- |
-| `app/Sources` | The app: menu bar switch, toast, chime, `pmset` and sudoers, CLI |
+| `app/Sources` | The app: menu bar switch, toast, chime, `pmset` and sudoers, updates, CLI |
 | `install.sh`, `uninstall.sh` | What `curl wham.sh` and `curl wham.sh/uninstall` run |
 | `scripts/release.sh` | Tags a release; GitHub Actions (`release.yml`) runs `scripts/package.sh`, publishes it and updates the cask |
 | `packaging/wham.rb` | The Homebrew cask template |
@@ -170,6 +176,9 @@ when the wrapper or the scripts change.
 
 `scripts/lid-test.sh` checks the real thing: run it, close the lid for two
 minutes, open it, and it tells you whether the Mac slept.
+`scripts/update-test.sh` updates a 1.0.99 copy to 9.9.9 from a local stand-in
+for GitHub, and checks that a copy signed by someone else is refused (it needs
+the Developer ID certificate).
 
 ## Credits
 

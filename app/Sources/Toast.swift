@@ -53,7 +53,7 @@ final class Toast {
         return base.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: 11.5) } ?? base
     }()
 
-    static let height: CGFloat = 46
+    static let height: CGFloat = 52
     static let margin: CGFloat = 26 // room for the glow and the springs' overshoot
     static let hold: TimeInterval = 2.2
 
@@ -80,11 +80,13 @@ final class Toast {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let scale = NSScreen.screens.first(where: { $0.frame.intersects(anchor) })?.backingScaleFactor ?? panel.backingScaleFactor
 
-        let titleLine = CTLineCreateWithAttributedString(NSAttributedString(string: style.title, attributes: [.font: Self.titleFont]))
+        // Silkscreen leaves two of its pixels between capitals: one is enough, as on wham.sh.
+        let titleLine = CTLineCreateWithAttributedString(NSAttributedString(string: style.title, attributes: [.font: Self.titleFont, .kern: -Self.pixel]))
         let titleWidth = CGFloat(CTLineGetTypographicBounds(titleLine, nil, nil, nil)).rounded(.up)
         let caption = Self.textImage(style.caption, font: Self.captionFont, color: style.captionInk, scale: scale, crisp: false)
         let icon = CGFloat(style.sprite.count) * Self.pixel
-        let padLeft: CGFloat = 15, gap: CGFloat = 11, padRight: CGFloat = 20
+        // The sprite sits in the pill's round end, as far from its left edge as from the top and bottom.
+        let padLeft = (Self.height - icon) / 2, gap: CGFloat = 11, padRight: CGFloat = 20
         let height = Self.height
         let width = padLeft + icon + gap + max(titleWidth, caption?.size.width ?? 0) + padRight
 

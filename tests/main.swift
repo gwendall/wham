@@ -1,4 +1,5 @@
 import Foundation
+import Security
 
 // Wham's checks, without Xcode's test runner: compiled with the app's pure
 // sources by scripts/test.sh, they exit non-zero on the first failure.
@@ -103,7 +104,24 @@ if kernelAnswers || !onCI {
 for (name, sprite) in [("sun", Pixels.sun), ("moon", Pixels.moon)] {
     check(sprite.count == 11 && sprite.allSatisfy { $0.count == 11 }, "\(name) sprite is 11 x 11")
     check(Pixels.image(sprite, color: Pixels.ink)?.width == 11, "\(name) sprite renders")
+    let cells = sprite.enumerated().flatMap { y, row in row.enumerated().filter { $0.element == "#" }.map { (x: $0.offset, y: y) } }
+    check(cells.map(\.x).min() == 0 && cells.map(\.x).max() == 10 && cells.map(\.y).min() == 0 && cells.map(\.y).max() == 10,
+          "\(name)'s ink fills its box, so centering the box centers the \(name)")
 }
+
+// Updates: the latest version from GitHub's redirect, compared number by number,
+// and only Wham signed by its developer goes in.
+check(Update.version(fromTag: "https://github.com/gwendall/wham/releases/tag/v1.2.0") == "1.2.0", "version from the release redirect")
+check(Update.version(fromTag: "https://github.com/gwendall/wham/releases") == nil && Update.version(fromTag: "") == nil, "no tag, no version")
+check(Update.version(fromTag: "https://github.com/gwendall/wham/releases/tag/v1.2.0-beta") == nil, "a pre-release is not offered")
+check(Update.isNewer("1.10.0", than: "1.9.9") && Update.isNewer("2", than: "1.9.9") && Update.isNewer("1.0.1", than: "1.0"),
+      "newer, number by number")
+check(!Update.isNewer("1.0", than: "1.0.0") && !Update.isNewer("1.0.0", than: "1.0.1") && !Update.isNewer("1.0.1", than: "dev"),
+      "same, older, or against a build from source: no update")
+var requirement: SecRequirement?
+check(SecRequirementCreateWithString(Update.requirement as CFString, [], &requirement) == errSecSuccess, "the signature requirement compiles")
+check(!Update.isGenuine(URL(fileURLWithPath: CommandLine.arguments[0])) && !Update.isGenuine(URL(fileURLWithPath: "/System/Applications/Calculator.app")),
+      "an app not signed by Wham's developer is refused")
 
 // The command line.
 check(CLI.commands.isSuperset(of: ["on", "off", "toggle", "status", "version", "help"]), "CLI knows its commands")

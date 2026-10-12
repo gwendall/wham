@@ -45,10 +45,28 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 | `/Applications` not writable | Installs to `~/Applications` | `install.sh` |
 | `/usr/local/bin` missing or not writable (most Apple silicon Macs) | Links `wham` in `~/.local/bin` and prints the exact line to add it to the PATH for zsh, bash or fish | `install.sh` |
 | Running the installer again | Updates in place; the running Wham is stopped without its quit handler, so the sleep setting survives | Tried on this Mac |
-| `brew upgrade` | Homebrew quits Wham (which gives sleep back) and reopens it; reopened within a minute, Wham turns itself back on | `resumeAfterUpdate` |
+| `brew upgrade` | Homebrew quits Wham (which gives sleep back) and reopens it; reopened within a minute, Wham turns itself back on. The cask says `auto_updates`, so Homebrew leaves the updates to Wham | `resumeAfterUpdate` |
 | Opened from the disk image or straight from Downloads | Offers to move itself to Applications (and does it), since an app run from there cannot open at login | `runsFromTemporaryCopy` |
 | Gatekeeper | Releases are signed with Developer ID and notarized; `install.sh` also refuses an app not signed by team `NQCA86NEA3` | `scripts/release.sh` (`spctl --assess`) |
 | Login item held for approval (macOS 13+, some MDM) | Turning "Open at Login" on opens System Settings > Login Items | `LoginItem.set` |
+
+## Updates
+
+A minute after launch, then every 6 hours, Wham asks GitHub for the latest
+release. A newer one is downloaded next to the app, checked with `codesign`
+(Wham's identifier, signed by team `NQCA86NEA3`), run once (`wham version` must
+name the new version), and swapped in; Wham then reopens from the new copy,
+with the switch as it was.
+
+| Case | What Wham does | Checked by |
+| --- | --- | --- |
+| A release signed by anyone else, or that does not run | Refused, the running copy stays | `scripts/update-test.sh` |
+| The app's folder is not writable (an admin installed it, a standard user runs it; managed Macs) | Never tries; the next install or `brew upgrade` updates it | `Update.canReplace` |
+| A build from source (ad hoc signed) | Never updates itself | `Update.canReplace`, test |
+| Offline, GitHub down, a proxy that blocks it | Tries again in 6 hours, quietly | `curl --max-time` |
+| The switch is on, or a password prompt is open | On stays on through the update; it waits for the prompt to close | `reopen`, `scripts/update-test.sh` |
+| Opened from the disk image | No updates until it is in Applications | `runsFromTemporaryCopy` |
+| Pre-release tags | Ignored | Test |
 
 ## The menu bar
 
@@ -56,7 +74,8 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 | --- | --- |
 | Menu bar too full, or the switch hidden by the notch | Opening Wham again (Finder, Spotlight, Launchpad) shows a toast under the switch, or, if the switch is not visible, says so and how to make room (hold ⌘ and drag other icons away) |
 | First launch | A "HI, I'M WHAM" toast points at the switch |
-| Light and dark menu bars | The glyph and outline follow the menu bar's appearance |
+| Light and dark menu bars | The track and the knob follow the menu bar's appearance |
+| Clicking the switch, or its menu open | No menu bar highlight around it: the knob is the only feedback |
 | Reduce Motion | The switch changes without animating |
 | VoiceOver | The switch has a label and a tooltip that say the state and what a click does |
 
@@ -98,4 +117,5 @@ Where the little it does goes:
 - The sounds are made on the first click, so CoreAudio is not loaded until
   there is something to play.
 - The toast window is created on first use (`defer: true`) and ordered out when it leaves.
-- No network, no analytics, no helper process, no background daemon.
+- One request to GitHub a few times a day for updates (off with Update
+  Automatically). No analytics, no helper process, no background daemon.
