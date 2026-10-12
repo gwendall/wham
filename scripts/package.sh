@@ -22,13 +22,23 @@ notarize() {
   grep -q "status: Accepted" build/notary.log || { echo "Apple did not accept $1" >&2; exit 1; }
 }
 
+# Fetches the ticket from Apple's CDN, which sometimes drops the connection.
+staple() {
+  for attempt in 1 2 3 4 5; do
+    xcrun stapler staple "$1" && return
+    echo "stapling failed (attempt $attempt), retrying in 20 s"
+    sleep 20
+  done
+  exit 1
+}
+
 VERSION=$version SIGN=$identity scripts/build.sh
 
 echo "Notarizing the app"
 rm -f build/Wham.zip
 ditto -c -k --keepParent build/Wham.app build/Wham.zip
 notarize build/Wham.zip
-xcrun stapler staple build/Wham.app
+staple build/Wham.app
 # The zip again, now with the ticket stapled inside the app.
 rm -f build/Wham.zip
 ditto -c -k --keepParent build/Wham.app build/Wham.zip
@@ -43,7 +53,7 @@ rm -f build/Wham.dmg
 build/.venv/bin/dmgbuild -s scripts/dmg.py -D app=build/Wham.app -D background=build/dmg/background.tiff Wham build/Wham.dmg
 codesign --force --timestamp --sign "$identity" build/Wham.dmg
 notarize build/Wham.dmg
-xcrun stapler staple build/Wham.dmg
+staple build/Wham.dmg
 spctl --assess --type open --context context:primary-signature --verbose build/Wham.dmg
 
 (cd build && shasum -a 256 Wham.zip Wham.dmg > checksums.txt)
