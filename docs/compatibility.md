@@ -163,14 +163,15 @@ Measured on a MacBook Air (Apple silicon), macOS 26.6, by `scripts/eval.sh`:
 | App on disk | 1.4 MB (536 KB of it the universal binary) | |
 | Download (zip) | about 1 MB | |
 
-CI holds every runner to the same budgets. The first run, on 2026-10-12:
+CI holds every runner to the same budgets, and runs every eval above on each.
+The run of 2026-10-12, with sessions, guards and the watchdog:
 
-| Runner | Idle CPU per 30 s | Memory | `wham on` / `wham off` flip the real flag |
-| --- | --- | --- | --- |
-| macOS 14.8, Apple silicon | 0.01 s | 8 MB | yes |
-| macOS 15.7, Apple silicon | 0.05 s | 8 MB | yes |
-| macOS 15.7, Intel | 0.01 s | 5 MB | yes |
-| macOS 26.6, Apple silicon | 0.03 s | 10 MB | yes |
+| Runner | Idle CPU per 30 s, off / on | Memory | App on, watchdog out, after `wham on` | `wham on 3s` ends after | Real thermal pressure |
+| --- | --- | --- | --- | --- | --- |
+| macOS 14.8, Apple silicon | 0.01 s / 0.01 s | 8 MB | 107 ms | 4.4 s | lets go, then back on |
+| macOS 15.7, Apple silicon | 0.01 s / 0.02 s | 8 MB | 107 ms | 4.1 s | lets go, then back on |
+| macOS 15.7, Intel | 0 s / 0.01 s | 5 MB | 164 ms | 4.0 s | lets go, then back on |
+| macOS 26.6, Apple silicon | 0.01 s / 0.02 s | 10 MB | 173 ms | 4.2 s | lets go, then back on |
 
 Where the little it does goes:
 
