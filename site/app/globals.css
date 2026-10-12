@@ -1,0 +1,360 @@
+@import "tailwindcss";
+
+/* Wham's palette (docs/brand.md). */
+@theme {
+  --color-candy-pink: #ff7ad9;
+  --color-candy-yellow: #ffd36e;
+  --color-candy-cyan: #6fd3ff;
+  --color-ink: #1a0b17;
+  --color-night: #0f0a14;
+  --color-pill: #141414;
+  --color-moon: #bfb5ff;
+
+  /* Punkmaker's COMING spring (omega 16, zeta 0.72), as a CSS easing over 600 ms. */
+  --ease-coming: linear(0, 0.0657, 0.2147, 0.3926, 0.5655, 0.7148, 0.833, 0.9194, 0.9777, 1.0132, 1.0315, 1.0381, 1.0372, 1.0322, 1.0256, 1.0188, 1.0127, 1.0078, 1.004, 1.0015, 0.9999, 0.999, 0.9986, 0.9985, 1);
+}
+
+/* Page colors, light and dark. */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-card: var(--card);
+  --color-line: var(--line);
+  --font-sans: var(--font-nunito), ui-rounded, system-ui, sans-serif;
+  --font-pixel: var(--font-silkscreen), ui-monospace, monospace;
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+:root {
+  --bg: #fff7fb;
+  --fg: #1a0b17;
+  --muted: rgb(26 11 23 / 0.66);
+  --card: #ffffff;
+  --line: rgb(26 11 23 / 0.09);
+  --wordmark-shadow: #1a0b17;
+  --page-glow: rgb(255 122 217 / 0.16);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f0a14;
+    --fg: #f8f0f6;
+    --muted: rgb(248 240 246 / 0.64);
+    --card: #1a1120;
+    --line: rgb(255 255 255 / 0.09);
+    --wordmark-shadow: #5a2363;
+    --page-glow: rgb(255 3 180 / 0.14);
+    color-scheme: dark;
+  }
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(60rem 36rem at 85% -8rem, var(--page-glow), transparent 70%),
+    radial-gradient(48rem 30rem at -10% 4rem, rgb(111 211 255 / 0.1), transparent 70%),
+    var(--bg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+::selection {
+  background: var(--color-candy-pink);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-candy-pink);
+  outline-offset: 3px;
+}
+
+/* Silkscreen: uppercase, sized in multiples of 8 px so its pixels stay whole. */
+.font-pixel {
+  text-transform: uppercase;
+  font-weight: 400;
+  font-synthesis: none;
+  -webkit-font-smoothing: none;
+}
+
+@utility bg-candy {
+  background-image: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
+}
+
+/* The big WHAM: candy letters on a hard shadow, half a Silkscreen pixel (1/16 em) down and right. */
+.wordmark {
+  display: grid;
+  letter-spacing: 0.125em;
+  margin-right: -0.125em;
+}
+.wordmark > span {
+  grid-area: 1 / 1;
+}
+.wordmark-shadow {
+  color: var(--wordmark-shadow);
+  translate: 0.0625em 0.0625em;
+}
+/* Positioned, so it paints above the translated shadow. */
+.wordmark-face {
+  position: relative;
+  background-image: linear-gradient(90deg, #ff7ad9, #ffd36e 55%, #6fd3ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* A candy highlighter under a few words. */
+.candy-mark {
+  background: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff) no-repeat 0 88% / 100% 0.34em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 0 0.06em;
+}
+/* On a dark page the words themselves turn candy: white over pastel would wash out. */
+@media (prefers-color-scheme: dark) {
+  .candy-mark {
+    background-size: 100% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+/* A thin candy outline, for the main install command. */
+.candy-ring {
+  position: relative;
+  isolation: isolate;
+}
+.candy-ring::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  z-index: -1;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
+}
+.candy-ring::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 16px;
+  background: inherit;
+}
+
+/* The candy button. */
+.btn-candy {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 52px;
+  padding: 0 22px 0 18px;
+  border-radius: 26px;
+  background-image: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
+  color: var(--color-ink);
+  font-weight: 900;
+  font-size: 17px;
+  box-shadow: 0 0 26px rgb(255 3 180 / 0.35);
+  transition: transform 0.6s var(--ease-coming), box-shadow 0.2s;
+}
+.btn-candy:hover {
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 34px rgb(255 3 180 / 0.5);
+}
+.btn-candy:active {
+  transform: translateY(0) scale(0.98);
+  transition-duration: 0.1s;
+}
+
+/* The hero's HUD over the shut laptop. */
+.hud {
+  opacity: 0;
+  transform: translateY(8px) scale(0.92);
+  transition:
+    opacity 0.16s ease-in,
+    transform 0.16s ease-in;
+}
+.hud[data-show="true"] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.12s ease-out,
+    transform 0.6s var(--ease-coming);
+}
+
+/* Ten pixel blocks. */
+.pixel-bar {
+  background: rgb(255 255 255 / 0.14);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+  mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+}
+.pixel-bar-fill {
+  background-image: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
+  background-size: var(--bar-width, 182px) 100%;
+}
+
+/* Little 8-bit loops, in steps. */
+.twinkle {
+  animation: twinkle 2.6s steps(2, jump-none) infinite;
+}
+@keyframes twinkle {
+  0%,
+  60% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.25;
+  }
+}
+
+.zzz {
+  animation: zzz 2.8s steps(7) infinite;
+}
+.zzz-2 {
+  animation-delay: -1.4s;
+}
+@keyframes zzz {
+  0% {
+    opacity: 0;
+    transform: translate(0, 8px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(8px, -16px);
+  }
+}
+
+.bob {
+  animation: bob 1.6s steps(2, jump-none) infinite;
+}
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.hint {
+  animation: hint 1s steps(2, jump-none) infinite;
+}
+@keyframes hint {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 4px;
+  }
+}
+
+/* Step 2: a lid that closes, again and again. */
+.step-lid {
+  transform-origin: 3px 3px;
+  animation: step-lid 3.2s steps(1) infinite;
+}
+@keyframes step-lid {
+  0% {
+    transform: rotate(-100deg);
+  }
+  20% {
+    transform: rotate(-75deg);
+  }
+  28% {
+    transform: rotate(-50deg);
+  }
+  36% {
+    transform: rotate(-25deg);
+  }
+  44%,
+  88% {
+    transform: rotate(0deg);
+  }
+}
+.step-glow {
+  animation: step-glow 3.2s steps(1) infinite;
+}
+@keyframes step-glow {
+  0%,
+  44% {
+    opacity: 0;
+  }
+  50%,
+  70% {
+    opacity: 1;
+  }
+  60%,
+  80% {
+    opacity: 0.5;
+  }
+  88% {
+    opacity: 0;
+  }
+}
+
+/* Step 3: a job that keeps running. */
+.step-bar {
+  animation: step-bar 4.4s steps(11, jump-end) infinite;
+}
+@keyframes step-bar {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 110%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twinkle,
+  .zzz,
+  .bob,
+  .hint,
+  .step-lid,
+  .step-glow,
+  .step-bar {
+    animation: none !important;
+  }
+  .step-bar {
+    width: 70%;
+  }
+  .step-glow {
+    opacity: 1;
+  }
+  .hud,
+  .hud[data-show="true"] {
+    transform: none;
+    transition: opacity 0.2s;
+  }
+}
+
+/* The FAQ's disclosure markers. */
+details > summary {
+  list-style: none;
+}
+details > summary::-webkit-details-marker {
+  display: none;
+}
+details[open] .faq-plus {
+  transform: rotate(45deg);
+}
