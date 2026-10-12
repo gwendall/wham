@@ -2,8 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// A shell command with a copy button. `primary` is the big candy one.
-export function CopyCommand({ command, primary = false }: { command: string; primary?: boolean }) {
+// A shell command with a copy button. The box is 56 px tall with 16 px corners;
+// the button sits 8 px from its top, bottom and right edges, with 8 px corners,
+// so the two curves stay concentric. "Copy" and "Copied" share one cell and
+// cross-fade, so the button never changes width.
+export function CopyCommand({ command }: { command: string }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -28,21 +31,13 @@ export function CopyCommand({ command, primary = false }: { command: string; pri
   }
 
   return (
-    <div
-      className={`group flex min-w-0 items-center gap-2 rounded-[16px] bg-ink pl-4 pr-2 text-white dark:bg-[#1c1222] ${
-        primary
-          ? "candy-ring h-[60px] shadow-[0_10px_40px_-12px_rgba(255,3,180,0.55)] sm:h-[64px] sm:pl-5"
-          : "h-[52px] ring-1 ring-white/10"
-      }`}
-    >
-      <span aria-hidden="true" className="select-none font-mono text-candy-pink">
+    <div className="flex h-14 min-w-0 items-center gap-2 rounded-2xl bg-ink pl-4 pr-2 text-white ring-1 ring-white/10 dark:bg-[#1c1222]">
+      <span aria-hidden="true" className="select-none font-mono text-small text-candy-pink">
         $
       </span>
       <code
         id={`cmd-${slug(command)}`}
-        className={`min-w-0 flex-1 overflow-x-auto whitespace-nowrap pr-3 font-mono [mask-image:linear-gradient(90deg,#000_calc(100%-12px),transparent)] [scrollbar-width:none] ${
-          primary ? "text-[14px] min-[400px]:text-[15px] sm:text-[18px]" : "text-[14px] sm:text-[15px]"
-        }`}
+        className="min-w-0 flex-1 overflow-x-auto whitespace-nowrap pr-3 font-mono text-small [mask-image:linear-gradient(90deg,#000_calc(100%-12px),transparent)] [scrollbar-width:none]"
       >
         {command}
       </code>
@@ -50,11 +45,19 @@ export function CopyCommand({ command, primary = false }: { command: string; pri
         type="button"
         onClick={copy}
         aria-label={`Copy: ${command}`}
-        className={`flex h-[40px] shrink-0 cursor-pointer items-center justify-center rounded-[11px] px-2.5 font-pixel sm:px-3 text-[16px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-candy-yellow ${
-          copied ? "bg-candy text-ink" : "bg-white/10 text-white hover:bg-white/20"
-        } ${primary ? "min-w-[68px] sm:min-w-[84px]" : "min-w-[68px] sm:min-w-[76px]"}`}
+        data-copied={copied}
+        className="group relative isolate grid h-10 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-lg bg-white/10 px-3 font-pixel text-pixel text-white transition-colors hover:bg-white/18 data-[copied=true]:text-ink"
       >
-        {copied ? "Copied" : "Copy"}
+        <span aria-hidden="true" className="absolute inset-0 -z-10 bg-candy opacity-0 transition-opacity group-data-[copied=true]:opacity-100" />
+        <span className="col-start-1 row-start-1 pixel-even transition-[opacity,translate] group-data-[copied=true]:-translate-y-2 group-data-[copied=true]:opacity-0">
+          Copy
+        </span>
+        <span
+          aria-hidden="true"
+          className="col-start-1 row-start-1 pixel-even translate-y-2 opacity-0 transition-[opacity,translate] group-data-[copied=true]:translate-y-0 group-data-[copied=true]:opacity-100"
+        >
+          Copied
+        </span>
       </button>
       <span role="status" className="sr-only">
         {copied ? "Copied to the clipboard" : ""}

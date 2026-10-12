@@ -1,6 +1,7 @@
-import { spritePath, type Sprite } from "@/lib/sprites";
+import { spriteLayers, type Sprite } from "@/lib/sprites";
 
-// A sprite drawn on whole pixels: `cell` CSS pixels per sprite pixel.
+// A sprite drawn on whole pixels: `cell` CSS pixels per sprite pixel. Its "#"
+// pixels take the current color, the others their own (butter, pink).
 export function PixelSprite({
   rows,
   cell = 2,
@@ -25,7 +26,9 @@ export function PixelSprite({
       aria-hidden={title ? undefined : true}
       aria-label={title}
     >
-      <path d={spritePath(rows)} fill="currentColor" />
+      {spriteLayers(rows, "currentColor").map(({ color, fill, d }) => (
+        <path key={color} d={d} fill={fill} />
+      ))}
     </svg>
   );
 }

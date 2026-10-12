@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
-/* Wham's palette (docs/brand.md). */
 @theme {
+  /* Wham's palette (docs/brand.md). */
   --color-candy-pink: #ff7ad9;
   --color-candy-yellow: #ffd36e;
   --color-candy-cyan: #6fd3ff;
@@ -12,6 +12,51 @@
 
   /* Punkmaker's COMING spring (omega 16, zeta 0.72), as a CSS easing over 600 ms. */
   --ease-coming: linear(0, 0.0657, 0.2147, 0.3926, 0.5655, 0.7148, 0.833, 0.9194, 0.9777, 1.0132, 1.0315, 1.0381, 1.0372, 1.0322, 1.0256, 1.0188, 1.0127, 1.0078, 1.004, 1.0015, 0.9999, 0.999, 0.9986, 0.9985, 1);
+  /* Every UI change eases out the same way: quick to start, soft to land. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --default-transition-duration: 200ms;
+  --default-transition-timing-function: var(--ease-out);
+
+  /*
+   * Type. Six Nunito sizes and three Silkscreen ones, nothing else: each token
+   * carries its line height and tracking. Line heights sit on the 4 px grid,
+   * the fluid ones rounded to it, so nothing below a heading lands between
+   * two pixels.
+   */
+  --text-*: initial;
+  --text-display: clamp(2.5rem, 2.0625rem + 1.8vw, 3.5rem); /* 40 to 56 px */
+  --text-display--line-height: round(1.1em, 4px); /* 44 to 60 px, 1.05 to 1.15 */
+  --text-display--letter-spacing: -0.03em;
+  --text-heading: clamp(2rem, 1.6875rem + 1.35vw, 2.75rem); /* 32 to 44 px */
+  --text-heading--line-height: round(1.1em, 4px); /* 36 to 48 px, 1.05 to 1.15 */
+  --text-heading--letter-spacing: -0.02em;
+  --text-title: 1.25rem; /* 20 px, card titles and questions */
+  --text-title--line-height: 1.5rem;
+  --text-title--letter-spacing: -0.01em;
+  --text-lead: 1.25rem; /* 20 px, the paragraph under a heading */
+  --text-lead--line-height: 1.75rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.5rem;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.25rem;
+  --text-micro: 0.75rem; /* the captions inside the toast and the HUD */
+  --text-micro--line-height: 1rem;
+  /*
+   * Silkscreen draws on 8 pixels per em, so it only comes in multiples of 8 px.
+   * Each capital carries a font pixel of space on both sides, two between
+   * letters, which reads as loose: every size takes one off (1/8 em, so 2 px
+   * at 16, 4 px at 32, 12 px at 96), leaving the one-pixel gap a pixel font is
+   * drawn with. The space scales with the size, in whole pixels.
+   */
+  --text-pixel: 1rem; /* 16 px */
+  --text-pixel--line-height: 1;
+  --text-pixel--letter-spacing: -0.125em;
+  --text-pixel-lg: 2rem; /* 32 px */
+  --text-pixel-lg--line-height: 1;
+  --text-pixel-lg--letter-spacing: -0.125em;
+  --text-wordmark: 4rem; /* 64 px, 96 px from 640 px up; the shadow fills half the gap */
+  --text-wordmark--line-height: 1;
+  --text-wordmark--letter-spacing: -0.125em;
 }
 
 /* Page colors, light and dark. */
@@ -35,7 +80,22 @@
   --line: rgb(26 11 23 / 0.09);
   --wordmark-shadow: #1a0b17;
   --page-glow: rgb(255 122 217 / 0.16);
+  /* The space above and below every section: 48 px on phones, 64 px, then 80 px. */
+  --section-y: 3rem;
   color-scheme: light;
+}
+
+@media (width >= 40rem) {
+  :root {
+    --text-wordmark: 6rem;
+    --section-y: 4rem;
+  }
+}
+
+@media (width >= 64rem) {
+  :root {
+    --section-y: 5rem;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,45 +111,89 @@
   }
 }
 
-html {
-  background: var(--bg);
-  color: var(--fg);
-  scroll-behavior: smooth;
-}
-
-body {
-  background:
-    radial-gradient(60rem 36rem at 85% -8rem, var(--page-glow), transparent 70%),
-    radial-gradient(48rem 30rem at -10% 4rem, rgb(111 211 255 / 0.1), transparent 70%),
-    var(--bg);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
+/* One container for every block: the same width and gutters at every breakpoint. */
+@utility page {
+  width: 100%;
+  max-width: 72rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+  @media (width >= 40rem) {
+    padding-inline: 1.5rem;
   }
 }
 
-::selection {
-  background: var(--color-candy-pink);
-  color: var(--color-ink);
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background:
+      radial-gradient(60rem 36rem at 85% -8rem, var(--page-glow), transparent 70%),
+      radial-gradient(48rem 30rem at -10% 4rem, rgb(111 211 255 / 0.1), transparent 70%),
+      var(--bg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p,
+  li,
+  figcaption {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--color-candy-pink);
+    color: var(--color-ink);
+  }
+
+  /* One focus ring everywhere, following each control's own corners. */
+  :focus-visible {
+    outline: 2px solid var(--color-candy-pink);
+    outline-offset: 2px;
+  }
+
+  section[id] {
+    scroll-margin-top: 1rem;
+  }
 }
 
-:focus-visible {
-  outline: 2px solid var(--color-candy-pink);
-  outline-offset: 3px;
-}
-
-/* Silkscreen: uppercase, sized in multiples of 8 px so its pixels stay whole. */
+/*
+ * Silkscreen: uppercase, never smoothed, never kerned. The font's own metrics
+ * set its capitals a pixel low in their line; layout.tsx evens them out, so a
+ * line box of 1em holds the capitals dead center.
+ */
 .font-pixel {
   text-transform: uppercase;
   font-weight: 400;
   font-synthesis: none;
+  font-kerning: none;
+  text-rendering: optimizeSpeed;
   -webkit-font-smoothing: none;
+}
+
+/* Silkscreen has no tabular figures ("1" is a pixel narrower): counters put each digit in a cell, 5/8 em once tracked. */
+.pixel-digit {
+  display: inline-block;
+  width: 0.625em;
+}
+
+/*
+ * Tracked Silkscreen starts with a font pixel of space and ends with none, so a
+ * centered label sits half a pixel right: this gives the pixel back on the right.
+ */
+@utility pixel-even {
+  padding-inline-end: 0.125em;
 }
 
 @utility bg-candy {
@@ -99,8 +203,6 @@ body {
 /* The big WHAM: candy letters on a hard shadow, half a Silkscreen pixel (1/16 em) down and right. */
 .wordmark {
   display: grid;
-  letter-spacing: 0.125em;
-  margin-right: -0.125em;
 }
 .wordmark > span {
   grid-area: 1 / 1;
@@ -135,50 +237,28 @@ body {
   }
 }
 
-/* A thin candy outline, for the main install command. */
-.candy-ring {
-  position: relative;
-  isolation: isolate;
+/* Candy buttons rise a little on hover and give under the finger. */
+.press {
+  transition:
+    translate 0.6s var(--ease-coming),
+    scale 0.6s var(--ease-coming),
+    box-shadow 0.2s var(--ease-out);
 }
-.candy-ring::before {
-  content: "";
-  position: absolute;
-  inset: -2px;
-  z-index: -1;
-  border-radius: 18px;
-  background: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
+.press:hover {
+  translate: 0 -2px;
+  scale: 1.02;
 }
-.candy-ring::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: 16px;
-  background: inherit;
+.press:active {
+  translate: 0 0;
+  scale: 0.98;
+  transition-duration: 0.1s;
 }
 
-/* The candy button. */
-.btn-candy {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  height: 52px;
-  padding: 0 22px 0 18px;
-  border-radius: 26px;
-  background-image: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
-  color: var(--color-ink);
-  font-weight: 900;
-  font-size: 17px;
-  box-shadow: 0 0 26px rgb(255 3 180 / 0.35);
-  transition: transform 0.6s var(--ease-coming), box-shadow 0.2s;
+.candy-glow {
+  box-shadow: 0 0 24px rgb(255 3 180 / 0.35);
 }
-.btn-candy:hover {
-  transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 0 34px rgb(255 3 180 / 0.5);
-}
-.btn-candy:active {
-  transform: translateY(0) scale(0.98);
-  transition-duration: 0.1s;
+.candy-glow:hover {
+  box-shadow: 0 0 32px rgb(255 3 180 / 0.5);
 }
 
 /* The hero's HUD over the shut laptop. */
@@ -200,12 +280,12 @@ body {
 /* Ten pixel blocks. */
 .pixel-bar {
   background: rgb(255 255 255 / 0.14);
-  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
-  mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 3px), transparent calc(10% - 3px) 10%);
+  -webkit-mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 4px), transparent calc(10% - 4px) 10%);
+  mask: repeating-linear-gradient(90deg, #000 0 calc(10% - 4px), transparent calc(10% - 4px) 10%);
 }
 .pixel-bar-fill {
   background-image: linear-gradient(90deg, #ff7ad9, #ffd36e, #6fd3ff);
-  background-size: var(--bar-width, 182px) 100%;
+  background-size: var(--bar-width, 200px) 100%;
 }
 
 /* Little 8-bit loops, in steps. */
@@ -268,7 +348,7 @@ body {
   }
 }
 
-/* Step 2: a lid that closes, again and again. */
+/* Step 3: a lid that closes, again and again. */
 .step-lid {
   transform-origin: 3px 3px;
   animation: step-lid 3.2s steps(1) infinite;
@@ -312,49 +392,34 @@ body {
   }
 }
 
-/* Step 3: a job that keeps running. */
-.step-bar {
-  animation: step-bar 4.4s steps(11, jump-end) infinite;
-}
-@keyframes step-bar {
-  from {
-    width: 0%;
-  }
-  to {
-    width: 110%;
-  }
-}
-
+/* Reduced motion: every change lands at once, every loop holds still. */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  ::before,
+  ::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
   .twinkle,
   .zzz,
   .bob,
   .hint,
   .step-lid,
-  .step-glow,
-  .step-bar {
+  .step-glow {
     animation: none !important;
-  }
-  .step-bar {
-    width: 70%;
   }
   .step-glow {
     opacity: 1;
   }
+  .press:hover {
+    translate: none;
+    scale: none;
+  }
   .hud,
   .hud[data-show="true"] {
     transform: none;
-    transition: opacity 0.2s;
   }
-}
-
-/* The FAQ's disclosure markers. */
-details > summary {
-  list-style: none;
-}
-details > summary::-webkit-details-marker {
-  display: none;
-}
-details[open] .faq-plus {
-  transform: rotate(45deg);
 }

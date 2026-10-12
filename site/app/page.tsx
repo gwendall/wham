@@ -1,14 +1,21 @@
 import type { ReactNode } from "react";
 import { CopyCommand } from "@/components/CopyCommand";
+import { Disclosure } from "@/components/Disclosure";
 import { HeroStage } from "@/components/HeroStage";
 import { MenuBarDemo } from "@/components/MenuBarDemo";
 import { PixelSprite } from "@/components/PixelSprite";
-import { LidArt, RunArt, SwitchArt } from "@/components/StepArt";
-import { HEART, MOON, SUN } from "@/lib/sprites";
+import { LidArt, OpenArt, SwitchArt } from "@/components/StepArt";
+import { PROMPT, Tile, UseCases } from "@/components/UseCases";
+import { HEART, MOON, SUN, SUN_LIT } from "@/lib/sprites";
 
 const GITHUB = "https://github.com/gwendall/wham";
 
 const STEPS = [
+  {
+    art: <OpenArt />,
+    title: "Download and open Wham",
+    text: "Drag it to Applications and open it. It lives in your menu bar, next to the clock.",
+  },
   {
     art: <SwitchArt />,
     title: "Click the switch",
@@ -17,23 +24,27 @@ const STEPS = [
   {
     art: <LidArt />,
     title: "Close the lid",
-    text: "Like you always do. On a desk, in a dock, on the shelf by the router. No external display needed.",
-  },
-  {
-    art: <RunArt />,
-    title: "Your Mac keeps going",
-    text: "Downloads, renders, builds, backups, servers, remote sessions: all of it keeps running until you flip it back.",
+    text: "Your Mac keeps going. Claude Code finishes its task, the export reaches the last frame, the download hits 100%.",
   },
 ];
 
 const FAQ: { q: string; a: ReactNode }[] = [
   {
+    q: "Do I need the Terminal?",
+    a: (
+      <>
+        No. Download Wham, open it, and everything happens in the menu bar: one click to keep your Mac awake, one click to let it
+        sleep. The commands at the bottom of this page are only there for people who like typing them.
+      </>
+    ),
+  },
+  {
     q: "Is it safe?",
     a: (
       <>
-        The only thing Wham can do as root is run <Code>pmset -a disablesleep 0</Code> or <Code>1</Code>: that is all its sudoers
-        rule allows, and <Code>visudo</Code> checks the rule before it goes live. The app is signed with a Developer ID (the
-        installer refuses anything else), and every line of it is on <A href={GITHUB}>GitHub</A>.
+        Yes. Turning sleep off takes an administrator: the first time you click, macOS asks for your password once, so Wham
+        can flip the sleep setting without asking again. That is the only thing it is allowed to do. The app is signed by its
+        developer and notarized by Apple, and every line of it is on <A href={GITHUB}>GitHub</A>.
       </>
     ),
   },
@@ -51,8 +62,8 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "What about the battery?",
     a: (
       <>
-        Wham itself costs next to nothing: it reads one kernel flag every two seconds. But an awake Mac drains its battery like
-        an awake Mac, lid closed or not. For long jobs, plug it in.
+        Wham itself costs next to nothing: it checks one setting every two seconds. But an awake Mac drains its battery like an
+        awake Mac, lid closed or not. For long jobs, plug it in.
       </>
     ),
   },
@@ -66,11 +77,20 @@ const FAQ: { q: string; a: ReactNode }[] = [
     ),
   },
   {
+    q: "What happens when I quit Wham?",
+    a: (
+      <>
+        Sleep comes back. Quitting turns the setting off on the way out, whether you quit from its menu (right-click the
+        switch), from a script, or by logging out.
+      </>
+    ),
+  },
+  {
     q: "How do I uninstall it?",
     a: (
       <>
-        One line: <Code>curl -fsSL wham.sh/uninstall | sh</Code>. It quits Wham (which gives sleep back), then removes the app,
-        the <Code>wham</Code> command, its settings and the sudoers rule. With Homebrew: <Code>brew uninstall --zap wham</Code>.
+        Quit Wham from its menu, which gives sleep back, then drag Wham from Applications to the Trash. For a full cleanup,
+        including the password rule, use the one-line uninstaller under <A href="#developers">For developers</A>.
       </>
     ),
   },
@@ -78,17 +98,8 @@ const FAQ: { q: string; a: ReactNode }[] = [
     q: "Why not the Mac App Store?",
     a: (
       <>
-        App Store apps live in a sandbox, and a sandboxed app cannot change the kernel&apos;s sleep setting. The ones that try
-        settle for a power assertion, which is exactly what stops working when you close the lid.
-      </>
-    ),
-  },
-  {
-    q: "What happens when I quit Wham?",
-    a: (
-      <>
-        Sleep comes back. Quitting turns the setting off on the way out, whether you quit from its menu (right-click the
-        switch), from a script, or by logging out.
+        App Store apps live in a sandbox, and a sandboxed app cannot change the Mac&apos;s sleep setting. The ones that try settle
+        for asking macOS to stay up, which is exactly what stops working when you close the lid.
       </>
     ),
   },
@@ -116,7 +127,7 @@ export default function Home() {
       />
       <a
         href="#main"
-        className="sr-only z-50 rounded-full bg-ink px-4 py-2 font-bold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
+        className="sr-only z-50 rounded-full bg-ink px-4 py-2 text-body font-bold text-white focus:not-sr-only focus:fixed focus:left-4 focus:top-4"
       >
         Skip to content
       </a>
@@ -124,9 +135,10 @@ export default function Home() {
       <main id="main">
         <Hero />
         <TryIt />
+        <Uses />
         <HowItWorks />
-        <Install />
         <Faq />
+        <Developers />
       </main>
       <Footer />
     </>
@@ -135,25 +147,29 @@ export default function Home() {
 
 function Header() {
   return (
-    <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
-      <a href="#main" className="flex items-center gap-2.5 rounded-lg" aria-label="Wham, back to the top">
-        <PixelSprite rows={SUN} cell={2} />
+    <header className="page flex h-20 items-center justify-between gap-4">
+      <a href="#main" className="flex items-center gap-3 rounded-lg" aria-label="Wham, back to the top">
+        <PixelSprite rows={SUN_LIT} cell={2} />
         <span className="flex items-baseline">
-          <span className="font-pixel text-[24px] leading-none tracking-[0.125em]">Wham</span>
-          <span className="text-[15px] font-extrabold opacity-45">.sh</span>
+          <span className="font-pixel text-pixel-lg">Wham</span>
+          <span className="text-title font-extrabold text-muted">.sh</span>
         </span>
       </a>
-      <nav aria-label="Main" className="flex items-center gap-1 text-[15px] font-bold">
-        <a href="#how" className="hidden rounded-full px-3 py-2 hover:bg-fg/5 sm:block">
+      <nav aria-label="Main" className="flex items-center gap-1 text-body font-bold">
+        <NavLink href="#how" className="hidden md:flex">
           How it works
-        </a>
-        <a href="#faq" className="hidden rounded-full px-3 py-2 hover:bg-fg/5 sm:block">
+        </NavLink>
+        <NavLink href="#faq" className="hidden md:flex">
           FAQ
+        </NavLink>
+        <a href="/download" className="press flex h-10 items-center rounded-full bg-candy px-4 text-ink">
+          Download
         </a>
-        <a href="#install" className="rounded-full px-3 py-2 hover:bg-fg/5">
-          Install
-        </a>
-        <a href={GITHUB} className="rounded-full p-2 hover:bg-fg/5" aria-label="Wham on GitHub">
+        <a
+          href={GITHUB}
+          className="flex size-10 items-center justify-center rounded-full transition-colors hover:bg-fg/6"
+          aria-label="Wham on GitHub"
+        >
           <GitHubIcon />
         </a>
       </nav>
@@ -163,35 +179,29 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-6 px-4 pb-16 pt-4 sm:px-6 sm:pt-8 lg:grid-cols-[1.08fr_1fr] lg:gap-4 lg:pb-12 lg:pt-10">
+    <section className="page grid grid-cols-1 items-center gap-8 pb-(--section-y) pt-4 sm:pt-8 lg:grid-cols-[1.3fr_1fr] lg:gap-4 lg:pt-12">
       <div className="flex min-w-0 flex-col items-start">
-        <p className="flex items-center gap-2 font-pixel text-[16px] leading-none text-muted">
+        <p className="flex items-center gap-2 font-pixel text-pixel text-muted">
           <PixelSprite rows={SUN} cell={1} className="text-candy-pink" />
           Menu bar app for macOS
         </p>
-        <p aria-hidden="true" className="wordmark mt-5 font-pixel text-[64px] leading-none sm:text-[96px]">
+        <p aria-hidden="true" className="wordmark mt-6 font-pixel text-wordmark">
           <span className="wordmark-shadow">Wham</span>
           <span className="wordmark-face">Wham</span>
         </p>
-        <h1 className="mt-7 text-[38px] font-black leading-[1.06] tracking-[-0.025em] sm:text-[54px] lg:text-[46px] xl:text-[52px]">
+        <h1 className="mt-8 text-display font-black">
           <span className="block">Close the lid.</span> <span className="candy-mark">Your Mac stays awake.</span>
         </h1>
-        <p className="mt-5 max-w-[31rem] text-[18px] leading-[1.5] text-muted sm:text-[20px]">
+        <p className="mt-6 max-w-[32rem] text-lead text-muted">
           A one-click menu bar switch that keeps your Mac awake, for real, even with the lid shut.
         </p>
-        <div className="mt-8 w-full max-w-[33rem]">
-          <CopyCommand primary command="curl -fsSL wham.sh | sh" />
-        </div>
-        <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
-          <a href="/download" className="btn-candy">
+        <a href="/download" className="press candy-glow mt-8 flex h-14 items-center gap-2 rounded-full bg-candy pl-3 pr-6 text-lead font-black text-ink">
+          <span className="flex size-8 items-center justify-center">
             <PixelSprite rows={DOWN} cell={2} />
-            Download for Mac
-          </a>
-          <a href="#install" className="rounded-md text-[15px] font-bold underline decoration-2 underline-offset-4 hover:decoration-candy-pink">
-            or Homebrew, npm
-          </a>
-        </div>
-        <p className="mt-6 text-[14px] text-muted">Free and open source. macOS 11 Big Sur or later, Apple silicon and Intel.</p>
+          </span>
+          Download for Mac
+        </a>
+        <p className="mt-4 text-small text-muted">Free. macOS 11 or later. Apple silicon and Intel.</p>
       </div>
       <HeroStage />
     </section>
@@ -201,13 +211,25 @@ function Hero() {
 function TryIt() {
   return (
     <Section id="try" eyebrow="Try it" title="One switch in your menu bar.">
-      <p className="mt-4 max-w-[38rem] text-[18px] leading-[1.55] text-muted">
+      <Lead>
         That is the whole app. A sun when your Mac stays awake, a moon when it can sleep, a little chime either way. Go on,
         click it.
-      </p>
-      <div className="mt-10">
+      </Lead>
+      <div className="mt-12">
         <MenuBarDemo />
       </div>
+    </Section>
+  );
+}
+
+function Uses() {
+  return (
+    <Section id="uses" eyebrow="What it is for" title="Made for long jobs.">
+      <Lead>
+        Start it, close the lid, walk away. Anything that takes longer than you want to sit and watch keeps going until it is
+        done.
+      </Lead>
+      <UseCases />
     </Section>
   );
 }
@@ -215,118 +237,88 @@ function TryIt() {
 function HowItWorks() {
   return (
     <Section id="how" eyebrow="How it works" title="Three steps. The third one is the point.">
-      <ol className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
+      <ol className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-3">
         {STEPS.map((step, i) => (
-          <li key={step.title} className="flex flex-col rounded-[22px] bg-card p-6 ring-1 ring-line">
-            <div className="flex h-[80px] items-end md:h-[96px]">{step.art}</div>
+          <li key={step.title} className="flex flex-col rounded-3xl bg-card p-6 ring-1 ring-line">
+            <div className="flex h-24 items-end">{step.art}</div>
             <p className="mt-6 flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-candy font-pixel text-[16px] leading-none text-ink">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-candy font-pixel text-pixel text-ink pixel-even">
                 {i + 1}
               </span>
-              <span className="text-[21px] font-black tracking-[-0.01em]">{step.title}</span>
+              <span className="text-title font-black">{step.title}</span>
             </p>
-            <p className="mt-3 text-[16px] leading-[1.55] text-muted">{step.text}</p>
+            <p className="mt-3 text-body text-muted">{step.text}</p>
           </li>
         ))}
       </ol>
+      <p className="mt-8 flex max-w-[44rem] gap-3 text-body text-muted">
+        <PixelSprite rows={MOON} cell={2} className="mt-0.5 shrink-0 text-moon" />
+        <span>
+          Other keep-awake apps only ask macOS to stay up, which it ignores once the lid closes, so Wham turns sleep off itself
+          and back on when you are done.
+        </span>
+      </p>
+    </Section>
+  );
+}
 
-      <div className="mt-6 grid grid-cols-1 overflow-hidden rounded-[22px] ring-1 ring-line md:grid-cols-2">
-        <div className="bg-night p-6 text-white sm:p-8">
-          <p className="flex items-center gap-2 font-pixel text-[16px] leading-none text-moon">
-            <PixelSprite rows={MOON} cell={1} />
-            Why the others fall asleep
-          </p>
-          <h3 className="mt-4 text-[24px] font-black leading-[1.15] tracking-[-0.01em]">
-            Other apps hold a power assertion.
-          </h3>
-          <p className="mt-3 text-[16px] leading-[1.6] text-white/70">
-            It is the polite way to ask macOS to stay up, the same thing <Code dark>caffeinate</Code> does. macOS honors it while
-            the lid is open, then drops it the moment you close the lid. Your Mac sleeps anyway, halfway through the download.
-          </p>
-        </div>
-        <div className="relative bg-candy p-6 text-ink sm:p-8">
-          <div className="absolute inset-0 bg-white/30" aria-hidden="true" />
-          <div className="relative">
-            <p className="flex items-center gap-2 font-pixel text-[16px] leading-none">
-              <PixelSprite rows={SUN} cell={1} />
-              What Wham does
-            </p>
-            <h3 className="mt-4 text-[24px] font-black leading-[1.15] tracking-[-0.01em]">
-              Wham flips the kernel&apos;s own sleep switch.
-            </h3>
-            <p className="mt-3 text-[16px] leading-[1.6] text-ink/80">
-              It sets <Code light>pmset disablesleep</Code>, the flag macOS itself checks before it goes to sleep. With it on,
-              closing the lid has nothing left to trigger. Flip it off and your Mac sleeps as usual.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-1 gap-6 rounded-[22px] bg-card p-6 ring-1 ring-line sm:p-8 lg:grid-cols-[1fr_1.25fr] lg:items-center">
-        <div>
-          <p className="font-pixel text-[16px] leading-none text-muted">One password, once</p>
-          <h3 className="mt-4 text-[24px] font-black leading-[1.15] tracking-[-0.01em]">Exactly two commands. Nothing else.</h3>
-          <p className="mt-3 text-[16px] leading-[1.6] text-muted">
-            Changing that flag takes an administrator. So the first time you click, macOS shows its own password prompt, and Wham
-            installs a sudoers rule that lets your account run two commands without a password: sleep off, sleep on. Wham never
-            gets root for anything else, and uninstalling removes the rule.
-          </p>
-        </div>
-        <pre className="min-w-0 overflow-x-auto whitespace-pre-wrap break-words rounded-[16px] bg-ink p-5 font-mono text-[13px] leading-[1.7] text-white/90 ring-1 ring-white/10 dark:bg-[#1c1222] sm:text-[14px]">
-          <span className="text-white/45"># /private/etc/sudoers.d/wham, for user ID 501 (you)</span>
-          {"\n"}
-          <span className="text-candy-yellow">#501</span> ALL=(root) NOPASSWD: <span className="text-candy-pink">/usr/bin/pmset -a disablesleep 0</span>,{" "}
-          <span className="text-candy-cyan">/usr/bin/pmset -a disablesleep 1</span>
-        </pre>
+function Faq() {
+  return (
+    <Section id="faq" eyebrow="FAQ" title="Good questions.">
+      <div className="mt-12 grid grid-cols-1 gap-3">
+        {FAQ.map(({ q, a }) => (
+          <Disclosure
+            key={q}
+            summary={q}
+            className="rounded-3xl bg-card ring-1 ring-line transition-shadow data-[open=true]:ring-candy-pink/50"
+            buttonClassName="rounded-3xl p-6 text-title font-extrabold"
+          >
+            <div className="px-6 pb-6 text-body text-muted">{a}</div>
+          </Disclosure>
+        ))}
       </div>
     </Section>
   );
 }
 
-function Install() {
+// Everything a terminal can do, folded away at the bottom.
+function Developers() {
   return (
-    <Section id="install" eyebrow="Install" title="Pick your way in.">
-      <p className="mt-4 max-w-[38rem] text-[18px] leading-[1.55] text-muted">
-        Every one of them installs the same signed app, puts it in your menu bar and adds the <Code>wham</Code> command.
-      </p>
-      <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-[1.35fr_1fr]">
-        <div className="flex min-w-0 flex-col rounded-[22px] bg-card p-4 ring-1 ring-line sm:p-8">
-          <Label>Terminal (recommended)</Label>
-          <div className="mt-3">
-            <CopyCommand primary command="curl -fsSL wham.sh | sh" />
-          </div>
-          <p className="mt-3 text-[15px] leading-[1.55] text-muted">
-            Downloads the latest release, checks that its developer signed it, puts it in Applications and opens it. Run it again
-            to update. Curious first? <A href="/install">Read the script</A>.
-          </p>
-          <div className="mt-7 grid grid-cols-1 gap-5">
-            <div>
-              <Label>Homebrew</Label>
-              <div className="mt-3">
-                <CopyCommand command="brew install gwendall/tap/wham" />
-              </div>
+    <section aria-label="For developers" className="page pb-(--section-y)">
+      <Disclosure
+        id="developers"
+        heading="h2"
+        className="scroll-mt-4 rounded-3xl bg-card ring-1 ring-line transition-shadow data-[open=true]:ring-candy-pink/50"
+        buttonClassName="rounded-3xl p-6"
+        summary={
+          <span className="flex min-w-0 items-center gap-4">
+            <Tile sprite={PROMPT} className="bg-ink text-white dark:bg-white/10" />
+            <span className="min-w-0">
+              <span className="block text-title font-black">For developers</span>
+              <span className="mt-1 block text-small text-muted">Terminal, Homebrew, npm and the wham command.</span>
+            </span>
+          </span>
+        }
+      >
+        <div className="grid grid-cols-1 gap-12 px-6 pb-6 pt-6 lg:grid-cols-2">
+          <div className="min-w-0">
+            <Label>Install</Label>
+            <p className="mt-3 text-body text-muted">
+              The same signed app as the download, plus the <Code>wham</Code> command. Run it again to update.
+            </p>
+            <div className="mt-6 grid gap-3">
+              <CopyCommand command="curl -fsSL wham.sh | sh" />
+              <CopyCommand command="brew install gwendall/tap/wham" />
+              <CopyCommand command="npx wham.sh" />
             </div>
-            <div>
-              <Label>npm</Label>
-              <div className="mt-3">
-                <CopyCommand command="npx wham.sh" />
-              </div>
-            </div>
+            <p className="mt-6 text-body text-muted">
+              Curious first? <A href="/install">Read install.sh</A>: it downloads the latest release, checks its signature, puts
+              it in Applications and opens it.
+            </p>
           </div>
-          <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-7">
-            <a href="/download" className="btn-candy">
-              <PixelSprite rows={DOWN} cell={2} />
-              Download for Mac
-            </a>
-            <span className="text-[15px] text-muted">Wham.dmg: open it, drag Wham to Applications.</span>
-          </div>
-        </div>
-
-        <div className="flex min-w-0 flex-col gap-6">
-          <div className="min-w-0 rounded-[22px] bg-card p-5 ring-1 ring-line sm:p-8">
-            <Label>From a terminal</Label>
-            <p className="mt-3 text-[15px] leading-[1.55] text-muted">The same switch, for scripts and SSH sessions.</p>
-            <pre className="mt-4 whitespace-pre-wrap break-words rounded-[16px] bg-ink p-5 font-mono text-[13px] leading-[1.75] text-white ring-1 ring-white/10 dark:bg-[#1c1222] sm:text-[14px]">
+          <div className="min-w-0">
+            <Label>The wham command</Label>
+            <pre className="mt-6 whitespace-pre-wrap break-words rounded-2xl bg-ink p-4 font-mono text-small text-white ring-1 ring-white/10 dark:bg-[#1c1222]">
               <Prompt />
               wham on{"\n"}
               <span className="text-candy-pink">on: your Mac stays awake, even with the lid closed</span>
@@ -339,64 +331,39 @@ function Install() {
               wham off{"\n"}
               <span className="text-moon">off: your Mac sleeps as usual</span>
             </pre>
-          </div>
-          <div className="rounded-[22px] bg-card p-5 ring-1 ring-line sm:p-8">
-            <Label>Requirements</Label>
-            <ul className="mt-4 grid gap-3 text-[16px] font-semibold">
-              <Check>macOS 11 Big Sur or later</Check>
-              <Check>Apple silicon and Intel</Check>
-              <Check>
-                Free and open source, <A href={`${GITHUB}/blob/main/LICENSE`}>MIT</A>
-              </Check>
-            </ul>
-            <a
-              href={GITHUB}
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-fg px-5 py-3 text-[15px] font-extrabold text-bg transition-transform hover:-translate-y-0.5"
-            >
-              <GitHubIcon />
-              gwendall/wham on GitHub
-            </a>
+            <Label className="mt-12">Uninstall</Label>
+            <div className="mt-6">
+              <CopyCommand command="curl -fsSL wham.sh/uninstall | sh" />
+            </div>
+            <p className="mt-6 text-body text-muted">
+              It quits Wham, which gives sleep back, then removes the app, the <Code>wham</Code> command, its settings and the
+              sudoers rule below. With Homebrew: <Code>brew uninstall --zap wham</Code>.{" "}
+              <A href="/uninstall">Read uninstall.sh</A>.
+            </p>
+            <pre className="mt-6 whitespace-pre-wrap break-words rounded-2xl bg-ink p-4 font-mono text-small text-white/90 ring-1 ring-white/10 dark:bg-[#1c1222]">
+              <span className="text-white/45"># /private/etc/sudoers.d/wham, for user ID 501 (you)</span>
+              {"\n"}
+              <span className="text-candy-yellow">#501</span> ALL=(root) NOPASSWD: <span className="text-candy-pink">/usr/bin/pmset -a disablesleep 0</span>,{" "}
+              <span className="text-candy-cyan">/usr/bin/pmset -a disablesleep 1</span>
+            </pre>
           </div>
         </div>
-      </div>
-    </Section>
-  );
-}
-
-function Faq() {
-  return (
-    <Section id="faq" eyebrow="FAQ" title="Good questions.">
-      <div className="mt-10 grid grid-cols-1 gap-3">
-        {FAQ.map(({ q, a }) => (
-          <details key={q} className="group rounded-[18px] bg-card ring-1 ring-line open:ring-candy-pink/50">
-            <summary className="flex cursor-pointer items-center justify-between gap-4 rounded-[18px] px-5 py-4 text-[18px] font-extrabold sm:px-6 sm:py-5">
-              {q}
-              <span
-                aria-hidden="true"
-                className="faq-plus flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fg/6 font-pixel text-[16px] leading-none transition-transform duration-300"
-              >
-                +
-              </span>
-            </summary>
-            <div className="px-5 pb-5 text-[16px] leading-[1.65] text-muted sm:px-6 sm:pb-6">{a}</div>
-          </details>
-        ))}
-      </div>
-    </Section>
+      </Disclosure>
+    </section>
   );
 }
 
 function Footer() {
   return (
-    <footer className="mx-auto max-w-6xl px-4 pb-10 pt-8 sm:px-6">
-      <div className="relative overflow-hidden rounded-[28px] bg-night px-6 py-14 text-center text-white dark:ring-1 dark:ring-white/10">
+    <footer className="page pb-8">
+      <div className="relative overflow-hidden rounded-4xl bg-night px-8 py-16 text-center text-white dark:ring-1 dark:ring-white/10">
         <div
           aria-hidden="true"
           className="absolute inset-x-0 -bottom-24 mx-auto h-48 w-[80%] rounded-full bg-[radial-gradient(closest-side,rgba(255,3,180,0.35),transparent)]"
         />
         <div className="relative flex flex-col items-center">
-          <PixelSprite rows={SUN} cell={4} className="text-candy-yellow" />
-          <p className="mt-6 text-[22px] font-black leading-[1.3] tracking-[-0.01em] text-balance sm:text-[26px]">
+          <PixelSprite rows={SUN_LIT} cell={4} className="text-candy-yellow" />
+          <p className="mt-6 text-title font-black">
             <span className="block">
               Wake me up before you <span className="whitespace-nowrap">go-go?</span>
             </span>{" "}
@@ -404,34 +371,32 @@ function Footer() {
           </p>
           <a
             href="https://gwendall.com"
-            className="group mt-10 flex flex-col items-center gap-3 rounded-2xl px-4 py-2"
+            className="group mt-12 flex flex-col items-center gap-3 rounded-2xl p-3"
             aria-label="Made by Gwendall, gwendall.com"
           >
-            <span className="flex items-center gap-3 font-pixel text-[16px] leading-none text-white/60">
+            <span className="flex items-center gap-3 font-pixel text-pixel text-white/60 pixel-even">
               Made with
               <PixelSprite rows={HEART} cell={3} className="text-candy-pink transition-transform duration-300 group-hover:scale-125" />
               by
             </span>
-            <span className="font-pixel text-[32px] leading-none tracking-[0.125em] text-white transition-colors group-hover:text-candy-yellow">
-              Gwendall
-            </span>
-            <span className="h-[4px] w-full bg-candy opacity-80 transition-opacity group-hover:opacity-100" />
+            <span className="font-pixel text-pixel-lg text-white pixel-even transition-colors group-hover:text-candy-yellow">Gwendall</span>
+            <span className="h-1 w-full bg-candy opacity-80 transition-opacity group-hover:opacity-100" />
           </a>
         </div>
       </div>
-      <div className="mt-6 flex flex-col items-center justify-between gap-3 px-2 text-[14px] text-muted sm:flex-row">
+      <div className="mt-6 flex flex-col items-center justify-between gap-3 text-small text-muted sm:flex-row">
         <p className="flex items-center gap-2">
           <PixelSprite rows={SUN} cell={1} />
-          Wham is free and open source, under the MIT license.
+          Wham is free and open source, under the <A href={`${GITHUB}/blob/main/LICENSE`}>MIT</A> license.
         </p>
-        <nav aria-label="Footer" className="flex items-center gap-5 font-bold">
-          <a href={GITHUB} className="hover:text-fg">
+        <nav aria-label="Footer" className="flex items-center gap-6 font-bold">
+          <a href={GITHUB} className="transition-colors hover:text-fg">
             GitHub
           </a>
-          <a href="/install" className="hover:text-fg">
+          <a href="/install" className="transition-colors hover:text-fg">
             install.sh
           </a>
-          <a href="/uninstall" className="hover:text-fg">
+          <a href="/uninstall" className="transition-colors hover:text-fg">
             uninstall.sh
           </a>
         </nav>
@@ -442,9 +407,9 @@ function Footer() {
 
 function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string; title: string; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="mx-auto max-w-6xl scroll-mt-6 px-4 py-12 sm:px-6 sm:py-16">
-      <p className="font-pixel text-[16px] leading-none text-candy-pink">{eyebrow}</p>
-      <h2 id={`${id}-title`} className="mt-4 text-[32px] font-black leading-[1.08] tracking-[-0.02em] text-balance sm:text-[44px]">
+    <section id={id} aria-labelledby={`${id}-title`} className="page py-(--section-y)">
+      <p className="font-pixel text-pixel text-candy-pink">{eyebrow}</p>
+      <h2 id={`${id}-title`} className="mt-4 text-heading font-black">
         {title}
       </h2>
       {children}
@@ -452,18 +417,32 @@ function Section({ id, eyebrow, title, children }: { id: string; eyebrow: string
   );
 }
 
-function Label({ children }: { children: ReactNode }) {
-  return <p className="font-pixel text-[16px] leading-none text-muted">{children}</p>;
+function Lead({ children }: { children: ReactNode }) {
+  return <p className="mt-4 max-w-[38rem] text-lead text-muted">{children}</p>;
 }
 
-function Code({ children, dark, light }: { children: ReactNode; dark?: boolean; light?: boolean }) {
-  const tone = dark ? "bg-white/10 text-white" : light ? "bg-ink/10 text-ink" : "bg-fg/7 text-fg";
-  return <code className={`rounded-md px-1.5 py-0.5 font-mono text-[0.88em] ${tone}`}>{children}</code>;
+function Label({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <p className={`font-pixel text-pixel text-muted ${className}`}>{children}</p>;
+}
+
+function NavLink({ href, className = "", children }: { href: string; className?: string; children: ReactNode }) {
+  return (
+    <a href={href} className={`h-10 items-center rounded-full px-4 transition-colors hover:bg-fg/6 ${className}`}>
+      {children}
+    </a>
+  );
+}
+
+function Code({ children }: { children: ReactNode }) {
+  return <code className="rounded-sm bg-fg/7 px-1 font-mono text-[0.875em] text-fg">{children}</code>;
 }
 
 function A({ href, children }: { href: string; children: ReactNode }) {
   return (
-    <a href={href} className="font-bold text-fg underline decoration-candy-pink decoration-2 underline-offset-3 hover:decoration-candy-cyan">
+    <a
+      href={href}
+      className="font-bold text-fg underline decoration-candy-pink decoration-2 underline-offset-4 transition-colors hover:decoration-candy-cyan"
+    >
       {children}
     </a>
   );
@@ -477,17 +456,6 @@ function Prompt() {
   );
 }
 
-function Check({ children }: { children: ReactNode }) {
-  return (
-    <li className="flex items-center gap-3">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-candy text-ink">
-        <PixelSprite rows={TICK} cell={2} />
-      </span>
-      <span>{children}</span>
-    </li>
-  );
-}
-
 function GitHubIcon() {
   return (
     <svg aria-hidden="true" width="20" height="20" viewBox="0 0 16 16" fill="currentColor">
@@ -497,4 +465,3 @@ function GitHubIcon() {
 }
 
 const DOWN = ["..##..", "..##..", "..##..", "######", ".####.", "..##..", "......", "######"];
-const TICK = [".....#", "....##", "#..##.", "####..", ".##..."];

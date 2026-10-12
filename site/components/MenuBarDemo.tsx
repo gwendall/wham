@@ -1,21 +1,17 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import { MenuSwitch } from "@/components/MenuSwitch";
 import { PixelSprite } from "@/components/PixelSprite";
 import { Toast, type ToastShow } from "@/components/Toast";
 import { chime } from "@/lib/chime";
-import { lerp, perceptual, prefersReducedMotion, springFrames } from "@/lib/spring";
-import { FACE, MOON, SUN } from "@/lib/sprites";
+import { FACE, MOON } from "@/lib/sprites";
 
-// A working copy of Wham's menu bar item (app/Sources/SwitchView.swift), at
-// one and a half times its size: the pixel glyph, the switch, the chime and
-// the toast. The little desktop behind it follows the brand: on is candy, off
-// is night.
-const TRACK_W = 42;
-const TRACK_H = 24;
-const INSET = 4;
-const KNOB = TRACK_H - 2 * INSET;
-const TRAVEL = TRACK_W - 2 * INSET - KNOB;
+// A working copy of Wham's menu bar item, at its real size in points: the
+// switch with its glyph in the knob, the chime and the toast. As in the app,
+// the switch is its own feedback: no highlight box on hover or press, only a
+// focus ring for the keyboard. The little desktop behind it follows the
+// brand: on is candy, off is night.
 
 // Pixel stars on the night wallpaper: [x %, y %, size px].
 const STARS = [
@@ -39,9 +35,6 @@ export function MenuBarDemo() {
   const desk = useRef<HTMLDivElement>(null);
   const item = useRef<HTMLButtonElement>(null);
   const toastBox = useRef<HTMLDivElement>(null);
-  const knob = useRef<HTMLSpanElement>(null);
-  const sun = useRef<HTMLSpanElement>(null);
-  const moon = useRef<HTMLSpanElement>(null);
 
   // Where the switch sits, so the toast and the hint drop right under it.
   useLayoutEffect(() => {
@@ -74,37 +67,6 @@ export function MenuBarDemo() {
     setTouched(true);
     setToast((t) => ({ kind: next ? "on" : "off", id: (t?.id ?? 0) + 1 }));
     chime(next);
-    if (prefersReducedMotion()) return;
-
-    const k = knob.current;
-    if (k) {
-      const [from, to] = next ? [0, TRAVEL] : [TRAVEL, 0];
-      const move = springFrames([perceptual(0.34, 0.18)], ([x]) => ({ transform: `translateX(${lerp(from, to, x)}px)` }));
-      k.animate(move.frames, { duration: move.duration });
-      // The knob stretches as it leaves, like a drop of liquid.
-      k.animate(
-        [
-          { width: `${KNOB}px`, left: `${INSET}px` },
-          { width: `${KNOB + 4}px`, left: `${INSET - (next ? 0 : 4)}px`, offset: 0.35, easing: "ease-in-out" },
-          { width: `${KNOB}px`, left: `${INSET}px` },
-        ],
-        { duration: 320, easing: "ease-out" },
-      );
-    }
-    // The glyph that arrives pops in turning; the one that leaves shrinks away.
-    const [arriving, leaving] = next ? [sun.current, moon.current] : [moon.current, sun.current];
-    const pop = springFrames([perceptual(0.4, 0.4), perceptual(0.45, 0.3)], ([scale, turn]) => ({
-      transform: `rotate(${lerp(next ? 90 : -60, 0, turn)}deg) scale(${lerp(0.2, 1, scale)})`,
-    }));
-    arriving?.animate(pop.frames, { duration: pop.duration });
-    arriving?.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120 });
-    leaving?.animate(
-      [
-        { opacity: 1, transform: "scale(1)" },
-        { opacity: 0, transform: "scale(0.3)" },
-      ],
-      { duration: 140, easing: "ease-in-out" },
-    );
   }
 
   const label = on ? "text-ink" : "text-white";
@@ -112,7 +74,7 @@ export function MenuBarDemo() {
     <figure className="m-0">
       <div
         ref={desk}
-        className="relative h-[300px] overflow-hidden rounded-[22px] bg-night shadow-[0_24px_60px_-28px_rgba(26,11,23,0.55)] ring-1 ring-line sm:h-[340px]"
+        className="relative h-75 overflow-hidden rounded-3xl bg-night shadow-[0_24px_64px_-28px_rgba(26,11,23,0.55)] ring-1 ring-line sm:h-85"
       >
         {/* Night wallpaper, then candy on top when the switch is on. */}
         <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_120%,#4a2257_0%,transparent_60%),linear-gradient(180deg,#120b19,#21112b)]">
@@ -133,7 +95,7 @@ export function MenuBarDemo() {
 
         {/* The menu bar. */}
         <div
-          className={`relative z-10 flex h-10 items-center justify-between px-3 font-system text-[14px] backdrop-blur-xl transition-colors duration-500 sm:px-4 ${
+          className={`relative z-10 flex h-10 items-center justify-between px-3 font-system text-small backdrop-blur-xl transition-colors duration-500 sm:px-4 ${
             on ? "bg-white/35" : "bg-black/30"
           } ${label}`}
         >
@@ -153,29 +115,11 @@ export function MenuBarDemo() {
               aria-checked={on}
               aria-label="Keep this Mac awake, even with the lid closed"
               onClick={flip}
-              className={`relative flex h-[32px] cursor-pointer items-center gap-[8px] rounded-[8px] px-[8px] transition-colors hover:bg-white/20 focus-visible:outline-2 focus-visible:outline-offset-2 ${
+              className={`relative flex h-8 cursor-pointer items-center rounded-full px-2 focus-visible:outline-2 ${
                 on ? "focus-visible:outline-ink" : "focus-visible:outline-white"
               }`}
             >
-              <span className="relative block h-[22px] w-[22px]">
-                <span ref={sun} className={`absolute inset-0 ${on ? "opacity-100" : "opacity-0"}`}>
-                  <PixelSprite rows={SUN} cell={2} />
-                </span>
-                <span ref={moon} className={`absolute inset-0 ${on ? "opacity-0" : "opacity-100"}`}>
-                  <PixelSprite rows={MOON} cell={2} />
-                </span>
-              </span>
-              <span className="relative block" style={{ width: TRACK_W, height: TRACK_H }}>
-                <span
-                  className={`absolute inset-0 rounded-full border-2 border-current transition-opacity duration-200 ${on ? "opacity-0" : "opacity-100"}`}
-                />
-                <span className={`absolute inset-0 rounded-full bg-candy transition-opacity duration-200 ${on ? "opacity-100" : "opacity-0"}`} />
-                <span
-                  ref={knob}
-                  className={`absolute rounded-full transition-colors duration-150 ${on ? "bg-white shadow-[0_1px_2px_rgba(0,0,0,0.3)]" : "bg-current"}`}
-                  style={{ left: INSET, top: INSET, width: KNOB, height: KNOB, transform: `translateX(${on ? TRAVEL : 0}px)` }}
-                />
-              </span>
+              <MenuSwitch on={on} />
             </button>
             <WifiIcon />
             <BatteryIcon />
@@ -190,13 +134,13 @@ export function MenuBarDemo() {
           <div className={`absolute transition-all duration-500 ${on ? "scale-50 opacity-0" : "scale-100 opacity-100"}`}>
             <div className="relative text-moon">
               <PixelSprite rows={MOON} cell={7} />
-              <span className="zzz absolute -right-9 -top-3 font-pixel text-[24px] text-moon">Z</span>
-              <span className="zzz zzz-2 absolute -right-16 -top-10 font-pixel text-[16px] text-moon">Z</span>
+              <span className="zzz absolute -right-10 -top-4 font-pixel text-pixel-lg text-moon">Z</span>
+              <span className="zzz zzz-2 absolute -right-16 -top-12 font-pixel text-pixel text-moon">Z</span>
             </div>
           </div>
           <div className={`absolute transition-all duration-500 ${on ? "scale-100 opacity-100" : "scale-50 opacity-0"}`}>
             <div className="bob text-ink">
-              <PixelSprite rows={FACE} cell={6} />
+              <PixelSprite rows={FACE} cell={5} />
             </div>
           </div>
         </div>
@@ -204,19 +148,19 @@ export function MenuBarDemo() {
         {!touched && anchor !== null && (
           <div
             aria-hidden="true"
-            className="hint pointer-events-none absolute top-[46px] z-20 flex -translate-x-1/2 flex-col items-center gap-1 text-white"
+            className="hint pointer-events-none absolute top-12 z-20 flex -translate-x-1/2 flex-col items-center gap-2 text-white"
             style={{ left: anchor }}
           >
             <PixelSprite rows={ARROW} cell={2} />
-            <span className="font-pixel text-[16px] leading-none">Click me</span>
+            <span className="font-pixel text-pixel">Click me</span>
           </div>
         )}
 
-        <div ref={toastBox} className="pointer-events-none absolute top-[46px] z-20">
+        <div ref={toastBox} className="pointer-events-none absolute top-12 z-20">
           <Toast show={toast} />
         </div>
       </div>
-      <figcaption className="mt-3 text-center text-[14px] text-muted">
+      <figcaption className="mt-4 text-center text-small text-muted">
         Sound on: that is the real chime, an 8-bit arpeggio played by your browser.
       </figcaption>
     </figure>

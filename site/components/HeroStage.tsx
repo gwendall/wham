@@ -13,7 +13,7 @@ export function HeroStage() {
   return (
     <div
       role="img"
-      aria-label="A MacBook closes its lid while an export keeps running, then opens on the finished job."
+      aria-label="A MacBook closes its lid while a long job keeps running: coding agents like Claude Code, a film export, a download, a render, a backup. The lid opens on the finished job."
       className="relative mx-auto aspect-[6/5] w-full max-w-[560px]"
     >
       <MacScene onToast={onToast} />

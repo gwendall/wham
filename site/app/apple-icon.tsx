@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { FACE, spritePath } from "@/lib/sprites";
+import { FACE, spriteLayers } from "@/lib/sprites";
 
 // The app icon for home screens: candy, and the sun wide awake.
 export const size = { width: 180, height: 180 };
@@ -19,8 +19,10 @@ export default function AppleIcon() {
           backgroundImage: "linear-gradient(135deg, #ff7ad9, #ffd36e, #6fd3ff)",
         }}
       >
-        <svg width={17 * cell} height={17 * cell} viewBox="0 0 17 17">
-          <path d={spritePath(FACE)} fill="#1a0b17" shapeRendering="crispEdges" />
+        <svg width={21 * cell} height={21 * cell} viewBox="0 0 21 21">
+          {spriteLayers(FACE).map(({ color, fill, d }) => (
+            <path key={color} d={d} fill={fill} shapeRendering="crispEdges" />
+          ))}
         </svg>
       </div>
     ),

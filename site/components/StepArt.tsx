@@ -1,15 +1,23 @@
+import { MenuSwitch } from "@/components/MenuSwitch";
 import { PixelSprite } from "@/components/PixelSprite";
-import { MOON, SUN } from "@/lib/sprites";
+import { FACE } from "@/lib/sprites";
 
 // Small pixel scenes for the three steps of "How it works".
 
+// The app's icon: the sun, wide awake, on candy. 63 px of face, 12 px in.
+export function OpenArt() {
+  return (
+    <div aria-hidden="true" className="rounded-[20px] bg-candy p-3 shadow-[0_8px_24px_-8px_rgba(255,3,180,0.5)]">
+      <PixelSprite rows={FACE} cell={3} className="block text-ink" />
+    </div>
+  );
+}
+
+// Wham's menu bar item, switched on, at twice its size on a strip of menu bar.
 export function SwitchArt() {
   return (
-    <div aria-hidden="true" className="flex items-center gap-[8px] rounded-[10px] bg-white/45 px-3 py-2 text-ink dark:bg-white/10 dark:text-white">
-      <PixelSprite rows={SUN} cell={2} />
-      <span className="relative block h-[24px] w-[42px] rounded-full bg-candy">
-        <span className="absolute right-[4px] top-[4px] h-[16px] w-[16px] rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,0.3)]" />
-      </span>
+    <div aria-hidden="true" className="flex h-14 items-center rounded-2xl bg-fg/6 px-4 text-fg">
+      <MenuSwitch on scale={2} />
     </div>
   );
 }
@@ -23,22 +31,6 @@ export function LidArt() {
       <span className="absolute bottom-0 left-[12px] h-[4px] w-[10px] bg-current opacity-40" />
       <span className="absolute bottom-0 right-[10px] h-[4px] w-[10px] bg-current opacity-40" />
       <span className="step-lid absolute bottom-[12px] left-[6px] h-[6px] w-[70px] bg-current" />
-    </div>
-  );
-}
-
-export function RunArt() {
-  return (
-    <div aria-hidden="true" className="flex w-[150px] flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="font-pixel text-[16px] leading-none">Running</span>
-        <span className="text-moon opacity-60">
-          <PixelSprite rows={MOON} cell={1} />
-        </span>
-      </div>
-      <div className="h-[14px] w-full overflow-hidden rounded-[3px] bg-current/12 p-[2px]">
-        <div className="step-bar pixel-bar-fill h-full w-[70%]" style={{ ["--bar-width" as string]: "146px" }} />
-      </div>
     </div>
   );
 }

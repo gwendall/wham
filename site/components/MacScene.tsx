@@ -5,7 +5,7 @@ import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { meter, SCENARIOS, type Scenario } from "@/lib/scenarios";
-import { FACE, SUN, type Sprite } from "@/lib/sprites";
+import { FACE, PALETTE, SUN, type Sprite } from "@/lib/sprites";
 
 // The hero: a little MacBook starts a long job (a coding agent, an export, a
 // render, a download: lib/scenarios.ts), the lid closes, the job keeps going
@@ -197,7 +197,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
       const text = `${id}:${pct}`;
       if (text === hudText) return;
       hudText = text;
-      if (percent.current) percent.current.textContent = `${pct}%`;
+      if (percent.current) percent.current.replaceChildren(...cells(`${pct}%`).map(cellNode));
       if (fill.current) fill.current.style.width = `${Math.floor(p * 10) * 10}%`;
       if (label.current) label.current.textContent = pct >= 100 ? words.done : words.title;
       if (caption.current) caption.current.textContent = words.caption;
@@ -315,21 +315,40 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
         ref={hud}
         data-show="false"
         aria-hidden="true"
-        className="hud pointer-events-none absolute left-1/2 top-[21%] flex w-[224px] -translate-x-1/2 flex-col gap-2 rounded-[18px] bg-pill px-4 py-3 text-white ring-[0.5px] ring-white/15"
+        className="hud pointer-events-none absolute left-1/2 top-[21%] flex w-58 -translate-x-1/2 flex-col gap-3 rounded-2xl bg-pill p-4 text-white ring-[0.5px] ring-white/15"
       >
-        <div className="flex items-center justify-between font-pixel text-[16px] leading-none">
+        <div className="flex items-center justify-between font-pixel text-pixel pixel-even">
           <span ref={label}>{SCENARIOS[0].hud.title}</span>
-          <span ref={percent}>0%</span>
+          <span ref={percent}>
+            {cells("0%").map(({ char, digit }, i) => (
+              <span key={i} className={digit ? "pixel-digit" : undefined}>
+                {char}
+              </span>
+            ))}
+          </span>
         </div>
-        <div className="pixel-bar h-[10px] w-full">
+        <div className="pixel-bar h-3 w-full">
           <div ref={fill} className="pixel-bar-fill h-full w-0" />
         </div>
-        <div ref={caption} className="text-[12px] font-bold leading-none text-white/60">
+        <div ref={caption} className="text-micro font-bold text-white/60">
           {SCENARIOS[0].hud.caption}
         </div>
       </div>
     </div>
   );
+}
+
+// Silkscreen has no tabular figures: its "1" is a pixel narrower than the
+// other digits. Counters give every digit the same cell, so they never jitter.
+function cells(text: string) {
+  return [...text].map((char) => ({ char, digit: /\d/.test(char) }));
+}
+
+function cellNode({ char, digit }: { char: string; digit: boolean }) {
+  const node = document.createElement("span");
+  node.textContent = char;
+  if (digit) node.className = "pixel-digit";
+  return node;
 }
 
 function texture(canvas: HTMLCanvasElement, pixelated = false) {
@@ -422,12 +441,19 @@ function spriteCanvas(rows: Sprite, color: string, cell = 4, margin = 0) {
   const canvas = document.createElement("canvas");
   canvas.width = rows[0].length * cell + margin * 2;
   canvas.height = rows.length * cell + margin * 2;
-  const g = canvas.getContext("2d")!;
-  g.fillStyle = color;
-  rows.forEach((row, y) => {
-    for (let x = 0; x < row.length; x++) if (row[x] === "#") g.fillRect(margin + x * cell, margin + y * cell, cell, cell);
-  });
+  drawSprite(canvas.getContext("2d")!, rows, color, margin, margin, cell);
   return canvas;
+}
+
+// "#" pixels in `color`, the others in their own (butter, pink).
+function drawSprite(g: CanvasRenderingContext2D, rows: Sprite, color: string, left: number, top: number, cell: number) {
+  rows.forEach((row, y) => {
+    for (let x = 0; x < row.length; x++) {
+      if (row[x] === ".") continue;
+      g.fillStyle = row[x] === "#" ? color : PALETTE[row[x]];
+      g.fillRect(left + x * cell, top + y * cell, cell, cell);
+    }
+  });
 }
 
 function paintScreen(canvas: HTMLCanvasElement, { scenario, step, typed, p }: ScreenState, font: string) {
@@ -448,13 +474,23 @@ function paintScreen(canvas: HTMLCanvasElement, { scenario, step, typed, p }: Sc
   });
 
   g.textBaseline = "alphabetic";
-  // One line of Silkscreen, shrunk only if a scenario's text would run off the screen.
+  // One line of Silkscreen at 24 px, shrunk only if a scenario's text would run
+  // off the screen. Drawn a letter at a time, tracked like the page (one font
+  // pixel, 3 px, off each letter), and every digit gets the same 5/8 em cell,
+  // like the HUD's: the counters tick without jittering.
   const text = (words: string, x: number, y: number, color: string, room = width - 32 - x) => {
+    const letters = cells(words.toUpperCase());
     g.font = `24px ${font}`;
-    const wide = g.measureText(words.toUpperCase()).width;
-    if (wide > room) g.font = `${Math.floor((24 * room) / wide)}px ${font}`;
+    const advances = letters.map(({ char, digit }) => (digit ? 18 : g.measureText(char).width) - 3);
+    const wide = advances.reduce((a, b) => a + b, 0);
+    const size = wide > room ? Math.floor((24 * room) / wide) : 24;
+    g.font = `${size}px ${font}`;
     g.fillStyle = color;
-    g.fillText(words.toUpperCase(), x, y);
+    let left = x;
+    letters.forEach(({ char }, i) => {
+      g.fillText(char, left, y);
+      left += (advances[i] * size) / 24;
+    });
   };
   const line = (words: string, y: number, color: string) => text(words, 32, y, color);
   line("$ wham on", 96, "#ffffff");
@@ -482,6 +518,18 @@ function paintScreen(canvas: HTMLCanvasElement, { scenario, step, typed, p }: Sc
 
   if (step === "done") {
     line(scenario.done, 290, "#ffd36e");
-    g.drawImage(spriteCanvas(FACE, "#ffd36e", 4), width - 32 - 68, height - 32 - 68);
+    // The app's icon, as on the Dock: the sun's ink would vanish on the dark screen.
+    const tile = 75;
+    const left = width - 32 - tile;
+    const top = height - 32 - tile;
+    const candy = g.createLinearGradient(left, top, left + tile, top + tile);
+    candy.addColorStop(0, "#ff7ad9");
+    candy.addColorStop(0.5, "#ffd36e");
+    candy.addColorStop(1, "#6fd3ff");
+    g.fillStyle = candy;
+    g.beginPath();
+    g.roundRect(left, top, tile, tile, 17);
+    g.fill();
+    drawSprite(g, FACE, "#1a0b17", left + 6, top + 6, 3);
   }
 }
