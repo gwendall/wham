@@ -82,6 +82,15 @@ Measured on a MacBook Air (Apple silicon), macOS 26.6, by `scripts/eval.sh`:
 | App on disk | 1.4 MB (536 KB of it the universal binary) | |
 | Download (zip) | about 1 MB | |
 
+CI holds every runner to the same budgets. The first run, on 2026-10-12:
+
+| Runner | Idle CPU per 30 s | Memory | `wham on` / `wham off` flip the real flag |
+| --- | --- | --- | --- |
+| macOS 14.8, Apple silicon | 0.01 s | 8 MB | yes |
+| macOS 15.7, Apple silicon | 0.05 s | 8 MB | yes |
+| macOS 15.7, Intel | 0.01 s | 5 MB | yes |
+| macOS 26.6, Apple silicon | 0.03 s | 10 MB | yes |
+
 Where the little it does goes:
 
 - One timer, every 2 s with 1 s of tolerance so macOS can batch it with other

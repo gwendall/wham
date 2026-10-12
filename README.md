@@ -15,6 +15,23 @@
   <img src="docs/toast-off.png" width="266" alt="MAC CAN SLEEP - Back to normal sleep">
 </p>
 
+## What for
+
+Anything that should keep running after you close the lid:
+
+- **AI agents in the terminal.** Claude Code, Codex, OpenCode or Grok finish
+  the task while you are away.
+- **Video exports and renders.** Final Cut, Premiere, DaVinci Resolve, ffmpeg,
+  Blender.
+- **Local AI.** Ollama or LM Studio serving your other devices, big model
+  downloads, fine-tunes.
+- **Builds, tests, downloads, backups and syncs.**
+- **Servers and remote access.** A dev server you open from your phone, Plex,
+  SSH, tmux, Screen Sharing.
+
+Scripts and agents can flip it too: `wham on` before a long job, `wham off`
+after.
+
 ## Install
 
 ```sh
