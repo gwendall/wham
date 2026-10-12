@@ -95,9 +95,11 @@ check "$(is "[ \"\$(echo \"$real < 0.3\" | bc)\" = 1 ]")" "wham version answers 
 "$bin" status >/dev/null 2>&1 && status_ok=1 || status_ok=0
 check "$status_ok" "wham status reads the flag ($("$bin" status 2>&1 || true))"
 
-# The menu bar app, idle, in the state it finds, then in the other one.
+# The menu bar app, idle, in the state it finds, then in the other one. It
+# settles first: a first launch shows its hello toast and registers at login,
+# which a slow runner can stretch past 5 s.
 idle() {
-  sleep 5
+  sleep 10
   before=$(ps -o cputime= -p "$pid" | seconds)
   sleep 30
   after=$(ps -o cputime= -p "$pid" | seconds)
