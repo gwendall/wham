@@ -43,7 +43,8 @@ after=$(ps -o cputime= -p "$pid" | seconds)
 idle=$(echo "$after - $before" | bc)
 check "$(is "kill -0 $pid 2>/dev/null")" "the app is still running after 36 s"
 check "$(is "[ \"\$(echo \"$idle < 0.1\" | bc)\" = 1 ]")" "idle CPU: ${idle} s over 30 s"
-memory=$(footprint "$pid" 2>/dev/null | awk '/phys_footprint:/ { print $2; exit }')
+# footprint picks its unit (KB on a small process, MB above): convert to MB.
+memory=$(footprint "$pid" 2>/dev/null | awk '/phys_footprint:/ { v = $2; if ($3 == "KB") v /= 1024; if ($3 == "GB") v *= 1024; print int(v + 0.5); exit }')
 [ -n "$memory" ] || memory=$(ps -o rss= -p "$pid" | awk '{ print int($1 / 1024) }')
 check "$(is "[ ${memory%.*} -lt 40 ]")" "memory: ${memory} MB"
 
@@ -62,5 +63,6 @@ else
 fi
 
 kill "$pid" 2>/dev/null || true
+wait "$pid" 2>/dev/null || true
 echo
 if [ "$failures" = 0 ]; then echo "all evals passed"; else echo "$failures eval(s) failed"; exit 1; fi

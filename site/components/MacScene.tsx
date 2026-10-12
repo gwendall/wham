@@ -4,17 +4,20 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { meter, SCENARIOS, type Scenario } from "@/lib/scenarios";
 import { FACE, SUN, type Sprite } from "@/lib/sprites";
 
-// The hero: a little MacBook exports a film, the lid closes, the export keeps
-// going (the floating HUD and the glow at the hinge say so), the lid opens on
-// a finished job. One loop, in seconds:
+// The hero: a little MacBook starts a long job (a coding agent, an export, a
+// render, a download: lib/scenarios.ts), the lid closes, the job keeps going
+// (the floating HUD and the glow at the hinge say so), the lid opens on a
+// finished job. One scenario per loop, Claude Code first. One loop, in seconds:
 const LOOP = 10;
 const TOAST_AT = 0.45; // the switch flips: "MAC STAYS AWAKE"
-const RUN = [0.9, 6.3] as const; // the export, 0 to 100%
+const TYPE = [0.3, 0.85] as const; // the command, typed
+const RUN = [0.9, 6.3] as const; // the job, 0 to 100%
 const CLOSE = [2.5, 3.35] as const;
 const OPEN = [6.9, 7.85] as const;
-const STILL = 5.2; // the frame shown when motion is reduced: lid shut, job running
+const STILL = 5.2; // the frame shown when motion is reduced: lid shut, Claude Code running
 const OPEN_ANGLE = 1.92; // about 110 degrees
 const FOV = 24;
 
@@ -30,7 +33,7 @@ const easeOutBack = (x: number) => 1 + 2.2 * (x - 1) ** 3 + 1.2 * (x - 1) ** 2;
 const crossed = (from: number, to: number, mark: number) =>
   from <= to ? from < mark && mark <= to : from < mark || mark <= to;
 
-type ScreenState = { step: "ready" | "run" | "done"; percent: number };
+type ScreenState = { scenario: Scenario; step: "ready" | "run" | "done"; typed: number; p: number };
 
 export default function MacScene({ onToast }: { onToast: () => void }) {
   const host = useRef<HTMLDivElement>(null);
@@ -39,6 +42,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
   const fill = useRef<HTMLDivElement>(null);
   const percent = useRef<HTMLSpanElement>(null);
   const label = useRef<HTMLSpanElement>(null);
+  const caption = useRef<HTMLDivElement>(null);
   const toast = useRef(onToast);
 
   useEffect(() => {
@@ -168,7 +172,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
     // The screen, redrawn only when what it shows changes.
     let shown = "";
     function drawScreen(state: ScreenState) {
-      const id = `${state.step}:${state.percent}`;
+      const id = `${state.scenario.id}:${state.step}:${state.typed}:${meter(state.scenario, state.p)}`;
       if (id === shown) return;
       shown = id;
       paintScreen(screenCanvas, state, font);
@@ -182,7 +186,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
     // The HUD floating over the shut laptop.
     let hudShown = false;
     let hudText = "";
-    function setHud(visible: boolean, p: number) {
+    function setHud(visible: boolean, p: number, { id, hud: words }: Scenario) {
       const root = hud.current;
       if (!root) return;
       if (visible !== hudShown) {
@@ -190,12 +194,13 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
         root.dataset.show = visible ? "true" : "false";
       }
       const pct = Math.round(p * 100);
-      const text = `${pct}`;
+      const text = `${id}:${pct}`;
       if (text === hudText) return;
       hudText = text;
       if (percent.current) percent.current.textContent = `${pct}%`;
       if (fill.current) fill.current.style.width = `${Math.floor(p * 10) * 10}%`;
-      if (label.current) label.current.textContent = pct >= 100 ? "DONE!" : "EXPORTING";
+      if (label.current) label.current.textContent = pct >= 100 ? words.done : words.title;
+      if (caption.current) caption.current.textContent = words.caption;
     }
 
     function resize() {
@@ -214,6 +219,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
 
     function render(time: number) {
       const t = time % LOOP;
+      const scenario = SCENARIOS[Math.floor(time / LOOP) % SCENARIOS.length];
 
       let angle = OPEN_ANGLE;
       if (t >= CLOSE[0] && t < CLOSE[1]) angle = OPEN_ANGLE * (1 - easeInOut((t - CLOSE[0]) / (CLOSE[1] - CLOSE[0])));
@@ -234,11 +240,10 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
       if (glow.current) glow.current.style.opacity = `${0.25 + shut * breath * 0.75}`;
 
       const p = clamp((t - RUN[0]) / (RUN[1] - RUN[0]));
-      drawScreen(
-        t < RUN[0] ? { step: "ready", percent: 0 } : t < OPEN[0] ? { step: "run", percent: Math.floor(p * 100) } : { step: "done", percent: 100 },
-      );
+      const typed = Math.floor(clamp((t - TYPE[0]) / (TYPE[1] - TYPE[0])) * scenario.command.length);
+      drawScreen({ scenario, step: t < RUN[0] ? "ready" : t < OPEN[0] ? "run" : "done", typed, p });
       // The HUD leaves just before the lid lifts, so it never covers the screen.
-      setHud(t >= CLOSE[1] - 0.05 && t < OPEN[0] - 0.12, p);
+      setHud(t >= CLOSE[1] - 0.05 && t < OPEN[0] - 0.12, p, scenario);
 
       renderer.render(scene, camera);
     }
@@ -310,16 +315,18 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
         ref={hud}
         data-show="false"
         aria-hidden="true"
-        className="hud pointer-events-none absolute left-1/2 top-[21%] flex w-[214px] -translate-x-1/2 flex-col gap-2 rounded-[18px] bg-pill px-4 py-3 text-white ring-[0.5px] ring-white/15"
+        className="hud pointer-events-none absolute left-1/2 top-[21%] flex w-[224px] -translate-x-1/2 flex-col gap-2 rounded-[18px] bg-pill px-4 py-3 text-white ring-[0.5px] ring-white/15"
       >
         <div className="flex items-center justify-between font-pixel text-[16px] leading-none">
-          <span ref={label}>EXPORTING</span>
+          <span ref={label}>{SCENARIOS[0].hud.title}</span>
           <span ref={percent}>0%</span>
         </div>
         <div className="pixel-bar h-[10px] w-full">
           <div ref={fill} className="pixel-bar-fill h-full w-0" />
         </div>
-        <div className="text-[12px] font-bold leading-none text-white/60">Lid closed. Still running.</div>
+        <div ref={caption} className="text-[12px] font-bold leading-none text-white/60">
+          {SCENARIOS[0].hud.caption}
+        </div>
       </div>
     </div>
   );
@@ -423,7 +430,7 @@ function spriteCanvas(rows: Sprite, color: string, cell = 4, margin = 0) {
   return canvas;
 }
 
-function paintScreen(canvas: HTMLCanvasElement, { step, percent }: ScreenState, font: string) {
+function paintScreen(canvas: HTMLCanvasElement, { scenario, step, typed, p }: ScreenState, font: string) {
   const g = canvas.getContext("2d")!;
   const { width, height } = canvas;
   const background = g.createLinearGradient(0, 0, 0, height);
@@ -440,24 +447,28 @@ function paintScreen(canvas: HTMLCanvasElement, { step, percent }: ScreenState, 
     g.fill();
   });
 
-  g.font = `24px ${font}`;
   g.textBaseline = "alphabetic";
-  const line = (text: string, y: number, color: string) => {
+  // One line of Silkscreen, shrunk only if a scenario's text would run off the screen.
+  const text = (words: string, x: number, y: number, color: string, room = width - 32 - x) => {
+    g.font = `24px ${font}`;
+    const wide = g.measureText(words.toUpperCase()).width;
+    if (wide > room) g.font = `${Math.floor((24 * room) / wide)}px ${font}`;
     g.fillStyle = color;
-    g.fillText(text, 32, y);
+    g.fillText(words.toUpperCase(), x, y);
   };
-  line("$ WHAM ON", 96, "#ffffff");
-  line("ON: YOUR MAC STAYS AWAKE", 132, "#ff7ad9");
+  const line = (words: string, y: number, color: string) => text(words, 32, y, color);
+  line("$ wham on", 96, "#ffffff");
+  line("on: your Mac stays awake", 132, "#ff7ad9");
   if (step === "ready") {
-    line("$ _", 186, "#ffffff");
+    line(`$ ${scenario.command.slice(0, typed)}_`, 186, "#ffffff");
     return;
   }
-  line("$ ./EXPORT FILM.MOV", 186, "#ffffff");
+  line(`$ ${scenario.command}`, 186, "#ffffff");
 
-  // A chunky progress bar, ten blocks.
+  // A chunky progress bar, ten blocks, and the job's own counter beside it.
   const blocks = 10;
-  const lit = Math.floor(percent / 10);
-  const bw = 34;
+  const lit = Math.floor(p * blocks);
+  const bw = 24;
   const gap = 6;
   const candy = g.createLinearGradient(32, 0, 32 + blocks * (bw + gap), 0);
   candy.addColorStop(0, "#ff7ad9");
@@ -467,11 +478,10 @@ function paintScreen(canvas: HTMLCanvasElement, { step, percent }: ScreenState, 
     g.fillStyle = i < lit ? candy : "rgba(255,255,255,0.12)";
     g.fillRect(32 + i * (bw + gap), 210, bw, 24);
   }
-  g.fillStyle = "#ffffff";
-  g.fillText(`${percent}%`, 32 + blocks * (bw + gap) + 8, 233);
+  text(meter(scenario, step === "done" ? 1 : p), 32 + blocks * (bw + gap) + 12, 233, "#ffffff");
 
   if (step === "done") {
-    line("DONE! FILM.MOV IS READY", 290, "#ffd36e");
+    line(scenario.done, 290, "#ffd36e");
     g.drawImage(spriteCanvas(FACE, "#ffd36e", 4), width - 32 - 68, height - 32 - 68);
   }
 }
