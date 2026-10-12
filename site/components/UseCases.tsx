@@ -8,74 +8,59 @@ import type { Sprite } from "@/lib/sprites";
 
 const TILES = ["bg-candy-pink", "bg-candy-yellow", "bg-candy-cyan", "bg-moon"];
 
-const JOBS: { sprite: Sprite; title: string; text: string }[] = [
-  {
-    sprite: [
-      "###########",
-      "#.#.#.#.#.#",
-      "###########",
-      "#.........#",
-      "#...#.....#",
-      "#...##....#",
-      "#...###...#",
-      "#...##....#",
-      "#...#.....#",
-      "#.........#",
-      "###########",
-      "#.#.#.#.#.#",
-      "###########",
-    ],
-    title: "Exports and renders",
-    text: "Final Cut, Premiere, DaVinci Resolve or Blender, all the way to the last frame.",
-  },
-  {
-    sprite: [
-      "....###....",
-      "....###....",
-      "....###....",
-      "....###....",
-      ".#########.",
-      "..#######..",
-      "...#####...",
-      "....###....",
-      ".....#.....",
-      "#.........#",
-      "###########",
-    ],
-    title: "Downloads and backups",
-    text: "A big model, a fresh Xcode, Time Machine or Backblaze. Close the lid at 3%, open it at 100%.",
-  },
-  {
-    sprite: [
-      "..#######..",
-      ".#.......#.",
-      "#..#####..#",
-      "..#.....#..",
-      ".#..###..#.",
-      "...#...#...",
-      ".....#.....",
-      "....###....",
-      "....###....",
-    ],
-    title: "Remote access",
-    text: "Screen Sharing, SSH, AirPlay to the speakers, the dev server you open on your phone: your Mac still answers.",
-  },
-  {
-    sprite: [
-      ".....#.....",
-      "....###....",
-      "...#####...",
-      "..#######..",
-      ".#########.",
-      "###########",
-      ".#########.",
-      ".##..#..##.",
-      ".##..#####.",
-      ".##..#####.",
-    ],
-    title: "A home server, 24/7",
-    text: "An old Mac on a shelf, lid shut, up day and night: Plex, Home Assistant or Homebridge, reachable from anywhere.",
-  },
+// The four small cards' pixel icons, in the order of uses.jobs in the messages.
+const JOB_SPRITES: Sprite[] = [
+  [
+    "###########",
+    "#.#.#.#.#.#",
+    "###########",
+    "#.........#",
+    "#...#.....#",
+    "#...##....#",
+    "#...###...#",
+    "#...##....#",
+    "#...#.....#",
+    "#.........#",
+    "###########",
+    "#.#.#.#.#.#",
+    "###########",
+  ],
+  [
+    "....###....",
+    "....###....",
+    "....###....",
+    "....###....",
+    ".#########.",
+    "..#######..",
+    "...#####...",
+    "....###....",
+    ".....#.....",
+    "#.........#",
+    "###########",
+  ],
+  [
+    "..#######..",
+    ".#.......#.",
+    "#..#####..#",
+    "..#.....#..",
+    ".#..###..#.",
+    "...#...#...",
+    ".....#.....",
+    "....###....",
+    "....###....",
+  ],
+  [
+    ".....#.....",
+    "....###....",
+    "...#####...",
+    "..#######..",
+    ".#########.",
+    "###########",
+    ".#########.",
+    ".##..#..##.",
+    ".##..#####.",
+    ".##..#####.",
+  ],
 ];
 
 export const PROMPT = [
@@ -94,7 +79,9 @@ export const PROMPT = [
 // The lead card's little transcript, straight from the hero's scenarios.
 const TRANSCRIPT = ["claude", "codex"].map((id) => SCENARIOS.find((s) => s.id === id)!);
 
-export function UseCases() {
+type Card = { title: string; text: string };
+
+export function UseCases({ agents, jobs }: { agents: Card; jobs: Card[] }) {
   return (
     <ul className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <li className="relative overflow-hidden rounded-3xl bg-candy p-6 text-ink sm:col-span-2">
@@ -102,10 +89,8 @@ export function UseCases() {
         <div className="relative grid grid-cols-1 gap-6 md:grid-cols-[1fr_auto] md:items-center">
           <div className="min-w-0">
             <Tile sprite={PROMPT} className="bg-ink text-white" />
-            <h3 className="mt-6 text-title font-black">AI coding agents</h3>
-            <p className="mt-2 text-body text-ink/80">
-              Hand Claude Code, Codex, OpenCode or Grok a long task, close the lid and go. They keep working until it is done.
-            </p>
+            <h3 className="mt-6 text-title font-black">{agents.title}</h3>
+            <p className="mt-2 text-body text-ink/80">{agents.text}</p>
           </div>
           <pre
             aria-hidden="true"
@@ -123,9 +108,9 @@ export function UseCases() {
           </pre>
         </div>
       </li>
-      {JOBS.map((job, i) => (
-        <li key={job.title} className="flex gap-4 rounded-3xl bg-card p-6 ring-1 ring-line sm:flex-col sm:gap-6">
-          <Tile sprite={job.sprite} className={`${TILES[i % TILES.length]} text-ink`} />
+      {jobs.map((job, i) => (
+        <li key={i} className="flex gap-4 rounded-3xl bg-card p-6 ring-1 ring-line sm:flex-col sm:gap-6">
+          <Tile sprite={JOB_SPRITES[i]} className={`${TILES[i % TILES.length]} text-ink`} />
           <div className="min-w-0">
             <h3 className="text-title font-black">{job.title}</h3>
             <p className="mt-2 text-body text-muted">{job.text}</p>

@@ -33,8 +33,9 @@ const MUTED = [
 ];
 
 // The header's sound switch: a pixel speaker, with its waves while the music
-// plays, crossed out otherwise.
-export function MusicToggle() {
+// plays, crossed out otherwise. Off, it mutes the whole page: the music, the
+// little sounds of its links and buttons, the demo's chime.
+export function MusicToggle({ labels }: { labels: { label: string; on: string; off: string } }) {
   const state = useSyncExternalStore(subscribeMusic, musicState, serverMusicState);
   const on = state === "playing";
   return (
@@ -42,9 +43,9 @@ export function MusicToggle() {
       type="button"
       data-music-toggle
       onClick={toggleMusic}
-      aria-label="Music"
+      aria-label={labels.label}
       aria-pressed={on}
-      title={on ? "Music on" : "Music off"}
+      title={on ? labels.on : labels.off}
       className="flex size-10 items-center justify-center rounded-full transition-colors hover:bg-fg/6"
     >
       <PixelSprite rows={on ? SPEAKER : MUTED} cell={2} className={on ? "text-fg" : "text-muted"} />

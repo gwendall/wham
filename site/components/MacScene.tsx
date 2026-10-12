@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
-import { meter, SCENARIOS, type Scenario } from "@/lib/scenarios";
+import { meter, SCENARIOS, type Hud, type Scenario } from "@/lib/scenarios";
 import { FACE, PALETTE, SUN, type Sprite } from "@/lib/sprites";
 
 // The hero: a little MacBook starts a long job (a coding agent, an export, a
@@ -35,7 +35,7 @@ const crossed = (from: number, to: number, mark: number) =>
 
 type ScreenState = { scenario: Scenario; step: "ready" | "run" | "done"; typed: number; p: number };
 
-export default function MacScene({ onToast }: { onToast: () => void }) {
+export default function MacScene({ onToast, huds }: { onToast: () => void; huds: Record<string, Hud> }) {
   const host = useRef<HTMLDivElement>(null);
   const glow = useRef<HTMLDivElement>(null);
   const hud = useRef<HTMLDivElement>(null);
@@ -44,10 +44,12 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
   const label = useRef<HTMLSpanElement>(null);
   const caption = useRef<HTMLDivElement>(null);
   const toast = useRef(onToast);
+  const words = useRef(huds);
 
   useEffect(() => {
     toast.current = onToast;
-  }, [onToast]);
+    words.current = huds;
+  }, [onToast, huds]);
 
   useEffect(() => {
     const container = host.current;
@@ -186,7 +188,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
     // The HUD floating over the shut laptop.
     let hudShown = false;
     let hudText = "";
-    function setHud(visible: boolean, p: number, { id, hud: words }: Scenario) {
+    function setHud(visible: boolean, p: number, { id, hud: english }: Scenario) {
       const root = hud.current;
       if (!root) return;
       if (visible !== hudShown) {
@@ -199,8 +201,9 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
       hudText = text;
       if (percent.current) percent.current.replaceChildren(...cells(`${pct}%`).map(cellNode));
       if (fill.current) fill.current.style.width = `${Math.floor(p * 10) * 10}%`;
-      if (label.current) label.current.textContent = pct >= 100 ? words.done : words.title;
-      if (caption.current) caption.current.textContent = words.caption;
+      const hudWords = words.current[id] ?? english;
+      if (label.current) label.current.textContent = pct >= 100 ? hudWords.done : hudWords.title;
+      if (caption.current) caption.current.textContent = hudWords.caption;
     }
 
     function resize() {
@@ -318,7 +321,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
         className="hud pointer-events-none absolute left-1/2 top-[21%] flex w-58 -translate-x-1/2 flex-col gap-3 rounded-2xl bg-pill p-4 text-white ring-[0.5px] ring-white/15"
       >
         <div className="flex items-center justify-between font-pixel text-pixel pixel-even">
-          <span ref={label}>{SCENARIOS[0].hud.title}</span>
+          <span ref={label}>{(huds[SCENARIOS[0].id] ?? SCENARIOS[0].hud).title}</span>
           <span ref={percent}>
             {cells("0%").map(({ char, digit }, i) => (
               <span key={i} className={digit ? "pixel-digit" : undefined}>
@@ -331,7 +334,7 @@ export default function MacScene({ onToast }: { onToast: () => void }) {
           <div ref={fill} className="pixel-bar-fill h-full w-0" />
         </div>
         <div ref={caption} className="text-micro font-bold text-white/60">
-          {SCENARIOS[0].hud.caption}
+          {(huds[SCENARIOS[0].id] ?? SCENARIOS[0].hud).caption}
         </div>
       </div>
     </div>

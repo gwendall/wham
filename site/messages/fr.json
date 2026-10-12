@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - votre Mac reste éveillé, capot fermé",
+    "description": "Fermez le capot. Votre Mac reste éveillé. Un interrupteur dans la barre des menus qui empêche votre Mac de dormir, pour de vrai, même capot fermé. Gratuit et open source.",
+    "keywords": "Mac, macOS, empêcher la mise en veille, capot fermé, clamshell, barre des menus, pmset, caffeinate, alternative à Amphetamine",
+    "app": "Un interrupteur dans la barre des menus qui empêche votre Mac de dormir, pour de vrai, même capot fermé.",
+    "os": "macOS 11 ou version ultérieure",
+    "image": "Wham : fermez le capot, votre Mac reste éveillé.",
+    "free": "Gratuit et open source"
+  },
+  "nav": {
+    "skip": "Aller au contenu",
+    "home": "Wham, retour en haut",
+    "main": "Principal",
+    "how": "Comment ça marche",
+    "compare": "Comparatif",
+    "faq": "FAQ",
+    "download": "Télécharger",
+    "github": "Wham sur GitHub",
+    "language": "Langue",
+    "footer": "Pied de page"
+  },
+  "sound": {
+    "label": "Son",
+    "on": "Son activé",
+    "off": "Son désactivé"
+  },
+  "hero": {
+    "eyebrow": "App pour la barre des menus",
+    "title": "Fermez le capot.",
+    "mark": "Votre Mac reste éveillé.",
+    "lead": "Un interrupteur dans la barre des menus qui empêche votre Mac de dormir, pour de vrai, même capot fermé.",
+    "download": "Télécharger pour Mac",
+    "note": "Gratuit. macOS 11 ou version ultérieure. Apple silicon et Intel.",
+    "stage": "Un MacBook ferme son capot pendant qu'une tâche longue continue de tourner : un agent de code comme Claude Code, un export vidéo, un téléchargement, un rendu, une sauvegarde. Le capot se rouvre sur le travail terminé."
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "Capot fermé. Toujours en train de coder.", "done": "Tests réussis !" },
+    "export": { "title": "Export", "caption": "Capot fermé. L'export continue.", "done": "Prêt !" },
+    "codex": { "title": "Codex", "caption": "Capot fermé. Toujours en train de coder.", "done": "Terminé !" },
+    "ollama": { "title": "Téléchargement", "caption": "Capot fermé. Le téléchargement continue.", "done": "Récupéré !" },
+    "opencode": { "title": "OpenCode", "caption": "Capot fermé. Toujours en train de coder.", "done": "Migration faite !" },
+    "blender": { "title": "Rendu", "caption": "Capot fermé. Le rendu continue.", "done": "Rendu terminé !" },
+    "grok": { "title": "Grok", "caption": "Capot fermé. Toujours en train de coder.", "done": "Terminé !" },
+    "backup": { "title": "Sauvegarde", "caption": "Capot fermé. La sauvegarde continue.", "done": "Sauvegarde faite !" }
+  },
+  "try": {
+    "eyebrow": "À tester",
+    "title": "Un seul interrupteur dans votre barre des menus.",
+    "lead": "C'est toute l'appli. Un soleil quand votre Mac reste éveillé, une lune quand il peut dormir, et un petit carillon dans les deux cas. Allez-y, cliquez."
+  },
+  "demo": {
+    "switch": "Garder ce Mac éveillé, même capot fermé",
+    "hint": "Cliquez",
+    "caption": "Son activé : c'est le vrai carillon, un arpège 8 bits joué par votre navigateur.",
+    "finder": "Finder",
+    "file": "Fichier",
+    "edit": "Édition",
+    "view": "Présentation",
+    "go": "Aller",
+    "window": "Fenêtre",
+    "day": "lun."
+  },
+  "uses": {
+    "eyebrow": "À quoi ça sert",
+    "title": "Pensé pour les tâches longues.",
+    "lead": "Lancez-le, fermez le capot, partez. Tout ce qui dure plus longtemps que votre patience va jusqu'au bout.",
+    "agents": {
+      "title": "Agents de code IA",
+      "text": "Confiez une tâche longue à Claude Code, Codex, OpenCode ou Grok, fermez le capot et partez. Ils continuent de travailler jusqu'au bout."
+    },
+    "jobs": [
+      {
+        "title": "Exports et rendus",
+        "text": "Final Cut, Premiere, DaVinci Resolve ou Blender, jusqu'à la dernière image."
+      },
+      {
+        "title": "Téléchargements et sauvegardes",
+        "text": "Un gros modèle, un Xcode flambant neuf, Time Machine ou Backblaze. Fermez le capot à 3 %, rouvrez-le à 100 %."
+      },
+      {
+        "title": "Accès à distance",
+        "text": "Partage d'écran, SSH, AirPlay vers les enceintes, le serveur de dev que vous ouvrez depuis votre téléphone : votre Mac répond toujours."
+      },
+      {
+        "title": "Un serveur à la maison, 24 h/24",
+        "text": "Un vieux Mac posé sur une étagère, capot fermé, allumé jour et nuit : Plex, Home Assistant ou Homebridge, accessible de partout."
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "Comment ça marche",
+    "title": "Trois étapes. La troisième, c'est tout l'intérêt.",
+    "steps": [
+      {
+        "title": "Téléchargez et ouvrez Wham",
+        "text": "Glissez-le dans Applications et ouvrez-le. Il s'installe dans votre barre des menus, près de l'horloge."
+      },
+      {
+        "title": "Cliquez sur l'interrupteur",
+        "text": "Le soleil apparaît et le carillon joue. La toute première fois, macOS vous demande votre mot de passe, une seule fois."
+      },
+      {
+        "title": "Fermez le capot",
+        "text": "Votre Mac continue de tourner. Claude Code termine sa tâche, l'export atteint la dernière image, le téléchargement arrive à 100 %."
+      }
+    ],
+    "note": "La plupart des applis anti-veille se contentent de demander à macOS de rester éveillé, ce qu'il ignore dès que le capot se ferme. Wham, lui, coupe la veille lui-même, et la rétablit une fois le travail fini."
+  },
+  "tiny": {
+    "eyebrow": "Minuscule",
+    "title": "Vous oublierez qu'elle tourne.",
+    "lead": "Wham fait une seule chose : toutes les deux secondes, il lit un indicateur du noyau. Quand il est activé, il surveille aussi la batterie, la chaleur et le capot, que macOS lui signale. Le reste du temps, il ne fait rien du tout, et l'intégration continue veille à ce que ça reste ainsi.",
+    "stats": [
+      { "value": "1,4", "unit": "Mo", "text": "L'appli complète, sur le disque. Le téléchargement pèse 2,7 Mo." },
+      { "value": "10", "unit": "Mo", "text": "De mémoire pendant qu'elle tourne." },
+      { "value": "0,03", "unit": "%", "text": "D'un cœur de processeur, au repos : un centième de seconde de travail toutes les 30 secondes." },
+      { "value": "0", "unit": "", "text": "Dépendance. Aucune télémétrie, aucun traceur, aucun démon en arrière-plan." }
+    ],
+    "scale": "Pour comparer : KeepingYouAwake occupe 7,6 Mo sur le disque, et Amphetamine pèse 6,7 Mo au téléchargement avant ses applis d'appoint. Mesuré sur un MacBook Air, macOS 26.6 ; le détail est dans <doc>docs/compatibility.md</doc>."
+  },
+  "compare": {
+    "eyebrow": "Comparatif",
+    "title": "La plupart des applis anti-veille s'arrêtent au capot.",
+    "lead": "Garder un Mac éveillé capot ouvert, c'est facile. Fermez-le, et macOS ignore la manière polie de le demander. Voici comment les applis connues gèrent un capot fermé, sur batterie, sans écran branché.",
+    "source": "Source",
+    "wham": {
+      "tag": "Oui, par lui-même",
+      "text": "Désactive l'indicateur de veille du noyau, le seul interrupteur que macOS respecte capot fermé, puis le réactive une fois le travail fini : aussi longtemps que vous le décidez, jamais jusqu'à batterie à plat, jamais au-delà d'une chaleur critique. Téléchargez, glissez, cliquez. macOS 11 ou version ultérieure, Intel aussi, signé et notarié.",
+      "meta": "1,4 Mo sur le disque · Gratuit, open source"
+    },
+    "amphetamine": {
+      "tag": "Avec des applis d'appoint",
+      "text": "Confinée par l'App Store. Pour un capot fermé, elle propose Amphetamine Enhancer, une appli à part distribuée hors de l'App Store, et sur les MacBook Apple silicon, Power Protect, encore un téléchargement séparé.",
+      "meta": "6,7 Mo au téléchargement, plus les applis d'appoint · Gratuit"
+    },
+    "caffeine": {
+      "tag": "Capot ouvert seulement",
+      "text": "Maintient une « assertion d'alimentation » : la demande polie de rester éveillé, que macOS abandonne dès que le capot se ferme.",
+      "meta": "0,8 Mo sur le disque · Gratuit"
+    },
+    "keepingyouawake": {
+      "tag": "Capot ouvert seulement",
+      "text": "Un interrupteur convivial pour <code>caffeinate</code>. De ses propres mots, il « empêchera la mise en veille uniquement sur les Mac de bureau et les Mac portables dont le capot est ouvert ».",
+      "meta": "7,6 Mo sur le disque · Gratuit, open source"
+    },
+    "caffeinate": {
+      "tag": "Capot ouvert seulement",
+      "text": "Intégré à macOS, avec les mêmes assertions d'alimentation. Même son option la plus forte, <code>-s</code>, n'est « valable que lorsque le système fonctionne sur l'alimentation secteur ».",
+      "meta": "Intégré · man caffeinate"
+    },
+    "lungo": "Par elles-mêmes, les applis de l'App Store ne peuvent pas, et les honnêtes le disent : Lungo « n'empêchera pas votre ordinateur de se mettre en veille si vous fermez le capot. C'est une limitation du Mac App Store. »"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Bonnes questions.",
+    "items": [
+      {
+        "q": "Ai-je besoin du Terminal ?",
+        "a": "Non. Téléchargez Wham, ouvrez-le, et tout se passe dans la barre des menus : un clic pour garder votre Mac éveillé, un clic pour le laisser dormir. Les commandes en bas de cette page sont là uniquement pour celles et ceux qui aiment les taper."
+      },
+      {
+        "q": "Est-ce sûr ?",
+        "a": "Oui. Désactiver la veille demande les droits d'administrateur : la première fois que vous cliquez, macOS vous demande votre mot de passe une fois, pour que Wham puisse ensuite basculer ce réglage sans redemander. C'est la seule chose qu'il est autorisé à faire. L'appli est signée par son développeur et notariée par Apple, et chaque ligne de code est sur <github>GitHub</github>."
+      },
+      {
+        "q": "Puis-je l'activer pour un moment ?",
+        "a": "Oui. Faites un clic droit sur l'interrupteur et choisissez « Turn On For » 1, 2, 4 ou 8 heures : le menu indique jusqu'à quand, après quoi votre Mac dort comme d'habitude. Depuis un terminal, <code>wham on 2h</code>, ou <code>wham run</code> avant une commande pour rester éveillé seulement pendant son exécution."
+      },
+      {
+        "q": "Mon Mac va-t-il surchauffer dans un sac ?",
+        "a": "Wham ne le laissera pas cuire : quand macOS signale une chaleur critique, Wham se désactive et laisse votre Mac dormir. Mais un ordinateur portable actif dans un sac fermé n'a nulle part où évacuer sa chaleur, et Wham est pensé pour les bureaux, les stations d'accueil et les étagères, là où l'air circule. Avant de ranger votre Mac, désactivez l'interrupteur et il dormira en fermant le capot, comme d'habitude."
+      },
+      {
+        "q": "Et la batterie ?",
+        "a": "Wham lui-même ne coûte presque rien. Mais un Mac éveillé consomme la batterie comme un Mac éveillé, capot fermé ou non, alors sur batterie, Wham lâche prise à 10 % : votre Mac dort avec votre travail sauvegardé plutôt que de tomber à plat. Pour les tâches longues, branchez-le."
+      },
+      {
+        "q": "Mon Mac est-il verrouillé capot fermé ?",
+        "a": "Comme toujours. Sans autre écran branché, Wham éteint l'écran intégré quelques secondes après la fermeture du capot, et votre Mac se verrouille selon vos réglages d'Écran verrouillé. Avec un moniteur branché, Wham laisse les écrans tranquilles."
+      },
+      {
+        "q": "Ai-je besoin d'un écran externe, d'un clavier ou de l'alimentation ?",
+        "a": "Non. C'est ce que macOS exige pour son propre « mode clamshell », et Wham n'a besoin de rien de tout cela. Fermez le capot d'un simple portable et il reste éveillé."
+      },
+      {
+        "q": "Que se passe-t-il si je quitte Wham ?",
+        "a": "La veille revient. Quitter désactive le réglage en sortant, que vous quittiez depuis son menu (clic droit sur l'interrupteur), depuis un script, ou en vous déconnectant. Et si Wham disparaît sans quitter proprement, sur un plantage ou un arrêt forcé, son chien de garde redonne la veille en moins d'une seconde."
+      },
+      {
+        "q": "Comment le désinstaller ?",
+        "a": "Quittez Wham depuis son menu, ce qui redonne la veille, puis glissez Wham depuis Applications vers la Corbeille. Pour un nettoyage complet, y compris la règle de mot de passe, utilisez le désinstalleur en une ligne sous <dev>Pour les développeurs</dev>."
+      },
+      {
+        "q": "Pourquoi pas le Mac App Store ?",
+        "a": "Les applis de l'App Store vivent dans un bac à sable, et une appli confinée ne peut pas modifier le réglage de veille du Mac. Celles qui essaient se contentent de demander à macOS de rester éveillé, ce qui est justement ce qui cesse de fonctionner dès que vous fermez le capot."
+      }
+    ]
+  },
+  "dev": {
+    "title": "Pour les développeurs",
+    "subtitle": "Terminal, Homebrew, npm et la commande wham.",
+    "install": "Installer",
+    "installText": "La même appli signée que le téléchargement, plus la commande <code>wham</code>. Relancez-la pour mettre à jour.",
+    "curious": "Envie de lire avant ? <script>Lire install.sh</script> : il télécharge la dernière version, vérifie sa signature, la place dans Applications et l'ouvre.",
+    "command": "La commande wham",
+    "runComment": "# éveillé pendant que make tourne, puis comme avant",
+    "uninstall": "Désinstaller",
+    "uninstallText": "Il quitte Wham, ce qui redonne la veille, puis supprime l'appli, la commande <code>wham</code>, ses réglages et la règle sudoers ci-dessous. Avec Homebrew : <code>brew uninstall --zap wham</code>. <script>Lire uninstall.sh</script>.",
+    "sudoersComment": "# /private/etc/sudoers.d/wham, pour l'utilisateur 501 (vous)"
+  },
+  "copy": {
+    "copy": "Copier",
+    "copied": "Copié",
+    "label": "Copier : {command}",
+    "status": "Copié dans le presse-papiers"
+  },
+  "footer": {
+    "title": "Fermez le capot et partez.",
+    "subtitle": "Votre Mac n'aura pas besoin d'être réveillé.",
+    "madeWith": "Fait avec <heart></heart> par",
+    "madeLabel": "Fait par Gwendall, gwendall.com",
+    "license": "Wham est gratuit et open source, sous licence <mit>MIT</mit>."
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "Page introuvable",
+      "title": "Rien ici.",
+      "mark": "Cette page dort.",
+      "text": "Le lien est peut-être ancien ou mal tapé. Tout le reste de wham.sh est bien réveillé.",
+      "home": "Retour à wham.sh"
+    },
+    "failed": {
+      "wordmark": "Oups",
+      "eyebrow": "Une erreur est survenue",
+      "title": "Quelque chose a cassé.",
+      "mark": "Pas votre Mac.",
+      "text": "Cette page a trébuché au chargement. Réessayez dans un instant, et si ça continue, <github>dites-le-nous sur GitHub</github>.",
+      "retry": "Réessayer",
+      "home": "Retour à wham.sh",
+      "code": "Code d'erreur {digest}"
+    }
+  }
+}

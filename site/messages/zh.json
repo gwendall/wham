@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - 合盖也不休眠的 Mac",
+    "description": "合上盖子，Mac 依然保持唤醒。只需点击菜单栏上的一个开关，就能让 Mac 真正保持唤醒，哪怕合上盖子也一样。免费且开源。",
+    "keywords": "Mac, macOS, 保持唤醒, 合盖不休眠, clamshell, 菜单栏, pmset, caffeinate, Amphetamine 替代品",
+    "app": "只需点击菜单栏上的一个开关，就能让 Mac 真正保持唤醒，哪怕合上盖子也一样。",
+    "os": "macOS 11 或更高版本",
+    "image": "Wham：合上盖子，Mac 依然保持唤醒。",
+    "free": "免费开源"
+  },
+  "nav": {
+    "skip": "跳转到内容",
+    "home": "Wham，回到顶部",
+    "main": "主要内容",
+    "how": "工作原理",
+    "compare": "对比",
+    "faq": "常见问题",
+    "download": "下载",
+    "github": "GitHub 上的 Wham",
+    "language": "语言",
+    "footer": "页脚"
+  },
+  "sound": {
+    "label": "声音",
+    "on": "声音开启",
+    "off": "声音关闭"
+  },
+  "hero": {
+    "eyebrow": "macOS 菜单栏应用",
+    "title": "合上盖子。",
+    "mark": "Mac 依然醒着。",
+    "lead": "只需点击菜单栏上的一个开关，就能让 Mac 真正保持唤醒，哪怕合上盖子也一样。",
+    "download": "下载 Mac 版",
+    "note": "免费。macOS 11 或更高版本。支持 Apple 芯片和 Intel。",
+    "stage": "一台 MacBook 合上盖子，而一项耗时任务仍在运行：Claude Code 之类的编程智能体、视频导出、下载、渲染、备份。任务完成时，盖子重新打开。"
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "盖子合上了，代码还在跑。", "done": "测试通过！" },
+    "export": { "title": "正在导出", "caption": "盖子合上了，导出还在继续。", "done": "完成！" },
+    "codex": { "title": "Codex", "caption": "盖子合上了，代码还在跑。", "done": "完成！" },
+    "ollama": { "title": "正在下载", "caption": "盖子合上了，下载还在继续。", "done": "拉取完成！" },
+    "opencode": { "title": "OpenCode", "caption": "盖子合上了，代码还在跑。", "done": "迁移完成！" },
+    "blender": { "title": "正在渲染", "caption": "盖子合上了，渲染还在继续。", "done": "渲染完成！" },
+    "grok": { "title": "Grok", "caption": "盖子合上了，代码还在跑。", "done": "完成！" },
+    "backup": { "title": "正在备份", "caption": "盖子合上了，备份还在继续。", "done": "备份完成！" }
+  },
+  "try": {
+    "eyebrow": "试一试",
+    "title": "菜单栏里的一个开关。",
+    "lead": "这就是整个应用。Mac 保持唤醒时是太阳，可以休眠时是月亮，切换时都会响起一小段提示音。来，点一下试试。"
+  },
+  "demo": {
+    "switch": "让这台 Mac 保持唤醒，哪怕合上盖子",
+    "hint": "点我",
+    "caption": "声音开启：这就是真正的提示音，一段由浏览器播放的 8 位琶音。",
+    "finder": "访达",
+    "file": "文件",
+    "edit": "编辑",
+    "view": "显示",
+    "go": "前往",
+    "window": "窗口",
+    "day": "周一"
+  },
+  "uses": {
+    "eyebrow": "用途",
+    "title": "为耗时任务而生。",
+    "lead": "启动任务，合上盖子，转身离开。任何你不想干等的任务，都会一直运行到完成。",
+    "agents": {
+      "title": "AI 编程智能体",
+      "text": "把耗时任务交给 Claude Code、Codex、OpenCode 或 Grok，合上盖子就能离开。它们会一直工作到完成。"
+    },
+    "jobs": [
+      {
+        "title": "导出与渲染",
+        "text": "无论是 Final Cut、Premiere、DaVinci Resolve 还是 Blender，都能跑到最后一帧。"
+      },
+      {
+        "title": "下载与备份",
+        "text": "一个大模型、一份全新的 Xcode、Time Machine 或 Backblaze。3% 时合上盖子，100% 时再打开。"
+      },
+      {
+        "title": "远程访问",
+        "text": "屏幕共享、SSH、投给音箱的 AirPlay，还有你用手机打开的开发服务器：Mac 始终在响应。"
+      },
+      {
+        "title": "全天候的家庭服务器",
+        "text": "架子上的一台旧 Mac，盖子合上，昼夜不停：Plex、Home Assistant 或 Homebridge，随时随地都能访问。"
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "原理",
+    "title": "三个步骤，关键在第三步。",
+    "steps": [
+      {
+        "title": "下载并打开 Wham",
+        "text": "把它拖进“应用程序”文件夹并打开。它会待在菜单栏里，就在时钟旁边。"
+      },
+      {
+        "title": "点击开关",
+        "text": "太阳出现，提示音响起。第一次使用时，macOS 会要求你输入一次密码。"
+      },
+      {
+        "title": "合上盖子",
+        "text": "Mac 会继续运行：Claude Code 完成任务，导出跑到最后一帧，下载跑到 100%。"
+      }
+    ],
+    "note": "大多数防休眠应用只是请求 macOS 保持唤醒，而合上盖子后 macOS 会直接无视这个请求。所以 Wham 索性自己关掉休眠功能，任务结束后再帮你打开。"
+  },
+  "tiny": {
+    "eyebrow": "小巧",
+    "title": "你会忘了它在运行。",
+    "lead": "Wham 只做一件事：每两秒读取一次内核标志位。开启期间，它还会关注 macOS 发出的电池、发热和盖子状态。其余时间它什么都不做，CI 还会严格把关这个资源预算。",
+    "stats": [
+      { "value": "1.4", "unit": "MB", "text": "整个应用占用的磁盘空间。下载包为 2.7 MB。" },
+      { "value": "10", "unit": "MB", "text": "运行时占用的内存。" },
+      { "value": "0.03", "unit": "%", "text": "闲置时占用一个 CPU 核心的比例：每 30 秒只工作百分之一秒。" },
+      { "value": "0", "unit": "", "text": "依赖项。没有数据分析，没有追踪器，也没有后台守护进程。" }
+    ],
+    "scale": "作为参照：KeepingYouAwake 在磁盘上占用 7.6 MB，而 Amphetamine 在加上辅助应用之前，下载包就有 6.7 MB。测试机型为 MacBook Air，系统版本 macOS 26.6；详情见 <doc>docs/compatibility.md</doc>。"
+  },
+  "compare": {
+    "eyebrow": "对比",
+    "title": "大多数防休眠应用，一到合盖就失效。",
+    "lead": "盖子打开时让 Mac 保持唤醒很容易。一旦合上，macOS 就会无视那种礼貌的请求。以下是那些知名应用在使用电池、未接外接显示器时，如何应对合盖这件事。",
+    "source": "来源",
+    "wham": {
+      "tag": "能，独立做到",
+      "text": "关闭内核的休眠标志位，也就是合盖后 macOS 唯一会遵守的那个开关，任务完成后再帮你打开：想开多久就开多久，绝不会把电池耗到见底，也绝不会放任过热。下载、拖拽、点击即可。支持 macOS 11 或更高版本，也支持 Intel，并经过签名和公证。",
+      "meta": "磁盘占用 1.4 MB · 免费，开源"
+    },
+    "amphetamine": {
+      "tag": "需要辅助应用",
+      "text": "受 App Store 沙盒限制。要应对合盖，它提供 Amphetamine Enhancer，一款来自商店之外的独立应用；在 Apple 芯片笔记本上，还需要另一个独立下载的 Power Protect。",
+      "meta": "下载包 6.7 MB，外加辅助应用 · 免费"
+    },
+    "caffeine": {
+      "tag": "仅限开盖",
+      "text": "维持着一个电源声明：这是一种礼貌的保持唤醒请求，合盖的瞬间就会被 macOS 丢弃。",
+      "meta": "磁盘占用 0.8 MB · 免费"
+    },
+    "keepingyouawake": {
+      "tag": "仅限开盖",
+      "text": "<code>caffeinate</code> 的一个友好开关。用它自己的话说，它“只会在台式 Mac 和开盖的便携式 Mac 上阻止休眠”。",
+      "meta": "磁盘占用 7.6 MB · 免费，开源"
+    },
+    "caffeinate": {
+      "tag": "仅限开盖",
+      "text": "macOS 自带，使用相同的电源声明机制。就连最强的参数 <code>-s</code>，也“仅在系统使用交流电运行时有效”。",
+      "meta": "系统自带 · man caffeinate"
+    },
+    "lungo": "App Store 应用靠自己做不到这一点，诚实的开发者也会直说：Lungo 表示“合上盖子后，它无法阻止电脑休眠，这是 Mac App Store 的限制”。"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "问得好。",
+    "items": [
+      {
+        "q": "需要用到终端吗？",
+        "a": "不需要。下载并打开 Wham，一切都在菜单栏里完成：点一下让 Mac 保持唤醒，再点一下让它恢复休眠。这页底部的命令，只是留给喜欢敲命令的人。"
+      },
+      {
+        "q": "安全吗？",
+        "a": "安全。关闭休眠功能需要管理员权限：第一次点击时，macOS 会要求你输入一次密码，这样 Wham 以后就能直接切换休眠设置，不用再问。这是它唯一被允许做的事。这个应用经过开发者签名和 Apple 公证，每一行代码都在 <github>GitHub</github> 上公开。"
+      },
+      {
+        "q": "可以只开一段时间吗？",
+        "a": "可以。右键点击开关，选择“Turn On For” 1、2、4 或 8 小时：菜单会显示到期时间，之后 Mac 就会恢复正常休眠。在终端里，可以用 <code>wham on 2h</code>，或者在命令前加上 <code>wham run</code>，让 Mac 只在命令运行期间保持唤醒。"
+      },
+      {
+        "q": "装进包里会过热吗？",
+        "a": "Wham 不会让它“烤熟”：一旦 macOS 判定 Mac 严重过热，Wham 就会关闭并让它休眠。不过，在合上的包里高负荷运转的笔记本无处散热，Wham 更适合用在桌面、扩展座和架子这类通风良好的地方。出门前记得关掉它，合上盖子时 Mac 就会像往常一样休眠。"
+      },
+      {
+        "q": "电池会受影响吗？",
+        "a": "Wham 本身几乎不耗电。但保持唤醒的 Mac，无论合盖与否，耗电方式都和平时一样。所以用电池供电时，电量到 10% 时 Wham 会自动放手：Mac 会带着保存好的工作内容休眠，而不是耗到关机。要跑长时间任务，记得插上电源。"
+      },
+      {
+        "q": "合盖后 Mac 会锁屏吗？",
+        "a": "和平常一样会锁。如果没有接其他显示器，合上盖子几秒后 Wham 会关闭内建屏幕，Mac 则按你的“锁定屏幕”设置锁屏。如果接了外接显示器，Wham 不会去动任何屏幕。"
+      },
+      {
+        "q": "需要外接显示器、键盘或电源吗？",
+        "a": "不需要。那些是 macOS 自己的“闭盖模式”所要求的条件，Wham 一个都不需要。哪怕是一台什么都没接的笔记本，合上盖子后依然保持唤醒。"
+      },
+      {
+        "q": "退出 Wham 后会怎样？",
+        "a": "休眠功能会恢复。无论你是从菜单退出（右键点击开关）、用脚本退出，还是注销账户，退出的同时设置就会被关闭。而如果 Wham 没有正常退出就消失了，比如崩溃或被强制退出，它的看门狗机制会在一秒内把休眠功能还回来。"
+      },
+      {
+        "q": "怎么卸载？",
+        "a": "从菜单退出 Wham，休眠功能会随之恢复，然后把 Wham 从“应用程序”文件夹拖进废纸篓。如果要连密码规则一起彻底清理，可以用 <dev>开发者</dev> 下面那条一行命令的卸载脚本。"
+      },
+      {
+        "q": "为什么不上 Mac App Store？",
+        "a": "App Store 应用都运行在沙盒里，沙盒应用没办法修改 Mac 的休眠设置。想做到的那些，最后也只能请求 macOS 保持唤醒，而这恰恰是合盖后就失效的做法。"
+      }
+    ]
+  },
+  "dev": {
+    "title": "开发者",
+    "subtitle": "终端、Homebrew、npm，还有 wham 命令。",
+    "install": "安装",
+    "installText": "和下载版本一样经过签名的应用，还附带 <code>wham</code> 命令。再次运行即可更新。",
+    "curious": "想先看看？<script>读一下 install.sh</script>：它会下载最新版本，校验签名，放进“应用程序”文件夹并打开。",
+    "command": "wham 命令",
+    "runComment": "# make 运行期间保持唤醒，结束后恢复原状",
+    "uninstall": "卸载",
+    "uninstallText": "它会退出 Wham 并恢复休眠功能，然后移除应用本身、<code>wham</code> 命令、相关设置，以及下面的 sudoers 规则。如果用 Homebrew：<code>brew uninstall --zap wham</code>。<script>读一下 uninstall.sh</script>。",
+    "sudoersComment": "# /private/etc/sudoers.d/wham，用户 ID 501（也就是你）"
+  },
+  "copy": {
+    "copy": "复制",
+    "copied": "已复制",
+    "label": "复制：{command}",
+    "status": "已复制到剪贴板"
+  },
+  "footer": {
+    "title": "合上盖子，出发吧。",
+    "subtitle": "你的 Mac 不需要被叫醒。",
+    "madeWith": "用 <heart></heart> 打造",
+    "madeLabel": "由 Gwendall 制作，gwendall.com",
+    "license": "Wham 免费且开源，遵循 <mit>MIT</mit> 许可证。"
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "页面未找到",
+      "title": "这里什么都没有。",
+      "mark": "这个页面睡着了。",
+      "text": "链接可能已过期，或者输错了。wham.sh 的其他页面都醒着呢。",
+      "home": "返回 wham.sh"
+    },
+    "failed": {
+      "wordmark": "Oops",
+      "eyebrow": "出错了",
+      "title": "出了点问题。",
+      "mark": "不是你的 Mac 的错。",
+      "text": "这个页面在加载时摔了一跤。请稍后重试，如果问题一直出现，<github>请在 GitHub 上告诉我们</github>。",
+      "retry": "重试",
+      "home": "返回 wham.sh",
+      "code": "错误代码 {digest}"
+    }
+  }
+}

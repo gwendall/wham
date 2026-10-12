@@ -1,12 +1,24 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
+import { isLocale, messages, type Locale } from "@/lib/i18n";
 import { FACE, SUN, SUN_LIT, spriteLayers, type Sprite } from "@/lib/sprites";
 
 // The share card, 1200 x 630: candy, the pixel WHAM, the headline, the sun.
 // Silkscreen comes from the app's own copy (generated/ by scripts/sync.mjs).
 export const ogSize = { width: 1200, height: 630 };
-export const ogAlt = "Wham: close the lid, your Mac stays awake.";
+
+type OgWords = { eyebrow: string; title: string; mark: string; free: string };
+
+// The card's words and alt text, from messages/<code>.json. Silkscreen draws
+// Latin only, so Japanese, Korean and Chinese share the English card.
+export async function ogWords(lang: string) {
+  const own = await messages(isLocale(lang) ? lang : "en");
+  const { meta, hero } = isLocale(lang) && LATIN.has(lang) ? own : await messages("en");
+  return { alt: own.meta.image, card: { eyebrow: hero.eyebrow, title: hero.title, mark: hero.mark, free: meta.free } };
+}
+
+const LATIN = new Set<Locale>(["en", "fr", "es", "de", "it", "pt"]);
 
 const INK = "#1a0b17";
 // Silkscreen puts a font pixel (1/8 em) of space on both sides of a capital, two
@@ -25,7 +37,7 @@ function Pixels({ rows, cell, color }: { rows: Sprite; cell: number; color: stri
   );
 }
 
-export function ogImage() {
+export function ogImage(words: OgWords) {
   return new ImageResponse(
     (
       <div
@@ -50,14 +62,14 @@ export function ogImage() {
         <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", padding: "64px 72px", width: "100%" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 24, letterSpacing: track(24), opacity: 0.75 }}>
             <Pixels rows={SUN_LIT} cell={2} color={INK} />
-            MENU BAR APP FOR MACOS
+            {words.eyebrow.toUpperCase()}
           </div>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div style={{ display: "flex", fontSize: 160, lineHeight: 1, letterSpacing: track(160) }}>WHAM</div>
               <div style={{ display: "flex", flexDirection: "column", fontSize: 40, lineHeight: 1.4, letterSpacing: track(40), marginTop: 28 }}>
-                <span>CLOSE THE LID.</span>
-                <span>YOUR MAC STAYS AWAKE.</span>
+                <span>{words.title.toUpperCase()}</span>
+                <span>{words.mark.toUpperCase()}</span>
               </div>
             </div>
             <Pixels rows={FACE} cell={12} color={INK} />
@@ -80,7 +92,7 @@ export function ogImage() {
               <Pixels rows={SUN} cell={3} color="#ff7ad9" />
               WHAM.SH
             </div>
-            <span style={{ fontSize: 24, letterSpacing: track(24), opacity: 0.75 }}>FREE AND OPEN SOURCE</span>
+            <span style={{ fontSize: 24, letterSpacing: track(24), opacity: 0.75 }}>{words.free.toUpperCase()}</span>
           </div>
         </div>
       </div>

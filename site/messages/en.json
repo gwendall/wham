@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - your Mac stays awake, lid closed",
+    "description": "Close the lid. Your Mac stays awake. A one-click menu bar switch that keeps your Mac awake, for real, even with the lid shut. Free and open source.",
+    "keywords": "Mac, macOS, keep awake, lid closed, clamshell, menu bar, pmset, caffeinate, Amphetamine alternative",
+    "app": "A one-click menu bar switch that keeps your Mac awake, for real, even with the lid shut.",
+    "os": "macOS 11 or later",
+    "image": "Wham: close the lid, your Mac stays awake.",
+    "free": "Free and open source"
+  },
+  "nav": {
+    "skip": "Skip to content",
+    "home": "Wham, back to the top",
+    "main": "Main",
+    "how": "How it works",
+    "compare": "Compare",
+    "faq": "FAQ",
+    "download": "Download",
+    "github": "Wham on GitHub",
+    "language": "Language",
+    "footer": "Footer"
+  },
+  "sound": {
+    "label": "Sound",
+    "on": "Sound on",
+    "off": "Sound off"
+  },
+  "hero": {
+    "eyebrow": "Menu bar app for macOS",
+    "title": "Close the lid.",
+    "mark": "Your Mac stays awake.",
+    "lead": "A one-click menu bar switch that keeps your Mac awake, for real, even with the lid shut.",
+    "download": "Download for Mac",
+    "note": "Free. macOS 11 or later. Apple silicon and Intel.",
+    "stage": "A MacBook closes its lid while a long job keeps running: coding agents like Claude Code, a film export, a download, a render, a backup. The lid opens on the finished job."
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "Lid closed. Still coding.", "done": "Tests pass!" },
+    "export": { "title": "Exporting", "caption": "Lid closed. Still exporting.", "done": "Ready!" },
+    "codex": { "title": "Codex", "caption": "Lid closed. Still coding.", "done": "Done!" },
+    "ollama": { "title": "Downloading", "caption": "Lid closed. Still downloading.", "done": "Pulled!" },
+    "opencode": { "title": "OpenCode", "caption": "Lid closed. Still coding.", "done": "Migrated!" },
+    "blender": { "title": "Rendering", "caption": "Lid closed. Still rendering.", "done": "Rendered!" },
+    "grok": { "title": "Grok", "caption": "Lid closed. Still coding.", "done": "Done!" },
+    "backup": { "title": "Backing up", "caption": "Lid closed. Still backing up.", "done": "Backed up!" }
+  },
+  "try": {
+    "eyebrow": "Try it",
+    "title": "One switch in your menu bar.",
+    "lead": "That is the whole app. A sun when your Mac stays awake, a moon when it can sleep, a little chime either way. Go on, click it."
+  },
+  "demo": {
+    "switch": "Keep this Mac awake, even with the lid closed",
+    "hint": "Click me",
+    "caption": "Sound on: that is the real chime, an 8-bit arpeggio played by your browser.",
+    "finder": "Finder",
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "go": "Go",
+    "window": "Window",
+    "day": "Mon"
+  },
+  "uses": {
+    "eyebrow": "What it is for",
+    "title": "Made for long jobs.",
+    "lead": "Start it, close the lid, walk away. Anything that takes longer than you want to sit and watch keeps going until it is done.",
+    "agents": {
+      "title": "AI coding agents",
+      "text": "Hand Claude Code, Codex, OpenCode or Grok a long task, close the lid and go. They keep working until it is done."
+    },
+    "jobs": [
+      {
+        "title": "Exports and renders",
+        "text": "Final Cut, Premiere, DaVinci Resolve or Blender, all the way to the last frame."
+      },
+      {
+        "title": "Downloads and backups",
+        "text": "A big model, a fresh Xcode, Time Machine or Backblaze. Close the lid at 3%, open it at 100%."
+      },
+      {
+        "title": "Remote access",
+        "text": "Screen Sharing, SSH, AirPlay to the speakers, the dev server you open on your phone: your Mac still answers."
+      },
+      {
+        "title": "A home server, 24/7",
+        "text": "An old Mac on a shelf, lid shut, up day and night: Plex, Home Assistant or Homebridge, reachable from anywhere."
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "How it works",
+    "title": "Three steps. The third one is the point.",
+    "steps": [
+      {
+        "title": "Download and open Wham",
+        "text": "Drag it to Applications and open it. It lives in your menu bar, next to the clock."
+      },
+      {
+        "title": "Click the switch",
+        "text": "The sun comes out and the chime plays. The very first time, macOS asks for your password, once."
+      },
+      {
+        "title": "Close the lid",
+        "text": "Your Mac keeps going. Claude Code finishes its task, the export reaches the last frame, the download hits 100%."
+      }
+    ],
+    "note": "Most keep-awake apps only ask macOS to stay up, which it ignores once the lid closes, so Wham turns sleep off itself and back on when you are done."
+  },
+  "tiny": {
+    "eyebrow": "Tiny",
+    "title": "You will forget it is running.",
+    "lead": "Wham does one thing: every two seconds, it reads one kernel flag. While on, it also listens for the battery, the heat and the lid, which macOS announces. The rest of the time it does nothing at all, and CI holds it to a budget.",
+    "stats": [
+      { "value": "1.4", "unit": "MB", "text": "The whole app, on disk. The download is 2.7 MB." },
+      { "value": "10", "unit": "MB", "text": "Of memory while it runs." },
+      { "value": "0.03", "unit": "%", "text": "Of one CPU core, idle: a hundredth of a second of work every 30 seconds." },
+      { "value": "0", "unit": "", "text": "Dependencies. No analytics, no trackers, no background daemon." }
+    ],
+    "scale": "For scale: KeepingYouAwake takes 7.6 MB on disk, and Amphetamine is a 6.7 MB download before its helper apps. Measured on a MacBook Air, macOS 26.6; the details are in <doc>docs/compatibility.md</doc>."
+  },
+  "compare": {
+    "eyebrow": "Compare",
+    "title": "Most keep-awake apps stop at the lid.",
+    "lead": "Keeping a Mac awake with the lid open is easy. Shut it, and macOS ignores the polite way to ask. Here is how the well-known apps handle a closed lid, on battery, with no screen plugged in.",
+    "source": "Source",
+    "wham": {
+      "tag": "Yes, on its own",
+      "text": "Turns off the kernel's sleep flag, the one switch macOS honors with the lid shut, and back on when you are done: for as long as you say, never down to a flat battery, never past critically hot. Download, drag, click. macOS 11 or later, Intel too, signed and notarized.",
+      "meta": "1.4 MB on disk · Free, open source"
+    },
+    "amphetamine": {
+      "tag": "With helper apps",
+      "text": "Sandboxed by the App Store. For a closed lid it offers Amphetamine Enhancer, a separate app from outside the store, and on Apple silicon laptops Power Protect, another separate download.",
+      "meta": "6.7 MB download, plus helpers · Free"
+    },
+    "caffeine": {
+      "tag": "Lid open only",
+      "text": "Holds a power assertion: the polite request to stay up that macOS drops the moment the lid closes.",
+      "meta": "0.8 MB on disk · Free"
+    },
+    "keepingyouawake": {
+      "tag": "Lid open only",
+      "text": "A friendly switch for <code>caffeinate</code>. In its own words, it “will only prevent sleep on desktop Macs and portable Macs with an open lid.”",
+      "meta": "7.6 MB on disk · Free, open source"
+    },
+    "caffeinate": {
+      "tag": "Lid open only",
+      "text": "Built into macOS, with the same power assertions. Even its strongest flag, <code>-s</code>, is “valid only when system is running on AC power.”",
+      "meta": "Built in · man caffeinate"
+    },
+    "lungo": "On their own, App Store apps cannot, and the honest ones say so: Lungo “will not prevent your computer from sleeping if you close the lid. This is a Mac App Store limitation.”"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Good questions.",
+    "items": [
+      {
+        "q": "Do I need the Terminal?",
+        "a": "No. Download Wham, open it, and everything happens in the menu bar: one click to keep your Mac awake, one click to let it sleep. The commands at the bottom of this page are only there for people who like typing them."
+      },
+      {
+        "q": "Is it safe?",
+        "a": "Yes. Turning sleep off takes an administrator: the first time you click, macOS asks for your password once, so Wham can flip the sleep setting without asking again. That is the only thing it is allowed to do. The app is signed by its developer and notarized by Apple, and every line of it is on <github>GitHub</github>."
+      },
+      {
+        "q": "Can I turn it on for a while?",
+        "a": "Yes. Right-click the switch and pick Turn On For 1, 2, 4 or 8 hours: the menu says until when, then your Mac sleeps as usual. From a terminal, <code>wham on 2h</code>, or <code>wham run</code> before a command to stay awake just while it runs."
+      },
+      {
+        "q": "Will my Mac overheat in a bag?",
+        "a": "Wham will not let it cook: when macOS calls your Mac critically hot, Wham turns off and lets it sleep. Still, a busy laptop in a closed bag has nowhere to put its heat, and Wham is meant for desks, docks and shelves, where air can move. Before you pack up, flip it off and your Mac sleeps when you close it, like it always did."
+      },
+      {
+        "q": "What about the battery?",
+        "a": "Wham itself costs next to nothing. But an awake Mac drains its battery like an awake Mac, lid closed or not, so on battery Wham lets go at 10%: your Mac sleeps with your work saved instead of running flat. For long jobs, plug it in."
+      },
+      {
+        "q": "Is my Mac locked with the lid closed?",
+        "a": "As it always is. With no other display, Wham turns the built-in screen off a few seconds after you close the lid, and your Mac locks as your Lock Screen settings say. With a monitor plugged in, Wham leaves the screens alone."
+      },
+      {
+        "q": "Do I need an external display, a keyboard or power?",
+        "a": "No. That is what macOS asks for its own “clamshell mode”, and Wham does not need any of it. Close the lid on a bare laptop and it stays awake."
+      },
+      {
+        "q": "What happens when I quit Wham?",
+        "a": "Sleep comes back. Quitting turns the setting off on the way out, whether you quit from its menu (right-click the switch), from a script, or by logging out. And if Wham ever goes away without quitting, a crash or a force quit, its watchdog gives sleep back within a second."
+      },
+      {
+        "q": "How do I uninstall it?",
+        "a": "Quit Wham from its menu, which gives sleep back, then drag Wham from Applications to the Trash. For a full cleanup, including the password rule, use the one-line uninstaller under <dev>For developers</dev>."
+      },
+      {
+        "q": "Why not the Mac App Store?",
+        "a": "App Store apps live in a sandbox, and a sandboxed app cannot change the Mac's sleep setting. The ones that try settle for asking macOS to stay up, which is exactly what stops working when you close the lid."
+      }
+    ]
+  },
+  "dev": {
+    "title": "For developers",
+    "subtitle": "Terminal, Homebrew, npm and the wham command.",
+    "install": "Install",
+    "installText": "The same signed app as the download, plus the <code>wham</code> command. Run it again to update.",
+    "curious": "Curious first? <script>Read install.sh</script>: it downloads the latest release, checks its signature, puts it in Applications and opens it.",
+    "command": "The wham command",
+    "runComment": "# awake while make runs, then as it was before",
+    "uninstall": "Uninstall",
+    "uninstallText": "It quits Wham, which gives sleep back, then removes the app, the <code>wham</code> command, its settings and the sudoers rule below. With Homebrew: <code>brew uninstall --zap wham</code>. <script>Read uninstall.sh</script>.",
+    "sudoersComment": "# /private/etc/sudoers.d/wham, for user ID 501 (you)"
+  },
+  "copy": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "label": "Copy: {command}",
+    "status": "Copied to the clipboard"
+  },
+  "footer": {
+    "title": "Close the lid and go.",
+    "subtitle": "Your Mac won't need waking up.",
+    "madeWith": "Made with <heart></heart> by",
+    "madeLabel": "Made by Gwendall, gwendall.com",
+    "license": "Wham is free and open source, under the <mit>MIT</mit> license."
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "Page not found",
+      "title": "Nothing here.",
+      "mark": "This page is asleep.",
+      "text": "The link may be old or mistyped. Everything else on wham.sh is wide awake.",
+      "home": "Back to wham.sh"
+    },
+    "failed": {
+      "wordmark": "Oops",
+      "eyebrow": "Something went wrong",
+      "title": "Something broke.",
+      "mark": "Not your Mac.",
+      "text": "This page tripped while loading. Try again in a moment, and if it keeps happening, <github>tell us on GitHub</github>.",
+      "retry": "Try again",
+      "home": "Back to wham.sh",
+      "code": "Error code {digest}"
+    }
+  }
+}

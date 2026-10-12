@@ -152,6 +152,15 @@
     text-wrap: pretty;
   }
 
+  /* Japanese lines break between phrases, Korean ones between words. */
+  :lang(ja) {
+    word-break: auto-phrase;
+  }
+
+  :lang(ko) {
+    word-break: keep-all;
+  }
+
   ::selection {
     background: var(--color-candy-pink);
     color: var(--color-ink);
@@ -170,7 +179,7 @@
 
 /*
  * Silkscreen: uppercase, never smoothed, never kerned. The font's own metrics
- * set its capitals a pixel low in their line; layout.tsx evens them out, so a
+ * set its capitals a pixel low in their line; lib/fonts.ts evens them out, so a
  * line box of 1em holds the capitals dead center.
  */
 .font-pixel {
@@ -218,6 +227,59 @@
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+/* The 404's moon snores: three z drift up and fade, one after another. */
+@keyframes snore {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    translate: 0.75em -1.5em;
+  }
+}
+.snore > span {
+  position: absolute;
+  opacity: 0;
+  animation: snore 3s steps(6) infinite;
+}
+.snore > span:nth-child(2) {
+  animation-delay: 1s;
+}
+.snore > span:nth-child(3) {
+  animation-delay: 2s;
+}
+
+/* The error page's sun, shaken twice on whole pixels. */
+@keyframes shaken {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  25% {
+    translate: -12px 0;
+  }
+  75% {
+    translate: 12px 0;
+  }
+}
+.shaken {
+  animation: shaken 0.3s steps(2) 0.4s 2;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snore > span,
+  .shaken {
+    animation: none;
+  }
+  .snore > span:first-child {
+    opacity: 1;
+  }
 }
 
 /* A candy highlighter under a few words. */

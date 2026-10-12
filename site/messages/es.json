@@ -1,0 +1,244 @@
+{
+  "meta": {
+    "title": "Wham - tu Mac se mantiene despierto, con la tapa cerrada",
+    "description": "Cierra la tapa. Tu Mac se mantiene despierto. Un interruptor en la barra de menús que evita que tu Mac se duerma, de verdad, incluso con la tapa cerrada. Gratis y de código abierto.",
+    "keywords": "Mac, macOS, evitar el reposo, tapa cerrada, modo clamshell, barra de menús, pmset, caffeinate, alternativa a Amphetamine",
+    "app": "Un interruptor en la barra de menús que evita que tu Mac se duerma, de verdad, incluso con la tapa cerrada.",
+    "os": "macOS 11 o posterior",
+    "image": "Wham: cierra la tapa, tu Mac se mantiene despierto.",
+    "free": "Gratis y de código abierto"
+  },
+  "nav": {
+    "skip": "Ir al contenido",
+    "home": "Wham, volver arriba",
+    "main": "Principal",
+    "how": "Cómo funciona",
+    "compare": "Comparativa",
+    "faq": "FAQ",
+    "download": "Descargar",
+    "github": "Wham en GitHub",
+    "language": "Idioma",
+    "footer": "Pie de página"
+  },
+  "sound": {
+    "label": "Sonido",
+    "on": "Sonido activado",
+    "off": "Sonido desactivado"
+  },
+  "hero": {
+    "eyebrow": "App de barra de menús",
+    "title": "Cierra la tapa.",
+    "mark": "Tu Mac se mantiene despierto.",
+    "lead": "Un interruptor en la barra de menús que mantiene tu Mac despierto, de verdad, incluso con la tapa cerrada.",
+    "download": "Descargar para Mac",
+    "note": "Gratis. macOS 11 o posterior. Apple silicon e Intel.",
+    "stage": "Un MacBook cierra la tapa mientras una tarea larga sigue corriendo: un agente de código como Claude Code, una exportación de vídeo, una descarga, un render, una copia de seguridad. La tapa se abre con el trabajo ya terminado."
+  },
+  "hud": {
+    "claude": { "title": "Claude Code", "caption": "Tapa cerrada. Sigue programando.", "done": "¡Tests superados!" },
+    "export": { "title": "Exportando", "caption": "Tapa cerrada. Sigue exportando.", "done": "¡Listo!" },
+    "codex": { "title": "Codex", "caption": "Tapa cerrada. Sigue programando.", "done": "¡Listo!" },
+    "ollama": { "title": "Descargando", "caption": "Tapa cerrada. Sigue descargando.", "done": "¡Descargado!" },
+    "opencode": { "title": "OpenCode", "caption": "Tapa cerrada. Sigue programando.", "done": "¡Migrado!" },
+    "blender": { "title": "Renderizando", "caption": "Tapa cerrada. Sigue renderizando.", "done": "¡Renderizado!" },
+    "grok": { "title": "Grok", "caption": "Tapa cerrada. Sigue programando.", "done": "¡Listo!" },
+    "backup": { "title": "Copiando", "caption": "Tapa cerrada. Sigue con la copia de seguridad.", "done": "¡Copia hecha!" }
+  },
+  "try": {
+    "eyebrow": "Pruébalo",
+    "title": "Un solo interruptor en tu barra de menús.",
+    "lead": "Eso es toda la app. Un sol cuando tu Mac se mantiene despierto, una luna cuando puede dormir, y un pequeño timbre en ambos casos. Anda, haz clic."
+  },
+  "demo": {
+    "switch": "Mantener este Mac despierto, incluso con la tapa cerrada",
+    "hint": "Haz clic",
+    "caption": "Sonido activado: es el timbre real, un arpegio de 8 bits reproducido por tu navegador.",
+    "finder": "Finder",
+    "file": "Archivo",
+    "edit": "Edición",
+    "view": "Visualización",
+    "go": "Ir",
+    "window": "Ventana",
+    "day": "lun"
+  },
+  "uses": {
+    "eyebrow": "Para qué sirve",
+    "title": "Pensado para tareas largas.",
+    "lead": "Pulsa el interruptor, cierra la tapa y vete. Todo lo que tarda más de lo que quieres quedarte mirando sigue hasta terminar.",
+    "agents": {
+      "title": "Agentes de código con IA",
+      "text": "Dale una tarea larga a Claude Code, Codex, OpenCode o Grok, cierra la tapa y vete. Siguen trabajando hasta terminar."
+    },
+    "jobs": [
+      {
+        "title": "Exportaciones y renders",
+        "text": "Final Cut, Premiere, DaVinci Resolve o Blender, hasta el último fotograma."
+      },
+      {
+        "title": "Descargas y copias de seguridad",
+        "text": "Un modelo pesado, un Xcode recién bajado, Time Machine o Backblaze. Cierra la tapa al 3 % y ábrela al 100 %."
+      },
+      {
+        "title": "Acceso remoto",
+        "text": "Compartir pantalla, SSH, AirPlay a los altavoces, el servidor de desarrollo que abres desde el móvil: tu Mac sigue respondiendo."
+      },
+      {
+        "title": "Un servidor en casa, 24/7",
+        "text": "Un Mac viejo en una estantería, con la tapa cerrada, encendido día y noche: Plex, Home Assistant o Homebridge, accesible desde cualquier lugar."
+      }
+    ]
+  },
+  "how": {
+    "eyebrow": "Cómo funciona",
+    "title": "Tres pasos. El tercero es la clave.",
+    "steps": [
+      {
+        "title": "Descarga y abre Wham",
+        "text": "Arrástralo a la carpeta Aplicaciones y ábrelo. Vive en tu barra de menús, junto al reloj."
+      },
+      {
+        "title": "Haz clic en el interruptor",
+        "text": "Sale el sol y suena el timbre. La primera vez, macOS te pide tu contraseña, una sola vez."
+      },
+      {
+        "title": "Cierra la tapa",
+        "text": "Tu Mac sigue funcionando. Claude Code termina su tarea, la exportación llega al último fotograma, la descarga alcanza el 100 %."
+      }
+    ],
+    "note": "La mayoría de las apps para evitar el reposo solo le pide a macOS que siga despierto, algo que macOS ignora en cuanto se cierra la tapa, así que Wham desactiva el reposo por sí mismo y lo reactiva cuando terminas."
+  },
+  "tiny": {
+    "eyebrow": "Mínima",
+    "title": "Olvidarás que está en marcha.",
+    "lead": "Wham hace una sola cosa: cada dos segundos, lee un indicador del kernel. Mientras está activo, también vigila la batería, el calor y la tapa, que macOS le anuncia. El resto del tiempo no hace absolutamente nada, y la integración continua se encarga de que siga así.",
+    "stats": [
+      { "value": "1,4", "unit": "MB", "text": "La app completa, en el disco. La descarga pesa 2,7 MB." },
+      { "value": "10", "unit": "MB", "text": "De memoria mientras se ejecuta." },
+      { "value": "0,03", "unit": "%", "text": "De un núcleo de CPU, en reposo: una centésima de segundo de trabajo cada 30 segundos." },
+      { "value": "0", "unit": "", "text": "Dependencias. Sin analítica, sin rastreadores, sin daemon en segundo plano." }
+    ],
+    "scale": "Para comparar: KeepingYouAwake ocupa 7,6 MB en el disco, y Amphetamine pesa 6,7 MB de descarga antes de sus apps auxiliares. Medido en un MacBook Air, macOS 26.6; los detalles están en <doc>docs/compatibility.md</doc>."
+  },
+  "compare": {
+    "eyebrow": "Comparativa",
+    "title": "La mayoría de las apps para evitar el reposo se rinden ante la tapa.",
+    "lead": "Mantener un Mac despierto con la tapa abierta es fácil. Ciérrala, y macOS ignora la forma educada de pedirlo. Así es como las apps más conocidas se comportan con la tapa cerrada, con batería y sin pantalla conectada.",
+    "source": "Fuente",
+    "wham": {
+      "tag": "Sí, por sí sola",
+      "text": "Desactiva el indicador de reposo del kernel, el único interruptor que macOS respeta con la tapa cerrada, y lo reactiva cuando terminas: durante el tiempo que tú decidas, nunca hasta agotar la batería, nunca más allá de un calor crítico. Descarga, arrastra, haz clic. macOS 11 o posterior, también en Intel, firmada y notarizada.",
+      "meta": "1,4 MB en el disco · Gratis, de código abierto"
+    },
+    "amphetamine": {
+      "tag": "Con apps auxiliares",
+      "text": "Confinada por el espacio aislado del App Store. Para la tapa cerrada ofrece Amphetamine Enhancer, una app aparte que viene de fuera de la tienda, y en portátiles con Apple silicon, Power Protect, otra descarga aparte.",
+      "meta": "6,7 MB de descarga, más las apps auxiliares · Gratis"
+    },
+    "caffeine": {
+      "tag": "Solo con la tapa abierta",
+      "text": "Mantiene una «afirmación de energía»: la petición educada de seguir despierto, que macOS descarta en cuanto se cierra la tapa.",
+      "meta": "0,8 MB en el disco · Gratis"
+    },
+    "keepingyouawake": {
+      "tag": "Solo con la tapa abierta",
+      "text": "Un interruptor sencillo para <code>caffeinate</code>. En sus propias palabras, “solo evitará el reposo en Macs de escritorio y Macs portátiles con la tapa abierta”.",
+      "meta": "7,6 MB en el disco · Gratis, de código abierto"
+    },
+    "caffeinate": {
+      "tag": "Solo con la tapa abierta",
+      "text": "Integrado en macOS, con las mismas afirmaciones de energía. Incluso su opción más fuerte, <code>-s</code>, solo es “válida cuando el sistema funciona con corriente alterna”.",
+      "meta": "Integrado · man caffeinate"
+    },
+    "lungo": "Por su cuenta, las apps del App Store no pueden, y las honestas lo admiten: Lungo “no evitará que tu equipo entre en reposo si cierras la tapa. Esto es una limitación del Mac App Store.”"
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Buenas preguntas.",
+    "items": [
+      {
+        "q": "¿Necesito la Terminal?",
+        "a": "No. Descarga Wham, ábrelo, y todo pasa en la barra de menús: un clic para mantener tu Mac despierto, un clic para dejarlo dormir. Los comandos al final de esta página están ahí solo para quienes disfrutan escribiéndolos."
+      },
+      {
+        "q": "¿Es seguro?",
+        "a": "Sí. Desactivar el reposo requiere permisos de administrador: la primera vez que haces clic, macOS te pide tu contraseña una vez, para que Wham pueda cambiar ese ajuste sin volver a pedirla. Eso es lo único que tiene permiso para hacer. La app está firmada por su desarrollador y notarizada por Apple, y cada línea de código está en <github>GitHub</github>."
+      },
+      {
+        "q": "¿Puedo activarlo por un rato?",
+        "a": "Sí. Haz clic derecho en el interruptor y elige “Turn On For” 1, 2, 4 u 8 horas: el menú indica hasta cuándo, y después tu Mac duerme como siempre. Desde una terminal, <code>wham on 2h</code>, o <code>wham run</code> antes de un comando para mantenerlo despierto solo mientras se ejecuta."
+      },
+      {
+        "q": "¿Se va a sobrecalentar mi Mac en una mochila?",
+        "a": "Wham no dejará que se cocine: cuando macOS avisa de un calor crítico, Wham se desactiva y deja que tu Mac se duerma. Aun así, un portátil ocupado dentro de una mochila cerrada no tiene adónde liberar su calor, y Wham está pensado para escritorios, bases y estanterías, donde el aire puede circular. Antes de guardarlo, desactívalo y tu Mac dormirá al cerrar la tapa, como siempre."
+      },
+      {
+        "q": "¿Y la batería?",
+        "a": "Wham en sí casi no cuesta nada. Pero un Mac despierto gasta batería como un Mac despierto, con la tapa cerrada o no, así que con batería, Wham se rinde al 10 %: tu Mac se duerme con tu trabajo guardado en vez de quedarse sin energía. Para tareas largas, conéctalo a la corriente."
+      },
+      {
+        "q": "¿Mi Mac se bloquea con la tapa cerrada?",
+        "a": "Como siempre. Sin otra pantalla conectada, Wham apaga la pantalla integrada unos segundos después de cerrar la tapa, y tu Mac se bloquea según tus ajustes de Pantalla bloqueada. Con un monitor conectado, Wham deja las pantallas en paz."
+      },
+      {
+        "q": "¿Necesito una pantalla externa, un teclado o estar conectado a la corriente?",
+        "a": "No. Eso es lo que macOS pide para su propio “modo clamshell”, y Wham no necesita nada de eso. Cierra la tapa de un portátil sin nada conectado y se mantendrá despierto."
+      },
+      {
+        "q": "¿Qué pasa si cierro Wham?",
+        "a": "El reposo vuelve. Salir desactiva el ajuste al cerrarse, ya sea desde su menú (clic derecho en el interruptor), desde un script, o al cerrar sesión. Y si Wham llega a desaparecer sin cerrarse bien, un fallo o un cierre forzado, su vigilante le devuelve el reposo en menos de un segundo."
+      },
+      {
+        "q": "¿Cómo lo desinstalo?",
+        "a": "Cierra Wham desde su menú, lo que devuelve el reposo, y luego arrastra Wham desde Aplicaciones a la Papelera. Para una limpieza completa, incluida la regla de contraseña, usa el desinstalador de una línea bajo <dev>Para desarrolladores</dev>."
+      },
+      {
+        "q": "¿Por qué no el Mac App Store?",
+        "a": "Las apps del App Store viven en un espacio aislado, y una app confinada no puede cambiar el ajuste de reposo del Mac. Las que lo intentan se limitan a pedirle a macOS que siga despierto, que es justo lo que deja de funcionar en cuanto cierras la tapa."
+      }
+    ]
+  },
+  "dev": {
+    "title": "Para desarrolladores",
+    "subtitle": "Terminal, Homebrew, npm y el comando wham.",
+    "install": "Instalar",
+    "installText": "La misma app firmada que la descarga, más el comando <code>wham</code>. Vuelve a ejecutarlo para actualizar.",
+    "curious": "¿Primero quieres ver cómo? <script>Leer install.sh</script>: descarga la última versión, comprueba su firma, la coloca en Aplicaciones y la abre.",
+    "command": "El comando wham",
+    "runComment": "# despierto mientras make se ejecuta, luego como antes",
+    "uninstall": "Desinstalar",
+    "uninstallText": "Cierra Wham, lo que devuelve el reposo, y luego elimina la app, el comando <code>wham</code>, sus ajustes y la regla de sudoers de abajo. Con Homebrew: <code>brew uninstall --zap wham</code>. <script>Leer uninstall.sh</script>.",
+    "sudoersComment": "# /private/etc/sudoers.d/wham, para el usuario 501 (tú)"
+  },
+  "copy": {
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "label": "Copiar: {command}",
+    "status": "Copiado al portapapeles"
+  },
+  "footer": {
+    "title": "Cierra la tapa y vete.",
+    "subtitle": "Tu Mac no necesitará que lo despiertes.",
+    "madeWith": "Hecho con <heart></heart> por",
+    "madeLabel": "Hecho por Gwendall, gwendall.com",
+    "license": "Wham es gratis y de código abierto, bajo la licencia <mit>MIT</mit>."
+  },
+  "errors": {
+    "notFound": {
+      "eyebrow": "Página no encontrada",
+      "title": "Aquí no hay nada.",
+      "mark": "Esta página está dormida.",
+      "text": "Puede que el enlace sea antiguo o tenga una errata. Todo lo demás en wham.sh está bien despierto.",
+      "home": "Volver a wham.sh"
+    },
+    "failed": {
+      "wordmark": "Ups",
+      "eyebrow": "Algo salió mal",
+      "title": "Algo se rompió.",
+      "mark": "No es tu Mac.",
+      "text": "Esta página tropezó al cargar. Inténtalo de nuevo en un momento y, si sigue pasando, <github>cuéntanoslo en GitHub</github>.",
+      "retry": "Reintentar",
+      "home": "Volver a wham.sh",
+      "code": "Código de error {digest}"
+    }
+  }
+}

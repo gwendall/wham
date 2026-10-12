@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { fill } from "@/lib/locales";
 
 // A shell command with a copy button. The box is 56 px tall with 16 px corners;
 // the button sits 8 px from its top, bottom and right edges, with 8 px corners,
 // so the two curves stay concentric. "Copy" and "Copied" share one cell and
 // cross-fade, so the button never changes width.
-export function CopyCommand({ command }: { command: string }) {
+// label is "Copy: {command}" in the page's language.
+export type CopyLabels = { copy: string; copied: string; label: string; status: string };
+
+export function CopyCommand({ command, labels }: { command: string; labels: CopyLabels }) {
   const [copied, setCopied] = useState(false);
   const timer = useRef(0);
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -44,23 +48,24 @@ export function CopyCommand({ command }: { command: string }) {
       <button
         type="button"
         onClick={copy}
-        aria-label={`Copy: ${command}`}
+        data-sound="copy"
+        aria-label={fill(labels.label, { command })}
         data-copied={copied}
         className="group relative isolate grid h-10 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-lg bg-white/10 px-3 font-pixel text-pixel text-white transition-colors hover:bg-white/18 data-[copied=true]:text-ink"
       >
         <span aria-hidden="true" className="absolute inset-0 -z-10 bg-candy opacity-0 transition-opacity group-data-[copied=true]:opacity-100" />
         <span className="col-start-1 row-start-1 pixel-even transition-[opacity,translate] group-data-[copied=true]:-translate-y-2 group-data-[copied=true]:opacity-0">
-          Copy
+          {labels.copy}
         </span>
         <span
           aria-hidden="true"
           className="col-start-1 row-start-1 pixel-even translate-y-2 opacity-0 transition-[opacity,translate] group-data-[copied=true]:translate-y-0 group-data-[copied=true]:opacity-100"
         >
-          Copied
+          {labels.copied}
         </span>
       </button>
       <span role="status" className="sr-only">
-        {copied ? "Copied to the clipboard" : ""}
+        {copied ? labels.status : ""}
       </span>
     </div>
   );
