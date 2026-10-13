@@ -148,12 +148,13 @@ the watchdog to stand down. `wham run` keeps one too.
 
 ## Is it safe?
 
-- About 1,800 lines of Swift, no dependencies, no analytics.
+- About 2,100 lines of Swift, no dependencies, no analytics.
 - One network request, a few times a day: Wham asks GitHub which release is
   the latest, and the request carries nothing about you or your Mac. When there
   is a newer one, Wham downloads it, checks that it is signed by the same
   developer and that it runs, and swaps it in; on stays on through the update.
-  **Check for Updates** in the menu asks right away. **Update Automatically**
+  **Check for Updates** in the menu asks right away, and says how it went
+  right there, without closing the menu. **Update Automatically**
   turns the swap off: Wham then only offers the new version in its menu.
   What changed in each one is in [CHANGELOG.md](CHANGELOG.md) and on
   [wham.sh/changelog](https://wham.sh/changelog).
@@ -258,7 +259,9 @@ went dark and whether it locked.
 for GitHub, checks that a copy signed by someone else is refused, that with
 Update Automatically off the menu offers the new version and installs it on a
 click, and what Check for Updates says when there is nothing new or no answer
-(it needs the Developer ID certificate).
+(it needs the Developer ID certificate). `scripts/eval.sh` clicks Check for
+Updates in the open menu and, with `WHAM_SHOTS=dir`, saves a picture of the
+menu at each step; CI keeps them for each macOS it runs.
 `scripts/sheet.sh` draws the switch in each of its looks, on a light and a dark
 menu bar, into `build/sheet.png` (`--film` for it turning on, frame by frame).
 

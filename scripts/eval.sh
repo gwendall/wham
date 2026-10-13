@@ -26,7 +26,9 @@
 #   session's end)
 # - Appearance: Monochrome and Compact, and the status item's width
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
-#   updates for real)
+#   updates for real); Check for Updates clicked in the open menu, which
+#   stays open and says how the check went, its title where the menu's own
+#   start (with WHAM_SHOTS=dir, pictures of the menu go there)
 #
 # The flag is put back as it was, with the battery limit, the version the
 # user's Wham last ran as, and a timed session running when the evals start. The app plays no sound here, but its switch
@@ -68,11 +70,13 @@ pid=
 guards=
 
 # Opens the app, out of sight and silent, pressing the WHAM_PRESS steps $1 if
-# given, with its battery and heat read from $fake while $guards is set. It
-# would look for an update after a minute: not before tomorrow here.
+# given, with the arguments after it, its battery and heat read from $fake
+# while $guards is set. It would look for an update after a minute: not
+# before tomorrow here.
 launch() {
-  set -- ${1:+"WHAM_PRESS=$1"} ${guards:+"WHAM_FAKE_POWER=$fake"}
-  env "$@" "$bin" -muted YES -updateDelay 86400 >>"$work/out" 2>&1 &
+  steps=${1:-}
+  [ $# = 0 ] || shift
+  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} "$bin" -muted YES -updateDelay 86400 "$@" >>"$work/out" 2>&1 &
   pid=$!
   sleep 1
 }
@@ -138,6 +142,25 @@ idle() {
   check "$(is "kill -0 $pid 2>/dev/null")" "the app is still running ($state)"
   check "$(is "[ \"\$(echo \"$cpu < 0.1\" | bc)\" = 1 ]")" "idle CPU ($state): ${cpu} s over 30 s"
 }
+# Check for Updates, clicked in the open menu as a mouse would (the pointer
+# goes onto it, then back): the menu stays open, the row says it is checking,
+# then how it went, here with GitHub out of reach. Its title starts where the
+# menu's own do: read from the menu's views where it draws with views
+# (macOS 26 on), and from a picture of the menu everywhere the screen shows
+# (a locked or sleeping screen draws nothing).
+[ -z "${WHAM_SHOTS:-}" ] || mkdir -p "$WHAM_SHOTS"
+launch "Click Updates" -updateBase http://127.0.0.1:9
+until_ "grep -q '^menu ' \"$work/out\"" 20
+told=$(grep '^row [a-z]*: \|^row missing\|^row highlighted false' "$work/out" | sed 's/^row //' | paste -sd '>' - | sed 's/>/ > /g')
+check "$(is "echo \"$told\" | grep -q '^busy: Checking for Updates.* > said: Can.t check now, try later$' && grep -q '^menu still open' \"$work/out\"")" \
+  "Check for Updates in the open menu: the menu stays open, the row checks, then says how it went (${told:-no answer}, $(grep '^menu ' "$work/out" | tail -1))"
+views=$(grep '^row title at' "$work/out" | tail -1)
+ink=$(grep '^ink ' "$work/out" | tail -1)
+check "$(is "echo \"$views\" | awk '{ exit !(\$1 == \"row\" && (\$13 == \"-,\" || (\$5 + 0 == \$13 + 0 && \$6 + 0 == \$14 + 0))) }' && echo \"$ink\" | awk '/not drawn/ { exit 0 } { d = \$5 - \$7; exit !(\$5 ~ /^[0-9.]+\$/ && \$7 ~ /^[0-9.]+\$/ && d >= -1 && d <= 1) }'")" \
+  "and its title starts where the menu's own do (${views:-no answer}; ${ink:-no picture})"
+stop
+: >"$work/out"
+
 launch Menu
 idle
 # The menu, opened for real at launch, shows whole under the switch: a point

@@ -5,6 +5,10 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.3.1 - 2026-10-13
+
+- Check for Updates keeps the menu open now: the line itself shows Wham checking, with a small spinner, then says how it went.
+
 ## 1.3.0 - 2026-10-13
 
 - Appearance, in the menu: Monochrome draws the switch in the color of your other menu bar icons, black or white.
