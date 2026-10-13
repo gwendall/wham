@@ -56,6 +56,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // The menus open now, submenus too, as their delegate hears it: a
     // submenu's window just closed can still say it is visible.
     private var shownMenus: Set<ObjectIdentifier> = []
+    // When Wham last brought the open menu in step, and when a submenu last
+    // closed: the click eval's trail says whether one follows the other.
+    private var refreshedAt = Date.distantPast, submenuClosedAt = Date.distantPast
     private var filmed = ""
     private var lidWasClosed = false
     // Set when macOS says it is about to restart, shut down or log out.
@@ -651,6 +654,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func menuDidClose(_ menu: NSMenu) {
         shownMenus.remove(ObjectIdentifier(menu))
+        if menu.supermenu != nil { submenuClosedAt = Date() }
         // A submenu's rows lose their selection with it.
         for entry in menu.items { (entry.view as? MenuRow)?.highlighted = false }
         guard menu.supermenu == nil else { return }
@@ -684,7 +688,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Brings the open menu in step with Wham: its titles, its checks, the
     // time left.
     private func refreshMenu() {
-        if let openMenu { refresh(openMenu) }
+        guard let openMenu else { return }
+        refreshedAt = Date()
+        refresh(openMenu)
     }
 
     private func refresh(_ menu: NSMenu) {
@@ -983,6 +989,11 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 trail.append("\(label): pointer \(Int(at.x)),\(Int(at.y)), \(self.shownMenus.count) shown, menu selects \(menu.highlightedItem?.title ?? "none")"
                     + (sub.map { ", submenu \($0.isVisible ? "visible" : "hidden") at \(Self.box($0.frame)) selects \(current.highlightedItem?.title ?? "none")" } ?? ""))
             }
+            // A submenu that closed by itself: how long after Wham last
+            // refreshed the open menu.
+            @MainActor func closing() -> String {
+                String(format: "a submenu closed %.2f s after a refresh", self.submenuClosedAt.timeIntervalSince(self.refreshedAt))
+            }
             @MainActor func fail(_ why: String) {
                 if let window = Self.window(of: current) { _ = Self.shoot(window, "click-\(clicks + 1)-failed") }
                 print("click \(path.joined(separator: "/")): \(why)")
@@ -1021,7 +1032,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let ready = { () -> Bool in
                         if !closed && !self.shownMenus.contains(ObjectIdentifier(current)) {
                             closed = true
-                            mark(String(format: "closed after %.1f s", Date().timeIntervalSince(start)))
+                            mark(String(format: "closed after %.1f s, ", Date().timeIntervalSince(start)) + closing())
                         }
                         return selected() || closed
                     }
@@ -1077,7 +1088,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                                 Self.after(0.15) {
                                     mark("inside \(title)")
                                     guard shown() else {
-                                        let seen = "\(title) closed on the way in"
+                                        let seen = "\(title) closed on the way in, \(closing())"
                                         if !again(seen) { fail("\(seen) [\(trail.joined(separator: "; "))]") }
                                         return
                                     }
@@ -1088,7 +1099,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     }
                 } else {
                     // A row whose submenu closed after the pointer went in.
-                    let seen = "\(title) not shown"
+                    let seen = "\(title) not shown" + (current === menu ? "" : ", \(closing())")
                     if current === menu || !again(seen) { fail("\(seen) [\(trail.joined(separator: "; "))]") }
                 }
             }
