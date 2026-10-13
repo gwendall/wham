@@ -164,12 +164,13 @@ final class Toast {
         let captionBaseline = titleBaseline - lineGap - captionCap
 
         var letters: [CALayer] = []
+        let positions = TitleFont.positions(titleLine)
         for character in title where !character.text.allSatisfy(\.isWhitespace) {
             // Silkscreen at the screen's scale; another face on a grid of whole
             // points, enlarged without smoothing, so it is pixel letters too.
             let pointScale = character.silkscreen ? scale : 1
             guard let glyph = Self.textImage(character.text, font: character.font as NSFont, color: style.ink, scale: pointScale, crisp: true) else { continue }
-            let offset = CTLineGetOffsetForStringIndex(titleLine, character.offset, nil)
+            let offset = positions[character.offset] ?? CTLineGetOffsetForStringIndex(titleLine, character.offset, nil)
             let letter = CALayer()
             letter.contents = glyph.image
             letter.contentsScale = pointScale
@@ -291,9 +292,8 @@ final class Toast {
 // The toast's title face. Silkscreen, a pixel font, draws Latin letters with
 // their accents; what it lacks (Japanese, Korean and Chinese, the odd Ÿ) comes
 // from a system face for the app's language, drawn on a grid of whole points
-// so it reads as pixel letters too. At 14 pt those faces stand about as tall as
-// Silkscreen's capitals and keep their strokes apart on such a grid, where
-// lighter cuts, and PingFang, run together.
+// so it reads as pixel letters too. Light cuts at 15 pt keep the strokes of a
+// dense character apart on such a grid, where bold ones fill it in (起, 眠).
 enum TitleFont {
     static var url = Bundle.main.url(forResource: "Silkscreen-Regular", withExtension: "ttf")
     // Silkscreen draws on a grid of 8 pixels per em: at 16 pt one of its pixels is 2 pt.
@@ -305,8 +305,8 @@ enum TitleFont {
         }
         return NSFont.monospacedSystemFont(ofSize: 14, weight: .bold) as CTFont
     }()
-    static let size: CGFloat = 14
-    static let faces = ["ja": "HiraginoSans-W6", "ko": "AppleSDGothicNeo-Bold", "zh-Hans": "STHeitiSC-Medium"]
+    static let size: CGFloat = 15
+    static let faces = ["ja": "HiraginoSans-W3", "ko": "AppleSDGothicNeo-Medium", "zh-Hans": "STHeitiSC-Light"]
 
     struct Letter {
         let text: String
@@ -334,6 +334,20 @@ enum TitleFont {
             line.append(NSAttributedString(string: letter.text, attributes: [.font: letter.font, .kern: letter.silkscreen ? -pixel : 0]))
         }
         return CTLineCreateWithAttributedString(line)
+    }
+
+    // Where each letter starts on the line, by its offset: where Core Text puts
+    // its glyph. A caret offset lands a point further after a kerned letter.
+    static func positions(_ line: CTLine) -> [Int: CGFloat] {
+        var positions: [Int: CGFloat] = [:]
+        for run in CTLineGetGlyphRuns(line) as? [CTRun] ?? [] {
+            let count = CTRunGetGlyphCount(run)
+            var points = [CGPoint](repeating: .zero, count: count), indices = [CFIndex](repeating: 0, count: count)
+            CTRunGetPositions(run, CFRange(), &points)
+            CTRunGetStringIndices(run, CFRange(), &indices)
+            for (index, point) in zip(indices, points) where positions[index] == nil { positions[index] = point.x }
+        }
+        return positions
     }
 
     // The language's face when it has the character, else the one macOS picks.

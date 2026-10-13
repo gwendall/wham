@@ -451,6 +451,17 @@ for language in languages {
     }
     check(unfit.isEmpty, "\(language): the \(titles.count) note titles have their letters \(unfit)")
 }
+let installed = Set(CTFontManagerCopyAvailablePostScriptNames() as? [String] ?? [])
+for (language, face) in TitleFont.faces.sorted(by: { $0.key < $1.key }) {
+    check(installed.contains(face), "\(language): the title face \(face) is on the Mac")
+}
+// A letter stands where Core Text puts its glyph: after a capital, one pixel
+// less than the capital's width, as the line's kerning says.
+var capital: UniChar = 77, glyph: CGGlyph = 0 // M
+_ = CTFontGetGlyphsForCharacters(TitleFont.silkscreen, &capital, &glyph, 1)
+let width = CTFontGetAdvancesForGlyphs(TitleFont.silkscreen, .horizontal, &glyph, nil, 1)
+let at = TitleFont.positions(TitleFont.line(TitleFont.letters("MAC", language: "en")))
+check(at[0] == 0 && at[1] == CGFloat(width) - TitleFont.pixel, "MAC: A stands at \(at[1] ?? -1), M is \(width) wide")
 
 print(failures == 0 ? "\nall checks passed" : "\n\(failures) check(s) failed")
 exit(failures == 0 ? 0 : 1)

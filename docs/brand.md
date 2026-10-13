@@ -58,8 +58,9 @@ is night.
   of its pixels between capitals; every size is tracked -1/8 em so they sit one
   pixel apart. Silkscreen has every Latin letter the app's languages need but
   ẞ (German titles write SS); Japanese, Korean and Chinese titles take Hiragino
-  Sans W6, Apple SD Gothic Neo Bold and STHeiti Medium at 14 pt, drawn on a
-  grid of whole points so they read as pixel letters too.
+  Sans W3, Apple SD Gothic Neo Medium and STHeiti Light at 15 pt, drawn on a
+  grid of whole points so they read as pixel letters too. Bolder cuts fill in
+  the dense characters on that grid.
 - Body: a rounded sans (SF Pro Rounded in the app, Nunito on the web).
 
 ## Sprites
