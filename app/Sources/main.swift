@@ -2,11 +2,12 @@ import AppKit
 
 let args = Array(CommandLine.arguments.dropFirst())
 
-// `Wham --render-sounds <dir>` writes the two chimes as WAV files, to listen to them.
+// `Wham --render-sounds <dir>` writes every sound as a WAV file, numbered, to listen to them.
 if args.first == "--render-sounds", args.count > 1 {
     let dir = URL(fileURLWithPath: args[1])
-    for (name, on) in [("on", true), ("off", false)] {
-        try Chime.wav(Chime.samples(on: on)).write(to: dir.appendingPathComponent("\(name).wav"))
+    for (index, sound) in Chime.Sound.all.enumerated() {
+        let name = String(format: "%02d %@.wav", index + 1, sound.name.replacingOccurrences(of: "%", with: ""))
+        try Chime.wav(Chime.samples(sound)).write(to: dir.appendingPathComponent(name))
     }
     exit(0)
 }

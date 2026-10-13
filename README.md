@@ -65,7 +65,8 @@ Wham lives in your menu bar as a little switch.
   hours (each says when it would end), sound, appearance, open at login, stay
   on after restart, automatic updates, the battery limit, what's new, check for
   updates, quit. The menu stays open while you pick options: a click outside
-  closes it.
+  closes it. Each option answers with a little sound of its own, as the switch
+  does (Sound, in the menu, turns them all off).
 
 A timed session shows what is left: the menu says until when and how long, the
 switch's candy drains toward the knob, and a note drops down five minutes

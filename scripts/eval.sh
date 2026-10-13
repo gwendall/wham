@@ -192,8 +192,8 @@ export WHAM_CLICKS="Appearance/Monochrome,Appearance/Compact,Battery Limit/20%,B
 launch "Click Rows"
 until_ "grep -q '^outside\\|^menu closed\\|^menu missing' \"$work/out\"" 30
 clicked=$(grep '^click ' "$work/out" | sed 's/^click [^:]*: //; s/, status .*//' | paste -sd ';' -)
-check "$(is "[ \"$clicked\" = 'menu open, Monochrome checked, look monochrome wide 50;menu open, Compact checked, look monochrome compact 23;menu open, 20% checked, look monochrome compact 23;menu open, 10% checked, look monochrome compact 23;menu open, Monochrome, look color compact 23;menu open, Compact, look color wide 50' ]")" \
-  "Appearance and Battery Limit clicked in the open menu: it stays open, the option checks, the switch follows (${clicked:-no answer})"
+check "$(is "[ \"$clicked\" = 'menu open, Monochrome checked, look monochrome wide 50, sound monochrome on;menu open, Compact checked, look monochrome compact 23, sound compact on;menu open, 20% checked, look monochrome compact 23, sound battery limit 20%;menu open, 10% checked, look monochrome compact 23, sound battery limit 10%;menu open, Monochrome, look color compact 23, sound monochrome off;menu open, Compact, look color wide 50, sound compact off' ]")" \
+  "Appearance and Battery Limit clicked in the open menu: it stays open, the option checks, the switch follows, each with its sound (${clicked:-no answer})"
 check "$(is "grep -q '^menu still open' \"$work/out\" && grep -q '^outside: menu closed' \"$work/out\"")" \
   "a click outside closes it ($(grep '^menu \|^outside' "$work/out" | paste -sd ',' - | sed 's/,/, /g'))"
 check "$(is "[ \"\$(defaults read sh.wham.app monochrome)\" = 0 ] && [ \"\$(defaults read sh.wham.app compact)\" = 0 ] && ! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" \
@@ -449,8 +449,8 @@ on=$(flag)
 until_ "grep -q '^outside\\|^menu closed\\|^menu missing' \"$work/out\"" 30
 waitflag 0
 clicked=$(grep '^click ' "$work/out" | sed 's/^click //; s/, look [^,]*,/,/' | paste -sd ';' -)
-check "$(is "echo \"$clicked\" | grep -Eq '^Turn On: menu open, Turn Off, status Mac stays awake, even with the lid closed;Stay Awake For/1 Hour: menu open, 1 Hour, status Mac stays awake until .*\\(1 hr left\\);Stay Awake For/No Time Limit: menu open, No Time Limit checked, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual;Turn On For/No Time Limit: menu open, No Time Limit checked, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual$' && grep -q '^outside: menu closed' \"$work/out\"")" \
-  "Turn On, Stay Awake For, No Time Limit (on, then off) and Turn Off clicked in the open menu: it stays open and says so ($(echo "$clicked" | sed 's/;/; /g'))"
+check "$(is "echo \"$clicked\" | grep -Eq '^Turn On: menu open, Turn Off, sound on, status Mac stays awake, even with the lid closed;Stay Awake For/1 Hour: menu open, 1 Hour, sound length 1h, status Mac stays awake until .*\\(1 hr left\\);Stay Awake For/No Time Limit: menu open, No Time Limit checked, sound no time limit, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, sound off, status Mac sleeps as usual;Turn On For/No Time Limit: menu open, No Time Limit checked, sound on, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, sound off, status Mac sleeps as usual$' && grep -q '^outside: menu closed' \"$work/out\"")" \
+  "Turn On, Stay Awake For, No Time Limit (on, then off) and Turn Off clicked in the open menu: it stays open, says so, each with its sound ($(echo "$clicked" | sed 's/;/; /g'))"
 check "$(is "[ \"$on\" = 1 ] && [ \"\$(flag)\" = 0 ] && [ -z \"\$(left)\" ]")" "and the flag follows: on, then off with no end left"
 grep '^retry ' "$work/out" | sed 's/^/note: /'
 stop

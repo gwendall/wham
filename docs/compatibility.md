@@ -98,7 +98,7 @@ downloads nothing, and offers the new version in its menu (Update to Wham X).
 | A Mac with a notch, whose menu bar is taller than the switch | The menu hangs from the menu bar's bottom edge, whole, its first line in sight (eval: the menu opened for real, its window against its height) |
 | Reduce Motion | The switch changes without animating |
 | VoiceOver | The switch has a label and a tooltip that say the state and what a click does |
-| Lid closed | No chime: it would play inside a bag |
+| Lid closed | No sound: it would play inside a bag |
 
 ## Sessions and guards
 
