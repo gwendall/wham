@@ -75,7 +75,8 @@ end (off, it turns Wham on with no end; checked while there is none).
 Appearance, in the menu, fits it in with the icons around it: **Monochrome**
 draws it in your menu bar's own ink, no color, and **Compact** keeps only the
 knob, as wide as an icon, turning where it is instead of sliding; a timed
-session runs out around it.
+session runs out around it. Either one changes over half a second, colors and
+width, at your display's pace.
 
 The first time you turn it on, macOS asks for your password, once, and says
 why (see [how it works](#how-it-works)). Quitting Wham always gives sleep back,
@@ -266,7 +267,8 @@ outside closes it, and that its rows look like the menu's own; with
 `WHAM_SHOTS=dir`, it saves a picture of the menu at each step, which CI keeps
 for each macOS it runs.
 `scripts/sheet.sh` draws the switch in each of its looks, on a light and a dark
-menu bar, into `build/sheet.png` (`--film` for it turning on, frame by frame).
+menu bar, into `build/sheet.png` (`--film` for it turning on, frame by frame,
+`--looks` for each change of look).
 
 ## Credits
 

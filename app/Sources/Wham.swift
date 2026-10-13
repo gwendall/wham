@@ -47,6 +47,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var endTimer: Timer?
     private var warnTimer: Timer?
     private var ended: (why: String, at: Date)?
+    // For the evals' "Film": each frame of a change of look, when it was
+    // drawn, the status item's width and how monochrome the switch was.
+    private var film: [(time: CFTimeInterval, length: CGFloat, mono: CGFloat)]?
     private var lidWasClosed = false
     // Set when macOS says it is about to restart, shut down or log out.
     private var poweringOff = false
@@ -54,8 +57,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.runsFromTemporaryCopy && offerToMove() { return }
         guard let button = item.button else { return }
-        toggleView.setLook(look)
+        toggleView.setLook(look, animated: false)
         item.length = toggleView.itemLength
+        // A change of look moves the status item's width with it, frame by frame.
+        toggleView.onFrame = { [weak self] in self?.lookMoved() }
         toggleView.frame = button.bounds
         toggleView.autoresizingMask = [.width, .height]
         button.addSubview(toggleView)
@@ -709,9 +714,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         set {
             UserDefaults.standard.set(newValue.monochrome, forKey: "monochrome")
             UserDefaults.standard.set(newValue.compact, forKey: "compact")
-            toggleView.setLook(newValue)
-            item.length = toggleView.itemLength
+            toggleView.setLook(newValue, animated: true)
         }
+    }
+
+    private func lookMoved() {
+        item.length = toggleView.itemLength
+        film?.append((CACurrentMediaTime(), item.length, toggleView.blend.mono))
     }
 
     // On battery, the charge at which Wham lets the Mac sleep.
@@ -737,7 +746,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // WHAM_CLICKS lists, "Rows" draws the menu's own rows next to rows of
     // Wham's, "Status" prints the menu's first line and its lengths, "Items"
     // the menu's items, "Look" the appearance and the status item's width,
-    // and "Pause" waits a step.
+    // "Film/Compact" or "Film/Monochrome" changes the look and prints its
+    // frames, and "Pause" waits a step.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -755,6 +765,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 print("look", lookLine)
                 fflush(stdout)
             case ["Pause"]: break
+            case ["Film", "Compact"], ["Film", "Monochrome"]:
+                film = []
+                if path[1] == "Compact" { look.compact.toggle() } else { look.monochrome.toggle() }
+                perform(#selector(printFilm(_:)), with: path[1], afterDelay: 0.9, inModes: [.common])
             case ["Items"]:
                 print("items", Self.describe(self.menu()))
                 fflush(stdout)
@@ -790,6 +804,25 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
+    }
+
+    // "film Compact: 28 frames in 450 ms, longest gap 17 ms, 50.0 49.5 … 23.0":
+    // the frames of the change of look, with the status item's width each
+    // time, or how monochrome the switch was.
+    @objc private func printFilm(_ option: String) {
+        let frames = film ?? []
+        film = nil
+        // A screen that is off has no frames to give: the change ends at once.
+        guard Self.screenShows else {
+            print("film \(option): not drawn: the screen is locked or asleep")
+            fflush(stdout)
+            return
+        }
+        let gaps = zip(frames.dropFirst(), frames).map { $0.time - $1.time }
+        let values = frames.map { option == "Compact" ? String(format: "%.1f", $0.length) : String(format: "%.2f", $0.mono) }
+        print("film \(option): \(frames.count) frames in \(Int(((frames.last?.time ?? 0) - (frames.first?.time ?? 0)) * 1000)) ms,",
+              "longest gap \(Int((gaps.max() ?? 0) * 1000)) ms,", values.joined(separator: " "))
+        fflush(stdout)
     }
 
     // "monochrome compact 23": the switch's look and the status item's width.
@@ -919,7 +952,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     Self.waitFor(5, { current.highlightedItem === entry && row.highlighted }, poke: Self.nudge(frame, of: window)) {
                         guard current.highlightedItem === entry else { return fail("\(title) did not highlight") }
                         Self.click(frame, of: window)
-                        Self.after(0.6) {
+                        // Once a change of look has settled.
+                        Self.after(0.8) {
                             clicks += 1
                             _ = Self.shoot(window, "click-\(clicks)")
                             let open = root.isVisible && self.openMenu != nil

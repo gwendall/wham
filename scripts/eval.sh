@@ -30,7 +30,8 @@
 #   outside (back on at the next launch within a minute), a restart (back on
 #   at the next login with Stay On After Restart only, until a timed
 #   session's end)
-# - Appearance: Monochrome and Compact, and the status item's width
+# - Appearance: Monochrome and Compact, the status item's width, and each
+#   change of look frame by frame at the display's pace (where it shows)
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
 #   updates for real)
 #
@@ -51,6 +52,19 @@ is() { if eval "$1"; then echo 1; else echo 0; fi; }
 seconds() { awk -F: '{ s = 0; for (i = 1; i <= NF; i++) s = s * 60 + $i; print s }'; }
 flag() { ioreg -rd1 -c IOPMrootDomain | awk -F' = ' '/"SleepDisabled"/ { print ($2 == "Yes") ? 1 : 0 }'; }
 ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
+# Reads "film Compact: 29 frames in 461 ms, longest gap 17 ms, 50.0 ... 23.0"
+# lines, each a change of look frame by frame, and prints "Compact 50.0>23.0;"
+# for each, "jerky" after it unless it has 20 frames at least, none more than
+# two frames (34 ms) after the one before, every step the same way and under
+# a quarter of the way.
+smooth() {
+  awk '{
+    first = $12; last = $NF; range = first - last; if (range < 0) range = -range
+    ok = $3 >= 20 && $10 <= 34 && range > 0
+    for (i = 13; i <= NF; i++) { d = $i - $(i - 1); if ((first > last && d > 0) || (first < last && d < 0) || d > range / 4 || -d > range / 4) ok = 0 }
+    printf "%s %s>%s%s;", substr($2, 1, length($2) - 1), first, last, ok ? "" : " jerky"
+  }'
+}
 # Polls, every 50 ms for up to $2 s, until the command $1 succeeds.
 until_() { n=$(echo "${2:-3} * 20" | bc | cut -d. -f1); while ! eval "$1" && [ "$n" -gt 0 ]; do sleep 0.05; n=$((n - 1)); done; }
 waitflag() { until_ "[ \"\$(flag)\" = $1 ]" "${2:-3}"; }
@@ -366,6 +380,21 @@ launch "Look,Switch"
 waitflag 1
 check "$(is "grep -q '^look monochrome compact 23$' \"$work/out\" && [ \"\$(flag)\" = 1 ]")" "opened with both, it starts with both, and its switch still works"
 "$bin" off >/dev/null
+stop
+defaults delete sh.wham.app compact >/dev/null 2>&1 || true
+defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true
+# Each change of look moves frame by frame at the display's pace for about
+# half a second, there and back: the status item's width, the switch's ink.
+: >"$work/out"
+launch "Film/Compact,Film/Compact,Film/Monochrome,Film/Monochrome"
+until_ "[ \"\$(grep -c '^film ' \"$work/out\")\" -ge 4 ]" 12
+films=$(grep '^film ' "$work/out" | cut -d, -f1-2 | paste -sd ';' - | sed 's/;/; /g')
+if echo "$films" | grep -q 'not drawn'; then
+  echo "skip the changes of look (${films})"
+else
+  check "$(is "[ \"\$(grep '^film ' \"$work/out\" | smooth)\" = 'Compact 50.0>23.0;Compact 23.0>50.0;Monochrome 0.00>1.00;Monochrome 1.00>0.00;' ]")" \
+    "Compact and Monochrome move at the display's pace, there and back (${films:-no answer})"
+fi
 stop
 defaults delete sh.wham.app compact >/dev/null 2>&1 || true
 defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true

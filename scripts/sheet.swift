@@ -4,23 +4,34 @@ import QuartzCore
 
 // Draws the menu bar switch in each of its looks, on a light and a dark menu
 // bar: off, on, and on with half of a timed session left. With --film, each
-// look turning on instead, a frame every 40 ms. Built and run by
-// scripts/sheet.sh. Off screen, with CARenderer, which keeps the masks that
-// CALayer.render(in:) drops.
+// look turning on instead, a frame every 40 ms; with --looks, changes of look,
+// a frame every 1/30 s, the status item's right edge where the menu bar keeps
+// it. Built and run by scripts/sheet.sh. Off screen, with CARenderer, which
+// keeps the masks that CALayer.render(in:) drops.
 let film = CommandLine.arguments.contains("--film")
+let changing = CommandLine.arguments.contains("--looks")
 let out = CommandLine.arguments.dropFirst().first { !$0.hasPrefix("--") } ?? "build/sheet.png"
 let scale: CGFloat = 4
 let cell = NSSize(width: 64, height: 30)
-let looks: [(String, SwitchView.Look)] = [
-    ("Color", .init()),
-    ("Monochrome", .init(monochrome: true)),
-    ("Compact", .init(compact: true)),
-    ("Compact, monochrome", .init(monochrome: true, compact: true)),
+// Each row: its caption, its look, the look it changes to (--looks), and the
+// state it is in then, with what is left of a timed session.
+let looks: [(String, SwitchView.Look, SwitchView.Look?, Bool, CGFloat)] = changing ? [
+    ("To monochrome, off", .init(), .init(monochrome: true), false, 1),
+    ("To monochrome, on", .init(), .init(monochrome: true), true, 1),
+    ("To compact, off", .init(), .init(compact: true), false, 1),
+    ("To compact, on", .init(), .init(compact: true), true, 1),
+    ("To compact, half left", .init(), .init(compact: true), true, 0.5),
+    ("Both back, on", .init(monochrome: true, compact: true), .init(), true, 1),
+] : [
+    ("Color", .init(), nil, true, 1),
+    ("Monochrome", .init(monochrome: true), nil, true, 1),
+    ("Compact", .init(compact: true), nil, true, 1),
+    ("Compact, monochrome", .init(monochrome: true, compact: true), nil, true, 1),
 ]
 let bars: [(NSAppearance.Name, CGColor)] = [(.aqua, CGColor(gray: 0.93, alpha: 1)), (.darkAqua, CGColor(gray: 0.16, alpha: 1))]
 let states: [(String, Bool?, CGFloat)] = [("Off", false, 1), ("On", true, 1), ("Half left", true, 0.5)]
-let frames = 12
-let columns = film ? frames : states.count
+let frames = changing ? 15 : 12
+let columns = film || changing ? frames : states.count
 let label: CGFloat = 150
 
 @main
@@ -35,7 +46,7 @@ enum Sheet {
         root.backgroundColor = CGColor(gray: 1, alpha: 1)
         var views: [SwitchView] = []
 
-        for (lookIndex, (name, look)) in looks.enumerated() {
+        for (lookIndex, (name, look, change, changeState, changeLeft)) in looks.enumerated() {
             for (barIndex, (appearance, background)) in bars.enumerated() {
                 let row = lookIndex * bars.count + barIndex
                 let y = size.height - CGFloat(row + 1) * cell.height
@@ -48,15 +59,26 @@ enum Sheet {
                 caption.frame = CGRect(x: 8 * scale, y: (y + 4) * scale, width: (label - 8) * scale, height: 18 * scale)
                 root.addSublayer(caption)
                 for column in 0..<columns {
-                    let state = film ? (true as Bool?, CGFloat(1)) : (states[column].1, states[column].2)
+                    let state = film || changing ? (true as Bool?, CGFloat(1)) : (states[column].1, states[column].2)
                     let window = NSWindow(contentRect: NSRect(origin: .zero, size: cell), styleMask: .borderless, backing: .buffered, defer: false)
                     window.appearance = NSAppearance(named: appearance)
                     let view = SwitchView()
-                    view.setLook(look)
+                    view.setLook(look, animated: false)
                     view.frame = NSRect(origin: .zero, size: cell)
                     window.contentView = view
                     view.layoutSubtreeIfNeeded()
-                    if film {
+                    var origin = CGFloat(0)
+                    if let change {
+                        // Column n is the change 1/30 s × n in, its right edge
+                        // where a wide item's is.
+                        if changeState { view.drain(changeLeft, animated: false) }
+                        view.show(changeState, animated: false)
+                        view.setLook(change, animated: true)
+                        view.advanceLook(to: view.blendStart + Double(column) / 30)
+                        origin = (cell.width + 50) / 2 - view.itemLength
+                        view.frame = NSRect(x: origin, y: 0, width: view.itemLength, height: cell.height)
+                        view.layoutSubtreeIfNeeded()
+                    } else if film {
                         view.show(false, animated: false)
                     } else {
                         if state.0 == true { view.drain(state.1, animated: false) }
@@ -69,14 +91,15 @@ enum Sheet {
                     holder.backgroundColor = background
                     // The item's own width, as the menu bar gives it.
                     let item = CALayer()
-                    item.frame = CGRect(x: (cell.width - view.itemLength) / 2 * scale, y: 0, width: view.itemLength * scale, height: 1.5 * scale)
+                    let itemX = change == nil ? (cell.width - view.itemLength) / 2 : origin
+                    item.frame = CGRect(x: itemX * scale, y: 0, width: view.itemLength * scale, height: 1.5 * scale)
                     item.backgroundColor = CGColor(srgbRed: 1, green: 0.2, blue: 0.6, alpha: 0.5)
                     holder.addSublayer(item)
                     let layer = CALayer()
                     layer.bounds = CGRect(origin: .zero, size: cell)
                     for sublayer in view.layer?.sublayers ?? [] { layer.addSublayer(sublayer) }
                     layer.anchorPoint = .zero
-                    layer.position = .zero
+                    layer.position = CGPoint(x: origin * scale, y: 0)
                     layer.setAffineTransform(CGAffineTransform(scaleX: scale, y: scale))
                     holder.addSublayer(layer)
                     root.addSublayer(holder)

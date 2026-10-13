@@ -5,6 +5,7 @@
 #
 #   scripts/sheet.sh [out.png]           off, on, and on with half a timed session left
 #   scripts/sheet.sh --film [out.png]    turning on, a frame every 40 ms
+#   scripts/sheet.sh --looks [out.png]   changes of look, a frame every 1/30 s
 set -eu
 cd "$(dirname "$0")/.."
 mkdir -p build
