@@ -101,6 +101,9 @@ work=$(mktemp -d)
 export WHAM_LOG_DIR="$work/log"
 journal() { cat "$WHAM_LOG_DIR/Wham.1.log" "$WHAM_LOG_DIR/Wham.log" 2>/dev/null || true; }
 logged() { journal | grep -Eq "$1"; }
+# The same, given up to 2 s: the app writes its `flag` line once pmset has
+# exited, a little after the kernel flips, which is what `waitflag` sees.
+seen() { n=40; until logged "$1"; do [ "$n" -gt 0 ] || return 1; sleep 0.05; n=$((n - 1)); done; }
 fake="$work/power"
 echo "ac 100" >"$fake"
 lid="$work/lid"
@@ -332,7 +335,7 @@ launch Switch
 waitflag 1
 until_ dog 1
 check "$(is "[ \"\$(flag)\" = 1 ] && dog")" "a click on the switch turns it on"
-check "$(is "logged ' app\[$pid\] flag on=yes why=switch ok=yes'")" "the journal says the switch did it"
+check "$(is "seen ' app\[$pid\] flag on=yes why=switch ok=yes'")" "the journal says the switch did it"
 # Kept from App Nap while on, without holding a sleep assertion of its own.
 check "$(is "! pmset -g assertions | grep -q \"pid $pid(\"")" "on, the app holds no sleep assertion: the flag does it alone"
 killed=$pid
@@ -369,7 +372,7 @@ stop
 launch
 waitflag 1
 check "$(is "[ \"\$(flag)\" = 1 ]")" "opened again within a minute, it turns back on"
-check "$(is "logged ' app\[$pid\] flag on=yes why=\"resume after quit from outside\" ok=yes'")" "and the journal says why"
+check "$(is "seen ' app\[$pid\] flag on=yes why=\"resume after quit from outside\" ok=yes'")" "and the journal says why"
 stop
 waitflag 0
 # A restart, a shutdown or a logout: macOS says so, then quits the app.
@@ -426,7 +429,7 @@ sudo -n /usr/bin/pmset -a disablesleep 1
 echo 1000000000 >"$WHAM_LOG_DIR/running"
 launch
 waitflag 0 4
-check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] flag on=no why=\"left on by a run the restart cut short\" ok=yes'")" \
+check "$(is "[ \"\$(flag)\" = 0 ] && seen ' app\[$pid\] flag on=no why=\"left on by a run the restart cut short\" ok=yes'")" \
   "on through a restart the run did not quit: sleep given back"
 stop
 defaults write sh.wham.app stayOnAfterRestart -bool YES
@@ -606,7 +609,7 @@ check "$(is "[ \"\$(flag)\" = 1 ]")" "on battery at 50%: stays on"
 echo "battery 10" >"$fake"
 waitflag 0 5
 check "$(is "[ \"\$(flag)\" = 0 ]")" "down to 10%: the app gives sleep back"
-check "$(is "logged ' app\[$pid\] session-ended reason=battery battery=10 limit=10%' && logged ' app\[$pid\] flag on=no why=\"session ended: battery\" ok=yes'")" \
+check "$(is "logged ' app\[$pid\] session-ended reason=battery battery=10 limit=10%' && seen ' app\[$pid\] flag on=no why=\"session ended: battery\" ok=yes'")" \
   "the journal says why the session ended"
 echo "ac 100" >"$fake"
 sleep 3
