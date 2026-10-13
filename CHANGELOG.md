@@ -12,6 +12,7 @@ What changed in each version of Wham, newest first. Also on
 - With the lid closed, when Wham gives sleep back (time up, low battery, too hot, `wham off`, or Wham quit), your Mac now goes to sleep. macOS only looks at the lid when it moves, so until now it stayed awake until you opened it. With an external display connected, it stays awake, as macOS would.
 - While on, Wham is kept out of App Nap: under a closed lid, its battery, heat and time checks come on time.
 - On a charger too weak to keep up, the battery still runs down: Battery Limit now holds there too, as it does on battery.
+- A Mac that shut down with Wham on, without Wham quitting (the battery ran out, macOS crashed), now gets its sleep back when it starts again, unless Stay On After Restart is checked: macOS keeps the setting across a restart.
 - `wham on` no longer crashes on a duration too long to count: a session lasts a year at most.
 
 ## 1.6.0 - 2026-10-13
