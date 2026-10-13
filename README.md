@@ -80,6 +80,11 @@ knob, as wide as an icon, turning where it is instead of sliding; a timed
 session runs out around it. Either one changes over half a second, colors and
 width, at your display's pace.
 
+Wham speaks your Mac's language: English, French, Spanish, German, Italian,
+Portuguese, Japanese, Korean or Chinese. To give it another language than your
+Mac's: System Settings > General > Language & Region > Applications. The `wham`
+command and the journal stay in English.
+
 The first time you turn it on, macOS asks for your password, once, and says
 why (see [how it works](#how-it-works)). Quitting Wham always gives sleep back,
 and so does a restart: with **Stay On After Restart**, in the menu, Wham turns
