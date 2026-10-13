@@ -38,6 +38,13 @@ final class Toast {
         ink: .white, captionInk: CGColor(gray: 1, alpha: 0.6), spriteInk: Pixels.moonInk,
         fill: [CGColor(gray: 0.08, alpha: 1)], rim: CGColor(gray: 1, alpha: 0.16), glow: nil)
 
+    // Five minutes before a timed session ends, still on: the candy pill, with
+    // the time it lets go.
+    static let soon = Style(
+        title: "5 MINUTES LEFT", caption: "Then back to normal sleep", sprite: Pixels.sun, spin: -.pi / 4,
+        ink: Pixels.ink, captionInk: Pixels.ink.copy(alpha: 0.72)!, spriteInk: Pixels.ink,
+        fill: Pixels.candy, rim: nil, glow: Pixels.glow)
+
     // The first launch, and opening Wham again: where it is and what it does.
     static let hello = Style(
         title: "HI, I'M WHAM", caption: "Click me to keep your Mac awake", sprite: Pixels.sun, spin: -.pi / 4,

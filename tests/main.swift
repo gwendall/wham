@@ -147,6 +147,10 @@ check(Session.end(.init(now: now)) == nil && Session.end(.init(now: now, offAt: 
 check(Session.end(.init(now: now, offAt: now)) == .time, "a timed session ends on time")
 check(Session.end(.init(now: now, onBattery: true, battery: 11)) == nil && Session.end(.init(now: now, onBattery: true, battery: 10)) == .battery,
       "on battery, 10% ends it")
+check(Session.end(.init(now: now, onBattery: true, battery: 21, batteryLimit: 20)) == nil
+      && Session.end(.init(now: now, onBattery: true, battery: 20, batteryLimit: 20)) == .battery
+      && Session.end(.init(now: now, onBattery: true, battery: 6, batteryLimit: 5)) == nil,
+      "the battery limit moves where it ends")
 check(Session.end(.init(now: now, onBattery: false, battery: 3)) == nil && Session.end(.init(now: now, onBattery: true, battery: nil)) == nil,
       "plugged in, or without a battery, the charge does not matter")
 check(Session.end(.init(now: now, offAt: now, onBattery: true, battery: 3, critical: true)) == .heat, "the heat comes first")
@@ -161,6 +165,28 @@ for (text, seconds) in durations {
 }
 let tomorrow = now.addingTimeInterval(86400)
 check(Session.clock(tomorrow, now: now).count > Session.clock(tomorrow, now: tomorrow).count, "another day's end says its day")
+
+// What is left of a timed session: in words, rounded up to the minute, and as
+// the share of the switch's candy still there.
+let lefts: [(TimeInterval, String)] = [
+    (7200, "2 hr"), (7080, "1 hr 58 min"), (7079.5, "1 hr 58 min"), (3601, "1 hr 1 min"), (2700, "45 min"),
+    (59, "1 min"), (0.2, "1 min"), (-3, "1 min"), (86400, "24 hr"),
+]
+for (seconds, words) in lefts {
+    check(Session.timeLeft(seconds) == words, "\(seconds) s left: '\(Session.timeLeft(seconds))'")
+}
+// On whole seconds, so the sums below are exact.
+let noon = Date(timeIntervalSince1970: now.timeIntervalSince1970.rounded())
+let hourAgo = noon.addingTimeInterval(-3600), hourOn = noon.addingTimeInterval(3600)
+check(Session.remaining(now: hourAgo, from: hourAgo, to: hourOn) == 1 && Session.remaining(now: noon, from: hourAgo, to: hourOn) == 0.5
+      && Session.remaining(now: hourOn, from: hourAgo, to: hourOn) == 0 && Session.remaining(now: tomorrow, from: hourAgo, to: hourOn) == 0,
+      "the candy drains from whole to nothing over the session")
+check(Session.remaining(now: noon, from: nil, to: hourOn) == 1 && Session.remaining(now: noon, from: hourAgo, to: nil) == 1,
+      "untimed, or its start unknown: whole")
+check(Session.warnAt(from: noon, to: hourOn) == noon.addingTimeInterval(3300) && Session.warnAt(from: nil, to: hourOn) == noon.addingTimeInterval(3300),
+      "warned five minutes before the end")
+check(Session.warnAt(from: noon, to: noon.addingTimeInterval(599)) == nil && Session.warnAt(from: noon, to: nil) == nil,
+      "not for a session under ten minutes, nor an untimed one")
 
 // The watchdog gives sleep back when whoever armed it dies, here a stand-in
 // that touches a file, and does nothing once told to stand down.
@@ -220,14 +246,27 @@ check(!plugged.onBattery && plugged.battery == nil && !plugged.critical, "and is
 unsetenv("WHAM_FAKE_POWER")
 try? FileManager.default.removeItem(atPath: standIn)
 
-// The end of a timed session, shared through the app's preferences.
-let saved = Session.offAt
-let end = Date(timeIntervalSince1970: (now.timeIntervalSince1970 + 3600).rounded())
-Session.offAt = end
-check(Session.offAt == end && shell("defaults read sh.wham.app offAt").status == 0, "the end is shared through preferences")
-Session.offAt = nil
-check(Session.offAt == nil && shell("defaults read sh.wham.app offAt 2>/dev/null").status != 0, "and cleared")
-Session.offAt = saved
+// A timed session's end and start, and the battery limit, shared through the
+// app's preferences. Put back as they were.
+let saved = (Session.offAt, Session.onAt), savedLimit = Session.batteryLimit
+let start = Date(timeIntervalSince1970: now.timeIntervalSince1970.rounded())
+let end = start.addingTimeInterval(3600)
+Session.setEnd(end, now: start)
+check(Session.offAt == end && Session.onAt == start && shell("defaults read sh.wham.app offAt").status == 0
+      && shell("defaults read sh.wham.app onAt").status == 0, "the end and the start are shared through preferences")
+Session.setEnd(nil)
+check(Session.offAt == nil && Session.onAt == nil && shell("defaults read sh.wham.app offAt 2>/dev/null").status != 0
+      && shell("defaults read sh.wham.app onAt 2>/dev/null").status != 0, "and cleared")
+Session.offAt = saved.0
+Session.onAt = saved.1
+Session.batteryLimit = 20
+check(Session.batteryLimit == 20 && shell("defaults read sh.wham.app batteryLimit").output.hasPrefix("20"), "the battery limit is shared")
+check(CLI.help.contains("at 20% or less"), "wham help says the limit")
+_ = shell("defaults write sh.wham.app batteryLimit -int 7")
+check(Session.batteryLimit == Session.defaultBatteryLimit, "a limit the menu does not offer counts as the default")
+Session.batteryLimit = Session.defaultBatteryLimit
+check(shell("defaults read sh.wham.app batteryLimit 2>/dev/null").status != 0, "the default is not stored")
+Session.batteryLimit = savedLimit
 
 // The command line.
 check(CLI.commands.isSuperset(of: ["on", "off", "toggle", "status", "version", "help"]), "CLI knows its commands")

@@ -4,7 +4,8 @@ import QuartzCore
 // The menu bar item: one switch whose knob carries the glyph. On: candy track,
 // white knob on the right with a pixel sun. Off: a soft track, the knob on the
 // left in the menu bar's ink with a pixel moon cut out of it. Unknown: orange,
-// knob in the middle. The knob rolls as it slides. Built from Core Animation
+// knob in the middle. The knob rolls as it slides. In a timed session the candy
+// drains toward the knob as the time runs out. Built from Core Animation
 // layers, so it moves at the display's refresh rate even while the main thread
 // waits on pmset or a password prompt.
 final class SwitchView: NSView {
@@ -17,6 +18,7 @@ final class SwitchView: NSView {
 
     private let groove = CAShapeLayer()
     private let candy = CAGradientLayer()
+    private let drained = CAShapeLayer() // the candy's mask: what is left of a timed session
     private let knob = CALayer() // slides and rolls, carrying both faces
     private let day = CALayer()
     private let sun = CAShapeLayer()
@@ -27,6 +29,8 @@ final class SwitchView: NSView {
 
     private(set) var state: Bool?
     private(set) var hasShown = false
+    // The share of a timed session still to run; 1 when untimed.
+    private(set) var left: CGFloat = 1
 
     var contentWidth: CGFloat { Self.track.width }
 
@@ -38,6 +42,10 @@ final class SwitchView: NSView {
         candy.endPoint = CGPoint(x: 1, y: 0.5)
         candy.cornerRadius = Self.track.height / 2
         candy.masksToBounds = true
+        drained.fillColor = CGColor(gray: 0, alpha: 1)
+        drained.frame = CGRect(origin: .zero, size: Self.track)
+        drained.path = drainedPath()
+        candy.mask = drained
 
         let disk = CGRect(x: 0, y: 0, width: Self.knobSize, height: Self.knobSize)
         let glyphOrigin = CGPoint(x: Self.glyphInset, y: Self.glyphInset)
@@ -100,6 +108,8 @@ final class SwitchView: NSView {
         let radius = Self.track.height / 2
         groove.path = CGPath(roundedRect: trackRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
         candy.frame = trackRect
+        drained.frame = candy.bounds
+        drained.path = drainedPath()
         knob.position = CGPoint(x: knobX(state), y: trackRect.midY)
         CATransaction.commit()
     }
@@ -107,7 +117,7 @@ final class SwitchView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let scale = window?.backingScaleFactor ?? 2
-        for sublayer in [groove, candy, knob, day, sun, night] { sublayer.contentsScale = scale }
+        for sublayer in [groove, candy, drained, knob, day, sun, night] { sublayer.contentsScale = scale }
         needsLayout = true
     }
 
@@ -150,11 +160,46 @@ final class SwitchView: NSView {
             fade(day, "opacity", from: fromDay, to: on ? 1 : 0, duration: 0.16)
             fade(night, "opacity", from: fromNight, to: on ? 0 : 1, duration: 0.16)
             fade(candy, "opacity", from: fromCandy, to: on ? 1 : 0)
-            fade(groove, "opacity", from: fromGroove, to: on ? 0 : 1)
+            fade(groove, "opacity", from: fromGroove, to: grooveOpacity)
         }
         applyModel()
         CATransaction.commit()
     }
+
+    // A timed session's candy drains from the far end toward the knob: whole at
+    // the start, a ring around the knob at the end. Moves in quarter points, so
+    // the tick that calls this redraws only when there is something to see.
+    func drain(_ newLeft: CGFloat, animated: Bool) {
+        let newLeft = min(1, max(0, newLeft))
+        guard drainedWidth(newLeft) != drainedWidth(left) else { return }
+        let from = drained.presentation()?.path ?? drained.path
+        let fromGroove = groove.presentation()?.opacity ?? groove.opacity
+        left = newLeft
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let path = drainedPath()
+        if animated && state == true && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            fade(drained, "path", from: from, to: path, duration: 0.4)
+            fade(groove, "opacity", from: fromGroove, to: grooveOpacity, duration: 0.4)
+        }
+        drained.path = path
+        groove.opacity = grooveOpacity
+        CATransaction.commit()
+    }
+
+    private func drainedWidth(_ left: CGFloat) -> CGFloat {
+        let size = Self.track
+        return ((size.height + (size.width - size.height) * left) * 4).rounded() / 4
+    }
+
+    private func drainedPath() -> CGPath {
+        let size = Self.track, width = drainedWidth(left), radius = size.height / 2
+        return CGPath(roundedRect: CGRect(x: size.width - width, y: 0, width: width, height: size.height),
+                      cornerWidth: radius, cornerHeight: radius, transform: nil)
+    }
+
+    // The soft track shows where the candy has drained, and when off.
+    private var grooveOpacity: Float { state == true && left >= 1 ? 0 : 1 }
 
     // The spring of CASpringAnimation(perceptualDuration:bounce:), which needs
     // macOS 14, from its stiffness and damping.
@@ -206,7 +251,7 @@ final class SwitchView: NSView {
         let on = state == true
         let ink = state == nil ? orange : label
         groove.fillColor = ink.copy(alpha: 0.2)
-        groove.opacity = on ? 0 : 1
+        groove.opacity = grooveOpacity
         candy.opacity = on ? 1 : 0
         night.fillColor = ink
         night.opacity = on ? 0 : 1

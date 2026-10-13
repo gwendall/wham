@@ -22,9 +22,11 @@ final class Wham: NSObject, NSApplicationDelegate {
     private var updateTimer: Timer?
     private let watchdog = Watchdog()
     private var watch: Watch?
-    // A timed session's end, and what ended the last session on its own.
+    // A timed session's end and start, and what ended the last session on its own.
     private var offAt: Date?
+    private var onAt: Date?
     private var endTimer: Timer?
+    private var warnTimer: Timer?
     private var ended: (why: String, at: Date)?
     private var lidWasClosed = false
 
@@ -42,6 +44,7 @@ final class Wham: NSObject, NSApplicationDelegate {
         button.action = #selector(clicked)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         offAt = Session.offAt
+        onAt = Session.onAt
         lidWasClosed = Sleep.lidClosed
         check()
         scheduleEnd()
@@ -58,6 +61,7 @@ final class Wham: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.offAt = Session.offAt
+                self.onAt = Session.onAt
                 self.scheduleEnd()
                 self.check()
             }
@@ -85,7 +89,15 @@ final class Wham: NSObject, NSApplicationDelegate {
             return alert("Wham is running, but its switch has no room in the menu bar (too many icons, or the notch). "
                 + "Hold ⌘ and drag a few other icons out of the menu bar to make room for it.")
         }
-        toast.show(Toast.hello, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
+        pop(Toast.hello)
+    }
+
+    // Shows a pill under the switch. The evals read what it said.
+    private func pop(_ style: Toast.Style) {
+        guard let button = item.button, let window = button.window else { return }
+        toast.show(style, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
+        print("toast \(style.title): \(style.caption)")
+        fflush(stdout)
     }
 
     // Opened from the disk image (or from Downloads, which macOS runs from a
@@ -190,6 +202,7 @@ final class Wham: NSObject, NSApplicationDelegate {
     }
 
     private func show(_ state: Bool?) {
+        if state == true { drain() }
         toggleView.show(state, animated: true)
         let tip: String
         switch state {
@@ -220,7 +233,13 @@ final class Wham: NSObject, NSApplicationDelegate {
         watchdog.arm()
         let reading = Session.read(offAt: offAt)
         if let end = Session.end(reading) { return stop(end, battery: reading.battery) }
+        drain()
         if lidClosed && !lidWasClosed { sleepScreenSoon() }
+    }
+
+    // The switch's candy, as much of it as the timed session has left.
+    private func drain() {
+        toggleView.drain(CGFloat(Session.remaining(from: onAt, to: offAt)), animated: true)
     }
 
     private func stop(_ end: Session.End, battery: Int?) {
@@ -238,23 +257,41 @@ final class Wham: NSObject, NSApplicationDelegate {
         return true
     }
 
+    // From now until `date`, or untimed (nil).
     private func setOffAt(_ date: Date?) {
-        offAt = date
-        Session.offAt = date
+        Session.setEnd(date)
+        offAt = Session.offAt
+        onAt = Session.onAt
         scheduleEnd()
     }
 
     // On time even while macOS naps the app; the tick is the backstop.
     private func scheduleEnd() {
         endTimer?.invalidate()
+        warnTimer?.invalidate()
         endTimer = nil
+        warnTimer = nil
         guard let offAt else { return }
-        let timer = Timer(fire: offAt, interval: 0, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.check() }
+        endTimer = at(offAt) { $0.check() }
+        if let warnAt = Session.warnAt(from: onAt, to: offAt), warnAt > Date() {
+            warnTimer = at(warnAt) { $0.warn() }
+        }
+    }
+
+    private func at(_ date: Date, _ action: @escaping @MainActor (Wham) -> Void) -> Timer {
+        let timer = Timer(fire: date, interval: 0, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { if let self { action(self) } }
         }
         timer.tolerance = 1
         RunLoop.main.add(timer, forMode: .common)
-        endTimer = timer
+        return timer
+    }
+
+    // Five minutes before a timed session ends, a pill says so, without a
+    // sound: time to pick another length, or No Time Limit. Not to a closed lid.
+    private func warn() {
+        guard let offAt, Sleep.isDisabled == true, !Sleep.lidClosed, offAt > Date() else { return }
+        pop(Toast.soon.saying("Then back to normal sleep, at \(Session.clock(offAt))"))
     }
 
     // A few seconds after the lid closes, so a monitor plugged into a closed
@@ -292,8 +329,10 @@ final class Wham: NSObject, NSApplicationDelegate {
         let on = Sleep.isDisabled == true
         let menu = NSMenu()
         let line: String
-        if on {
-            line = offAt.map { "Mac stays awake until \(Session.clock($0))" } ?? "Mac stays awake, even with the lid closed"
+        if on, let offAt {
+            line = "Mac stays awake until \(Session.clock(offAt)) (\(Session.timeLeft(offAt.timeIntervalSinceNow)) left)"
+        } else if on {
+            line = "Mac stays awake, even with the lid closed"
         } else if let ended {
             line = "\(ended.why), stopped at \(Session.clock(ended.at))"
         } else {
@@ -304,13 +343,7 @@ final class Wham: NSObject, NSApplicationDelegate {
         menu.addItem(status)
         menu.addItem(NSMenuItem(title: on ? "Turn Off" : "Turn On", action: #selector(toggle), keyEquivalent: ""))
         let timed = NSMenuItem(title: on ? "Stay Awake For" : "Turn On For", action: nil, keyEquivalent: "")
-        timed.submenu = NSMenu()
-        for hours in [1, 2, 4, 8] {
-            let entry = NSMenuItem(title: hours == 1 ? "1 Hour" : "\(hours) Hours", action: #selector(stayAwake(_:)), keyEquivalent: "")
-            entry.tag = hours
-            entry.target = self
-            timed.submenu?.addItem(entry)
-        }
+        timed.submenu = lengths(on: on)
         menu.addItem(timed)
         menu.addItem(.separator())
         let sound = NSMenuItem(title: "Sound", action: #selector(toggleSound), keyEquivalent: "")
@@ -322,6 +355,9 @@ final class Wham: NSObject, NSApplicationDelegate {
         let updates = NSMenuItem(title: "Update Automatically", action: #selector(toggleUpdates), keyEquivalent: "")
         updates.state = Update.isOn ? .on : .off
         menu.addItem(updates)
+        let limit = NSMenuItem(title: "Battery Limit", action: nil, keyEquivalent: "")
+        limit.submenu = batteryLimits()
+        menu.addItem(limit)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "About Wham \(CLI.version)", action: #selector(openSite), keyEquivalent: ""))
         menu.addItem(NSMenuItem(title: "Made by Gwendall", action: #selector(openAuthor), keyEquivalent: ""))
@@ -331,10 +367,58 @@ final class Wham: NSObject, NSApplicationDelegate {
         return menu
     }
 
+    // 1, 2, 4 or 8 hours from now, each with the time it would end on the
+    // right, in gray; and, in a timed session, a way back to no end at all.
+    private func lengths(on: Bool) -> NSMenu {
+        let lengths = NSMenu()
+        let now = Date()
+        let entries = [1, 2, 4, 8].map { hours in
+            (hours, hours == 1 ? "1 Hour" : "\(hours) Hours", Session.clock(now.addingTimeInterval(TimeInterval(hours) * 3600), now: now))
+        }
+        let font = NSFont.menuFont(ofSize: 0)
+        func width(_ text: String) -> CGFloat { (text as NSString).size(withAttributes: [.font: font]).width }
+        let stop = (entries.map { width($0.1) }.max() ?? 0) + 24 + (entries.map { width($0.2) }.max() ?? 0)
+        let style = NSMutableParagraphStyle()
+        style.tabStops = [NSTextTab(textAlignment: .right, location: stop)]
+        for (hours, title, end) in entries {
+            let entry = NSMenuItem(title: title, action: #selector(stayAwake(_:)), keyEquivalent: "")
+            let text = NSMutableAttributedString(string: "\(title)\t", attributes: [.font: font, .paragraphStyle: style])
+            text.append(NSAttributedString(string: end, attributes: [.font: font, .paragraphStyle: style, .foregroundColor: NSColor.secondaryLabelColor]))
+            entry.attributedTitle = text
+            entry.tag = hours
+            entry.target = self
+            lengths.addItem(entry)
+        }
+        if on && offAt != nil {
+            lengths.addItem(.separator())
+            let forever = NSMenuItem(title: "No Time Limit", action: #selector(noTimeLimit), keyEquivalent: "")
+            forever.target = self
+            lengths.addItem(forever)
+        }
+        return lengths
+    }
+
+    // On battery, the charge at which Wham lets the Mac sleep.
+    private func batteryLimits() -> NSMenu {
+        let limits = NSMenu()
+        let header = NSMenuItem(title: "Sleep on battery at", action: nil, keyEquivalent: "")
+        header.isEnabled = false
+        limits.addItem(header)
+        for percent in Session.batteryLimits {
+            let entry = NSMenuItem(title: "\(percent)%", action: #selector(setBatteryLimit(_:)), keyEquivalent: "")
+            entry.tag = percent
+            entry.state = percent == Session.batteryLimit ? .on : .off
+            entry.target = self
+            limits.addItem(entry)
+        }
+        return limits
+    }
+
     // For the evals: once launched, presses menu items by title, one after the
     // other, as WHAM_PRESS lists them: "Turn On For/2 Hours,Turn Off". "Switch"
     // is a click on the switch, "Terminate" a quit from outside (a logout),
-    // "Menu" opens the menu for real and says whether it showed whole.
+    // "Menu" opens the menu for real and says whether it showed whole, "Status"
+    // prints the menu's first line and its lengths.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -345,14 +429,21 @@ final class Wham: NSObject, NSApplicationDelegate {
             switch path {
             case ["Switch"]: toggle()
             case ["Terminate"]: NSApp.terminate(nil)
+            case ["Status"]:
+                let menu = self.menu()
+                let lengths = menu.items.first { $0.submenu != nil }?.submenu?.items ?? []
+                print("status", menu.items.first?.title ?? "")
+                print("lengths", lengths.map { $0.isSeparatorItem ? "-" : $0.attributedTitle?.string ?? $0.title }.joined(separator: " | "))
+                fflush(stdout)
             case ["Menu"]:
                 let menu = self.menu()
                 perform(#selector(lookAt(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
                 showMenu(menu)
             default:
                 var entry: NSMenuItem?, menu: NSMenu? = self.menu()
+                // A length's title also carries its end time, after a tab.
                 for title in path {
-                    entry = menu?.item(withTitle: title)
+                    entry = menu?.items.first { $0.title == title || $0.title.hasPrefix(title + "\t") }
                     menu = entry?.submenu
                 }
                 if let entry, let action = entry.action { NSApp.sendAction(action, to: entry.target, from: entry) }
@@ -391,9 +482,8 @@ final class Wham: NSObject, NSApplicationDelegate {
     // The pill under the switch says the new state in words, with its sound
     // (not from under a closed lid).
     private func announce(_ on: Bool, caption: String? = nil) {
-        guard let button = item.button, let window = button.window else { return }
         let style = on ? Toast.on : Toast.off
-        toast.show(caption.map(style.saying) ?? style, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
+        pop(caption.map(style.saying) ?? style)
         guard !muted, !Sleep.lidClosed, let sound = sounds[on] ?? nil else { return }
         sound.stop()
         sound.play()
@@ -424,6 +514,20 @@ final class Wham: NSObject, NSApplicationDelegate {
         } else {
             change(to: true, mayInstall: true, caption: caption)
         }
+    }
+
+    // In a timed session: no end, the Mac stays awake until turned off.
+    @objc private func noTimeLimit() {
+        guard !busy, Sleep.isDisabled == true else { return }
+        setOffAt(nil)
+        show(true)
+        announce(true, caption: "Until you turn it off")
+    }
+
+    // A new limit counts at once: on battery under it, the session ends.
+    @objc private func setBatteryLimit(_ sender: NSMenuItem) {
+        Session.batteryLimit = sender.tag
+        check()
     }
 
     // The switch moves on the click, then pmset runs off the main thread. If the

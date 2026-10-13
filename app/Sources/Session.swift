@@ -10,8 +10,10 @@ import notify
 enum Session {
     enum End: Equatable { case time, battery, heat }
 
-    // On battery, at or under this charge, Wham gives sleep back.
-    static let batteryFloor = 10
+    // On battery, at or under this charge, Wham gives sleep back: 10% unless
+    // the menu's Battery Limit says otherwise.
+    static let batteryLimits = [5, 10, 20, 30]
+    static let defaultBatteryLimit = 10
 
     struct Reading {
         var now = Date()
@@ -19,11 +21,12 @@ enum Session {
         var onBattery = false
         var battery: Int?
         var critical = false
+        var batteryLimit = Session.defaultBatteryLimit
     }
 
     static func end(_ reading: Reading) -> End? {
         if reading.critical { return .heat }
-        if reading.onBattery, let level = reading.battery, level <= batteryFloor { return .battery }
+        if reading.onBattery, let level = reading.battery, level <= reading.batteryLimit { return .battery }
         if let offAt = reading.offAt, reading.now >= offAt { return .time }
         return nil
     }
@@ -35,18 +38,18 @@ enum Session {
         if let path = ProcessInfo.processInfo.environment["WHAM_FAKE_POWER"] {
             let words = ((try? String(contentsOfFile: path, encoding: .utf8)) ?? "").split(whereSeparator: \.isWhitespace)
             return Reading(offAt: offAt, onBattery: words.first == "battery", battery: words.dropFirst().first.flatMap { Int($0) },
-                           critical: words.contains("critical"))
+                           critical: words.contains("critical"), batteryLimit: batteryLimit)
         }
         let power = Power.read()
         return Reading(offAt: offAt, onBattery: power.onBattery, battery: power.level,
-                       critical: Heat.critical)
+                       critical: Heat.critical, batteryLimit: batteryLimit)
     }
 
     // Why it ended, in a few words.
     static func why(_ end: End, battery: Int?) -> String {
         switch end {
         case .time: return "Time is up"
-        case .battery: return "Battery at \(battery ?? batteryFloor)%"
+        case .battery: return "Battery at \(battery ?? batteryLimit)%"
         case .heat: return "Your Mac got too hot"
         }
     }
@@ -55,7 +58,7 @@ enum Session {
     static func refusal(_ end: End, battery: Int?) -> String {
         switch end {
         case .time: return "Time is up"
-        case .battery: return "Battery at \(battery ?? batteryFloor)%, plug in first"
+        case .battery: return "Battery at \(battery ?? batteryLimit)%, plug in first"
         case .heat: return "Your Mac is too hot right now"
         }
     }
@@ -87,19 +90,73 @@ enum Session {
         return format.string(from: date)
     }
 
-    // When a timed session ends. The app and the `wham` command share it
-    // through the app's preferences; the command posts `changed` after writing.
+    // What is left of a timed session, in words: "1 hr 58 min", "2 hr",
+    // "45 min". Rounded up, so the last minute says 1 min, never 0.
+    static func timeLeft(_ seconds: TimeInterval) -> String {
+        let minutes = max(1, Int((seconds / 60).rounded(.up)))
+        let hours = minutes / 60, rest = minutes % 60
+        if hours == 0 { return "\(rest) min" }
+        return rest == 0 ? "\(hours) hr" : "\(hours) hr \(rest) min"
+    }
+
+    // The share of a timed session still to run, from 1 at its start to 0 at
+    // its end, for the switch's track. 1 when untimed or its start is unknown.
+    static func remaining(now: Date = Date(), from start: Date?, to end: Date?) -> Double {
+        guard let start, let end, end > start else { return 1 }
+        return min(1, max(0, end.timeIntervalSince(now) / end.timeIntervalSince(start)))
+    }
+
+    // A timed session's last minutes: the switch says so once, lid open.
+    static let warning: TimeInterval = 300
+
+    // When to say so: five minutes before the end, for a session that runs at
+    // least twice that, so a short one does not warn right as it starts.
+    static func warnAt(from start: Date?, to end: Date?) -> Date? {
+        guard let end else { return nil }
+        if let start, end.timeIntervalSince(start) < 2 * warning { return nil }
+        return end.addingTimeInterval(-warning)
+    }
+
+    // The app and the `wham` command share the session's end and start, and
+    // the battery limit, through the app's preferences; the command posts
+    // `changed` after writing.
     static let changed = Notification.Name("sh.wham.app.session")
     private static let domain = "sh.wham.app" as CFString
+
+    // Starts a timed session's clock now, ending at `end`, or drops it (nil).
+    static func setEnd(_ end: Date?, now: Date = Date()) {
+        onAt = end == nil ? nil : now
+        offAt = end
+    }
+
     static var offAt: Date? {
+        get { date("offAt") }
+        set { set("offAt", newValue.map { $0 as NSDate }) }
+    }
+
+    static var onAt: Date? {
+        get { date("onAt") }
+        set { set("onAt", newValue.map { $0 as NSDate }) }
+    }
+
+    // Only the menu's values count: anything else is the default.
+    static var batteryLimit: Int {
         get {
             CFPreferencesAppSynchronize(domain)
-            return CFPreferencesCopyAppValue("offAt" as CFString, domain) as? Date
+            let value = CFPreferencesCopyAppValue("batteryLimit" as CFString, domain) as? Int
+            return value.flatMap { batteryLimits.contains($0) ? $0 : nil } ?? defaultBatteryLimit
         }
-        set {
-            CFPreferencesSetAppValue("offAt" as CFString, newValue.map { $0 as NSDate }, domain)
-            CFPreferencesAppSynchronize(domain)
-        }
+        set { set("batteryLimit", newValue == defaultBatteryLimit ? nil : newValue as NSNumber) }
+    }
+
+    private static func date(_ key: String) -> Date? {
+        CFPreferencesAppSynchronize(domain)
+        return CFPreferencesCopyAppValue(key as CFString, domain) as? Date
+    }
+
+    private static func set(_ key: String, _ value: CFPropertyList?) {
+        CFPreferencesSetAppValue(key as CFString, value, domain)
+        CFPreferencesAppSynchronize(domain)
     }
 }
 
