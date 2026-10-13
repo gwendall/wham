@@ -3,8 +3,9 @@ import Foundation
 // Wham keeps itself up to date. A few times a day it asks GitHub which release
 // is the latest. When that one is newer, it downloads it, makes sure Wham's
 // developer signed it and that it runs, and swaps it in for this copy. The
-// request carries nothing about the Mac or its user, and "Update
-// Automatically" in the menu turns it off. Blocking calls: run them off the
+// request carries nothing about the Mac or its user. With "Update
+// Automatically" off, Wham still asks, but only offers the new version in its
+// menu; "Check for Updates" asks at once. Blocking calls: run them off the
 // main thread.
 enum Update {
     // Defaults can point it elsewhere (`-updateBase http://...` at launch): the
@@ -38,6 +39,15 @@ enum Update {
             return (i < new.count ? new[i] : 0) > (i < old.count ? old[i] : 0)
         }
         return false
+    }
+
+    // The first launch of a newer version on a Mac that ran Wham before, which
+    // its note under the switch says. 1.2.2 and older kept no version: a Mac
+    // that ran one of those and now runs this was updated too.
+    static func isUpdate(to current: String, from last: String?, ranBefore: Bool) -> Bool {
+        guard ranBefore, numbers(current) != nil else { return false }
+        guard let last else { return true }
+        return isNewer(current, than: last)
     }
 
     static func isGenuine(_ app: URL) -> Bool {

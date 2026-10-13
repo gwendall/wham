@@ -51,6 +51,12 @@ final class Toast {
         ink: .white, captionInk: CGColor(gray: 1, alpha: 0.6), spriteInk: Pixels.candy[1],
         fill: [CGColor(gray: 0.08, alpha: 1)], rim: CGColor(gray: 1, alpha: 0.16), glow: nil)
 
+    // Anything else Wham has to say, about its updates: the hello pill's look.
+    static func note(_ title: String, _ caption: String) -> Style {
+        Style(title: title, caption: caption, sprite: hello.sprite, spin: hello.spin, ink: hello.ink, captionInk: hello.captionInk,
+              spriteInk: hello.spriteInk, fill: hello.fill, rim: hello.rim, glow: hello.glow)
+    }
+
     // Silkscreen draws on a grid of 8 pixels per em: at 16 pt one of its pixels is 2 pt.
     static var fontURL = Bundle.main.url(forResource: "Silkscreen-Regular", withExtension: "ttf")
     private static let pixel: CGFloat = 2

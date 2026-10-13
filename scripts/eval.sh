@@ -22,9 +22,11 @@
 # - `wham run`: exit statuses, Ctrl-C, hangups, kills, its watchdog
 # - however the app ends: killed while on or off, quit from its menu, quit from
 #   outside (back on at the next launch within a minute)
+# - the menu's What's New and Check for Updates (scripts/update-test.sh
+#   updates for real)
 #
-# The flag is put back as it was, with the battery limit and a timed session
-# running when the evals start. The app plays no sound here, but its switch
+# The flag is put back as it was, with the battery limit, the version the
+# user's Wham last ran as, and a timed session running when the evals start. The app plays no sound here, but its switch
 # and its notes show in the menu bar meanwhile.
 set -eu
 cd "$(dirname "$0")/.."
@@ -51,6 +53,7 @@ echo "macOS $(sw_vers -productVersion), $(uname -m)"
 start=$(flag)
 was=$(defaults read sh.wham.app offAt 2>/dev/null || true)
 limit=$(defaults read sh.wham.app batteryLimit 2>/dev/null || true)
+last=$(defaults read sh.wham.app lastVersion 2>/dev/null || true)
 defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true
 work=$(mktemp -d)
 fake="$work/power"
@@ -59,10 +62,11 @@ pid=
 guards=
 
 # Opens the app, out of sight and silent, pressing the WHAM_PRESS steps $1 if
-# given, with its battery and heat read from $fake while $guards is set.
+# given, with its battery and heat read from $fake while $guards is set. It
+# would look for an update after a minute: not before tomorrow here.
 launch() {
   set -- ${1:+"WHAM_PRESS=$1"} ${guards:+"WHAM_FAKE_POWER=$fake"}
-  env "$@" "$bin" -muted YES >>"$work/out" 2>&1 &
+  env "$@" "$bin" -muted YES -updateDelay 86400 >>"$work/out" 2>&1 &
   pid=$!
   sleep 1
 }
@@ -89,6 +93,7 @@ cleanup() {
     || echo "note: could not put SleepDisabled back to $start"
   for key in offAt onAt resumeBefore batteryLimit; do defaults delete sh.wham.app "$key" >/dev/null 2>&1 || true; done
   [ -z "$limit" ] || defaults write sh.wham.app batteryLimit -int "$limit"
+  if [ -n "$last" ]; then defaults write sh.wham.app lastVersion "$last"; else defaults delete sh.wham.app lastVersion >/dev/null 2>&1 || true; fi
   # The session that was running goes on to its end, through the Wham that
   # was running it (or ends now if its time ran out meanwhile).
   if [ "$start" = 1 ] && [ -n "$was" ] && pgrep -f "/Contents/MacOS/Wham" >/dev/null; then
@@ -238,10 +243,13 @@ check "$(is "[ -n \"$lengths\" ] && ! echo \"$lengths\" | grep -q 'No Time Limit
 stop
 waitflag 0
 : >"$work/out"
-launch Status
-until_ "grep -q '^lengths ' \"$work/out\"" 4
+launch Status,Items
+until_ "grep -q '^items ' \"$work/out\"" 5
 lengths=$(grep '^lengths ' "$work/out" | tail -1)
 check "$(is "[ -n \"$lengths\" ] && ! echo \"$lengths\" | grep -q 'No Time Limit'")" "off, the lengths have no No Time Limit"
+items=$(grep '^items ' "$work/out" | tail -1)
+check "$(is "echo \"$items\" | grep -q '| About Wham [^|]* | What.s New | Check for Updates | Made by Gwendall |'")" \
+  "the menu has What's New and Check for Updates ($(echo "$items" | sed 's/.*| - | About/About/; s/ | - | Quit.*//'))"
 stop
 # Five minutes before a timed session ends, a pill says so.
 sudo -n /usr/bin/pmset -a disablesleep 1

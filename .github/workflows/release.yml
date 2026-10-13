@@ -18,6 +18,16 @@ jobs:
         with:
           fetch-depth: 0 # build.sh numbers the build from the commit count
 
+      # The version's section of CHANGELOG.md, written for the people who use
+      # Wham (site/messages/en.json), with a link to every version.
+      - name: Release notes
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          awk -v version="$version" '/^## / { on = ($2 == version); next } on' CHANGELOG.md | sed '/./,$!d' > "$RUNNER_TEMP/notes.md"
+          grep -q . "$RUNNER_TEMP/notes.md" || { echo "CHANGELOG.md has nothing for $version"; exit 1; }
+          printf '\nEvery version of Wham: https://wham.sh/changelog\n' >> "$RUNNER_TEMP/notes.md"
+          cat "$RUNNER_TEMP/notes.md"
+
       - name: Developer ID certificate
         env:
           P12: ${{ secrets.DEVELOPER_ID_P12 }}
@@ -53,7 +63,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" build/Wham.zip build/Wham.dmg build/checksums.txt \
-            --title "Wham ${GITHUB_REF_NAME#v}" --generate-notes
+            --title "Wham ${GITHUB_REF_NAME#v}" --notes-file "$RUNNER_TEMP/notes.md"
 
       - name: Update the Homebrew cask
         env:
