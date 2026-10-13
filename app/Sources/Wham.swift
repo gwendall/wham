@@ -207,8 +207,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func found(_ latest: String?, newer: String?, replaceable: Bool) {
         if latest != nil { available = newer }
         guard let newer else {
-            return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later", .said("Can't check now, try later"))
-                                        : ("UP TO DATE", "Wham \(running) is the latest", .done("Wham \(running) is up to date")))
+            return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later", .said(Line.noAnswer))
+                                        : ("UP TO DATE", "Wham \(running) is the latest", .done(Line.latest(running))))
         }
         guard asked || Update.isOn else { return settle(nil) }
         // Not in a folder its user may write to, or a build from source: the
@@ -224,7 +224,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         DispatchQueue.global(qos: .utility).async {
             let installed = Update.install(newer, over: app)
             Self.onMain {
-                installed ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later", .said("Wham \(newer) did not install")))
+                installed ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later", .said(Line.failed(newer))))
             }
         }
     }
@@ -509,11 +509,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // as a row that keeps the menu open when clicked. Its action is for the
     // keyboard: Return closes the menu, and a pill says how it went.
     private func updateItem() -> NSMenuItem {
-        let row = UpdateRow(updateState, width: UpdateRow.width(for: [
-            "Check for Updates", "Checking for Updates…", "Can't check now, try later", "Wham \(running) is up to date",
-            // Any version found while the menu is open.
-            "Updating to Wham \(available ?? "10.10.10")…", "Wham \(available ?? "10.10.10") did not install",
-        ]))
+        // As wide as its widest line, with any version found while the menu is open.
+        let row = UpdateRow(updateState, width: UpdateRow.width(for: Line.all(running: running, found: available ?? "10.10.10")))
         row.onClick = { [weak self, weak row] in
             guard let self else { return }
             self.checkForUpdate(asked: true)
@@ -526,9 +523,23 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private var updateState: UpdateRow.State {
-        if let installing { return .busy("Updating to Wham \(installing)…") }
-        if updating { return .busy("Checking for Updates…") }
-        return .action(available.map { "Update to Wham \($0)" } ?? "Check for Updates")
+        if let installing { return .busy(Line.updating(to: installing)) }
+        if updating { return .busy(Line.checking) }
+        return .action(available.map { Line.update(to: $0) } ?? Line.check)
+    }
+
+    // What the update row says, each line written once.
+    private enum Line {
+        static let check = "Check for Updates"
+        static let checking = "Checking for Updates…"
+        static let noAnswer = "Can't check now, try later"
+        static func update(to version: String) -> String { "Update to Wham \(version)" }
+        static func updating(to version: String) -> String { "Updating to Wham \(version)…" }
+        static func latest(_ version: String) -> String { "Wham \(version) is up to date" }
+        static func failed(_ version: String) -> String { "Wham \(version) did not install" }
+        static func all(running: String, found: String) -> [String] {
+            [check, checking, noAnswer, update(to: found), updating(to: found), latest(running), failed(found)]
+        }
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -711,8 +722,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if let image = shoot("1-idle") {
             let above = frame.offsetBy(dx: 0, dy: frame.height)
             if Self.screenShows {
-                print("ink starts at x", Self.ink(in: image, of: window, at: above).map { "\($0)" } ?? "-", "above,",
-                      Self.ink(in: image, of: window, at: frame).map { "\($0)" } ?? "-", "in the row")
+                let mine = Self.ink(in: image, of: window, at: frame), theirs = Self.ink(in: image, of: window, at: above)
+                print("ink starts at x", theirs.map { "\($0.x)" } ?? "-", "above,", mine.map { "\($0.x)" } ?? "-", "in the row;",
+                      "contrast", theirs.map { String(format: "%.3f", $0.contrast) } ?? "-", "above,", mine.map { String(format: "%.3f", $0.contrast) } ?? "-", "in the row")
             } else {
                 print("ink not drawn: the screen is locked or asleep")
             }
@@ -751,11 +763,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 waited += 0.2
                 return Self.after(0.2) { over() }
             }
-            _ = shoot("4-told")
-            print("menu", window.isVisible ? "still open" : "closed")
-            fflush(stdout)
-            menu.cancelTracking()
-            if let home { CGWarpMouseCursorPosition(home) }
+            // The picture once the menu has drawn the answer.
+            Self.after(0.3) {
+                _ = shoot("4-told")
+                print("menu", window.isVisible ? "still open" : "closed")
+                fflush(stdout)
+                menu.cancelTracking()
+                if let home { CGWarpMouseCursorPosition(home) }
+            }
         }
         Self.after(0.2) { hovered() }
     }
@@ -776,9 +791,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // Where the first column of text starts in a row of a picture of the
-    // window, in points: the first pixel that differs from the row's
-    // background, taken three quarters of the way across.
-    private static func ink(in image: CGImage, of window: NSWindow, at row: NSRect) -> CGFloat? {
+    // window, in points (the first pixel that differs from the row's
+    // background, taken three quarters of the way across), and how far its
+    // text gets from that background, from 0 to 1 (black on white).
+    private static func ink(in image: CGImage, of window: NSWindow, at row: NSRect) -> (x: CGFloat, contrast: Double)? {
         guard let data = image.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return nil }
         let scale = CGFloat(image.width) / window.frame.width
         let top = Int((window.frame.height - row.maxY + 3) * scale), bottom = Int((window.frame.height - row.minY - 3) * scale)
@@ -788,13 +804,17 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return (Int(bytes[at]), Int(bytes[at + 1]), Int(bytes[at + 2]))
         }
         let background = pixel(Int(row.width * 0.75 * scale), (top + bottom) / 2)
+        var first: CGFloat?, contrast = 0
         for x in Int(8 * scale)..<Int(row.width * 0.75 * scale) {
             for y in top...bottom {
                 let p = pixel(x, y)
-                if abs(p.0 - background.0) + abs(p.1 - background.1) + abs(p.2 - background.2) > 90 { return CGFloat(x) / scale }
+                let distance = abs(p.0 - background.0) + abs(p.1 - background.1) + abs(p.2 - background.2)
+                guard distance > 90 else { continue }
+                if first == nil { first = CGFloat(x) / scale }
+                contrast = max(contrast, distance)
             }
         }
-        return nil
+        return first.map { ($0, Double(contrast) / 765) }
     }
 
     @objc private func toggleSound() { muted.toggle() }

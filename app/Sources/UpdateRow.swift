@@ -97,7 +97,7 @@ final class UpdateRow: NSView {
         spinner.controlSize = .small
         spinner.isDisplayedWhenStopped = false
         check.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)
-        check.contentTintColor = .disabledControlTextColor
+        check.contentTintColor = .tertiaryLabelColor
         for view in [selection, label, spinner, check] as [NSView] { addSubview(view) }
         setAccessibilityElement(true)
         setAccessibilityRole(.menuItem)
@@ -116,7 +116,8 @@ final class UpdateRow: NSView {
         // On the selection, the title goes inside it, as the menu's own rows do.
         let host: NSView = selection.isHidden ? self : selection
         if label.superview !== host { host.addSubview(label); needsLayout = true }
-        label.textColor = !clickable ? .disabledControlTextColor : highlighted ? .selectedMenuItemTextColor : .labelColor
+        // The menu's own colors: its gray is the one of its disabled lines.
+        label.textColor = !clickable ? .tertiaryLabelColor : highlighted ? .selectedMenuItemTextColor : .labelColor
         if case .busy = state { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
         check.isHidden = state != .done(title)
         setAccessibilityLabel(title)
@@ -124,8 +125,9 @@ final class UpdateRow: NSView {
     }
 
     // One of the menu's own titles, where the menu draws them with views
-    // (macOS 26 on): its frame in the window, and its row's.
-    private func menuTitle() -> (frame: NSRect, row: NSRect)? {
+    // (macOS 14 on, at least): its frame in the window, its row's, and the
+    // appearance it is drawn in.
+    private func menuTitle() -> (frame: NSRect, row: NSRect, appearance: NSAppearance)? {
         guard let root = window?.contentView else { return nil }
         var found: NSTextField?
         func walk(_ view: NSView) {
@@ -134,7 +136,7 @@ final class UpdateRow: NSView {
         }
         walk(root)
         guard let field = found, let holder = field.superview else { return nil }
-        return (holder.convert(field.frame, to: nil), holder.convert(holder.bounds, to: nil))
+        return (holder.convert(field.frame, to: nil), holder.convert(holder.bounds, to: nil), field.effectiveAppearance)
     }
 
     // For the evals: where this title starts in the window, and its row's
@@ -151,9 +153,13 @@ final class UpdateRow: NSView {
         let accessory = NSRect(x: bounds.maxX - Self.trailing - side, y: (bounds.height - side) / 2, width: side, height: side)
         spinner.frame = accessory
         check.frame = accessory
+        // Drawn as the menu's own titles: before macOS 26 the menu hands views
+        // like this one a vibrant appearance, in which labelColor is lighter.
+        let native = menuTitle()
+        if let look = native?.appearance ?? window?.effectiveAppearance, appearance?.name != look.name { appearance = look }
         // The menu's own title, moved into this row: same x, same place in its row.
         let frame: NSRect
-        if let native = menuTitle() {
+        if let native {
             let x = convert(native.frame, from: nil).minX
             frame = NSRect(x: x, y: native.frame.minY - native.row.minY, width: accessory.minX - Self.gap - x, height: native.frame.height)
         } else {

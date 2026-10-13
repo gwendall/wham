@@ -145,8 +145,8 @@ idle() {
 # Check for Updates, clicked in the open menu as a mouse would (the pointer
 # goes onto it, then back): the menu stays open, the row says it is checking,
 # then how it went, here with GitHub out of reach. Its title starts where the
-# menu's own do: read from the menu's views where it draws with views
-# (macOS 26 on), and from a picture of the menu everywhere the screen shows
+# menu's own do, in the same color: read from the menu's views where it draws with views
+# (macOS 14 on, at least), and from a picture of the menu everywhere the screen shows
 # (a locked or sleeping screen draws nothing).
 [ -z "${WHAM_SHOTS:-}" ] || mkdir -p "$WHAM_SHOTS"
 launch "Click Updates" -updateBase http://127.0.0.1:9
@@ -156,8 +156,8 @@ check "$(is "echo \"$told\" | grep -q '^busy: Checking for Updates.* > said: Can
   "Check for Updates in the open menu: the menu stays open, the row checks, then says how it went (${told:-no answer}, $(grep '^menu ' "$work/out" | tail -1))"
 views=$(grep '^row title at' "$work/out" | tail -1)
 ink=$(grep '^ink ' "$work/out" | tail -1)
-check "$(is "echo \"$views\" | awk '{ exit !(\$1 == \"row\" && (\$13 == \"-,\" || (\$5 + 0 == \$13 + 0 && \$6 + 0 == \$14 + 0))) }' && echo \"$ink\" | awk '/not drawn/ { exit 0 } { d = \$5 - \$7; exit !(\$5 ~ /^[0-9.]+\$/ && \$7 ~ /^[0-9.]+\$/ && d >= -1 && d <= 1) }'")" \
-  "and its title starts where the menu's own do (${views:-no answer}; ${ink:-no picture})"
+check "$(is "echo \"$views\" | awk '{ exit !(\$1 == \"row\" && (\$13 == \"-,\" || (\$5 + 0 == \$13 + 0 && \$6 + 0 == \$14 + 0))) }' && echo \"$ink\" | awk '/not drawn/ { exit 0 } { d = \$5 - \$7; c = \$12 - \$14; exit !(\$5 ~ /^[0-9.]+\$/ && \$7 ~ /^[0-9.]+\$/ && d >= -1 && d <= 1 && \$12 ~ /^[0-9.]+\$/ && \$14 ~ /^[0-9.]+\$/ && c >= -0.03 && c <= 0.03) }'")" \
+  "and its title starts where the menu's own do, as dark (${views:-no answer}; ${ink:-no picture})"
 stop
 : >"$work/out"
 
