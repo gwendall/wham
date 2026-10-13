@@ -81,8 +81,8 @@ session runs out around it. Either one changes over half a second, colors and
 width, at your display's pace.
 
 Wham speaks your Mac's language: English, French, Spanish, German, Italian,
-Portuguese, Japanese, Korean or Chinese. To give it another language than your
-Mac's: System Settings > General > Language & Region > Applications. The `wham`
+Portuguese, Japanese, Korean or Chinese (Simplified or Traditional). To give it
+another language than your Mac's: System Settings > General > Language & Region > Applications. The `wham`
 command and the journal stay in English.
 
 The first time you turn it on, macOS asks for your password, once, and says

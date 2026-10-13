@@ -23,7 +23,7 @@
 "Move Wham to Applications?" = "将 Wham 移到“应用程序”文件夹？";
 "Wham is running from the disk image. From Applications it can open at login and stay in your menu bar." = "Wham 正从磁盘映像运行。放到“应用程序”文件夹后，它就能在登录时打开，并一直待在菜单栏里。";
 "Move to Applications" = "移到“应用程序”";
-"Not Now" = "以后再说";
+"Not Now" = "以后";
 "Wham could not move itself: %@. Drag it into Applications instead." = "Wham 无法移动自己：%@。请改为将它拖进“应用程序”文件夹。";
 "CAN'T CHECK" = "无法检查";
 "GitHub did not answer, try again later" = "GitHub 没有响应，请稍后再试";

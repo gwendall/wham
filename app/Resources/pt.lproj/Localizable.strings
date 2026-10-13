@@ -21,7 +21,7 @@
 "What's New is in the menu" = "As novidades estão no menu";
 "Wham is running, but its switch has no room in the menu bar (too many icons, or the notch). Hold ⌘ and drag a few other icons out of the menu bar to make room for it." = "O Wham está aberto, mas o interruptor não tem espaço na barra de menus (ícones demais, ou o notch). Mantenha ⌘ pressionado e arraste alguns outros ícones para fora da barra de menus para abrir espaço.";
 "Move Wham to Applications?" = "Mover o Wham para Aplicativos?";
-"Wham is running from the disk image. From Applications it can open at login and stay in your menu bar." = "O Wham está rodando a partir da imagem de disco. Em Aplicativos, ele pode abrir ao iniciar sessão e ficar na sua barra de menus.";
+"Wham is running from the disk image. From Applications it can open at login and stay in your menu bar." = "O Wham está rodando a partir da imagem de disco. Em Aplicativos, ele pode abrir no início da sessão e ficar na sua barra de menus.";
 "Move to Applications" = "Mover para Aplicativos";
 "Not Now" = "Agora Não";
 "Wham could not move itself: %@. Drag it into Applications instead." = "O Wham não conseguiu se mover: %@. Arraste-o para Aplicativos.";
@@ -52,7 +52,7 @@
 "Turn On For" = "Ativar Por";
 "Sound" = "Som";
 "Appearance" = "Aparência";
-"Open at Login" = "Abrir ao Iniciar Sessão";
+"Open at Login" = "Abrir no Início da Sessão";
 "Stay On After Restart" = "Continuar Ativo Após Reiniciar";
 "If Wham is on when your Mac restarts, it turns back on when you log in." = "Se o Wham estiver ativado quando o Mac reiniciar, ele volta a ativar quando você iniciar sessão.";
 "Update Automatically" = "Atualizar Automaticamente";
