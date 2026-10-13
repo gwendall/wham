@@ -37,7 +37,7 @@
 # - however the app ends: killed while on or off, quit from its menu, quit from
 #   outside (back on at the next launch within a minute), a restart (back on
 #   at the next login with Stay On After Restart only, until a timed
-#   session's end)
+#   session's end), even one the run never quit (the battery ran out)
 # - Appearance: Monochrome and Compact, the status item's width, and each
 #   change of look frame by frame at the display's pace (where it shows)
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
@@ -420,6 +420,24 @@ sleep 2
 check "$(is "[ \"\$(flag)\" = 0 ] && ! defaults read sh.wham.app resumeAtLogin >/dev/null 2>&1")" "turned off since: stays off"
 check "$(is "logged ' app\[$pid\] resume after=restart skipped=\"Stay On After Restart is off\"$'")" "and the journal says why"
 stop
+# The Mac ended under a run that never quit (the battery ran out, a panic):
+# macOS sets the flag again at startup, and no watchdog is left.
+sudo -n /usr/bin/pmset -a disablesleep 1
+echo 1000000000 >"$WHAM_LOG_DIR/running"
+launch
+waitflag 0 4
+check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] flag on=no why=\"left on by a run the restart cut short\" ok=yes'")" \
+  "on through a restart the run did not quit: sleep given back"
+stop
+defaults write sh.wham.app stayOnAfterRestart -bool YES
+sudo -n /usr/bin/pmset -a disablesleep 1
+echo 1000000000 >"$WHAM_LOG_DIR/running"
+launch
+sleep 2
+check "$(is "[ \"\$(flag)\" = 1 ] && logged ' app\[$pid\] resume after=\"a restart without quitting\" kept=on$'")" \
+  "with Stay On After Restart, it stays on"
+stop
+waitflag 0
 defaults delete sh.wham.app stayOnAfterRestart >/dev/null 2>&1 || true
 # The option itself, pressed in the menu, only where it is no one's setting.
 if [ -n "${CI:-}" ]; then

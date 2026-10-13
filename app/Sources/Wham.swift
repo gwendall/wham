@@ -75,7 +75,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var noNap: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        launched()
+        let cutShort = launched()
         if Self.runsFromTemporaryCopy && offerToMove() { return }
         guard let button = item.button else { return }
         toggleView.setLook(look, animated: false)
@@ -99,6 +99,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         scheduleEnd()
         resumeAfterUpdate()
         resumeAfterRestart(restarted)
+        if cutShort { giveBackAfterRestartCutShort() }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.poweringOff = true }
             Journal.note("system", ["event": "power-off"])
@@ -167,7 +168,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // The journal's first lines: this run, the Mac, the settings, and how the
     // run before ended when it did not quit.
-    private func launched() {
+    // True when sleep is off and the run before ended with the Mac, without
+    // quitting: the battery ran out, a kernel panic, a forced shutdown.
+    private func launched() -> Bool {
         let previous = Journal.markRunning()
         let reading = Session.read(offAt: nil)
         sensed = Sensed(reading)
@@ -185,9 +188,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Journal.note("settings", ["sound": !muted, "monochrome": look.monochrome, "compact": look.compact, "open-at-login": LoginItem.isOn,
                                   "stay-on-after-restart": Self.staysOnAfterRestart, "update-automatically": Update.isOn,
                                   "battery-limit": Self.limitWord])
-        if let previous {
-            Journal.note("previous-run", ["ended": "without quitting", "started": previous, "crash-report": Journal.crashReport(since: previous)])
-        }
+        guard let previous else { return false }
+        Journal.note("previous-run", ["ended": "without quitting", "started": previous, "crash-report": Journal.crashReport(since: previous)])
+        return flag == true && Machine.booted.map { previous < $0 } ?? false
     }
 
     // The words the journal uses.
@@ -485,6 +488,18 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     self.check()
                 }
             }
+        }
+    }
+
+    // macOS keeps the flag on disk and sets it again at startup, and the
+    // watchdog went down with the Mac: as after any restart, Wham stays on
+    // only with Stay On After Restart, until its session's end if timed.
+    private func giveBackAfterRestartCutShort() {
+        guard Sleep.isDisabled == true else { return }
+        guard !Self.staysOnAfterRestart else { return Journal.note("resume", ["after": "a restart without quitting", "kept": "on"]) }
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard Sleep.set(false, why: "left on by a run the restart cut short") else { return }
+            DispatchQueue.main.async { MainActor.assumeIsolated { self.setOffAt(nil); self.check() } }
         }
     }
 
