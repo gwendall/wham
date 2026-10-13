@@ -70,7 +70,7 @@ Wham lives in your menu bar as a little switch.
 A timed session shows what is left: the menu says until when and how long, the
 switch's candy drains toward the knob, and a note drops down five minutes
 before the end. Stay Awake For gives it a new length, No Time Limit drops the
-end.
+end (off, it turns Wham on with no end; checked while there is none).
 
 Appearance, in the menu, fits it in with the icons around it: **Monochrome**
 draws it in your menu bar's own ink, no color, and **Compact** keeps only the

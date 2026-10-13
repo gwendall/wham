@@ -666,7 +666,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // 1, 2, 4 or 8 hours from now, each with the time it would end on the
-    // right, in gray; and, in a timed session, a way back to no end at all.
+    // right, in gray; and No Time Limit, checked while the Mac stays awake
+    // with no end. Always there: a row shown or hidden while the menu is
+    // open would resize it under the pointer.
     private func lengths() -> NSMenu {
         let lengths = NSMenu()
         let hours = [1, 2, 4, 8]
@@ -684,14 +686,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         for count in hours {
             lengths.addItem(row(titles, details: details) { .init(title: title(count), detail: end(count)) } click: { [unowned self] in stayAwake(for: count) })
         }
-        let line = NSMenuItem.separator()
-        lengths.addItem(line)
-        let forever = row(titles, details: details) { .init(title: "No Time Limit") } click: { [unowned self] in noTimeLimit() }
-        forever.refresh = { [unowned self] in
-            $0.isHidden = !(isOn && offAt != nil)
-            line.isHidden = $0.isHidden
-        }
-        lengths.addItem(forever)
+        lengths.addItem(.separator())
+        lengths.addItem(row(titles, details: details) { [unowned self] in .init(title: "No Time Limit", checked: isOn && offAt == nil) } click: { [unowned self] in noTimeLimit() })
         return lengths
     }
 
@@ -806,7 +802,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.items.filter { !$0.isHidden }.map { entry in
             if entry.isSeparatorItem { return "-" }
             guard let row = entry.view as? MenuRow else { return entry.title }
-            return row.content.detail.map { "\(row.title)\t\($0)" } ?? row.title
+            let title = row.content.checked ? "\(row.title) checked" : row.title
+            return row.content.detail.map { "\(title)\t\($0)" } ?? title
         }.joined(separator: " | ")
     }
 
@@ -917,7 +914,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let row = entry.view as? MenuRow, titles.isEmpty, let window = row.window {
                     let frame = row.convert(row.bounds, to: nil)
                     Self.pointer(onto: frame, of: window)
-                    Self.waitFor(5, { row.highlighted }) {
+                    // Only a row the menu itself has selected: a click on any
+                    // other would be the menu's.
+                    Self.waitFor(5, { current.highlightedItem === entry && row.highlighted }, poke: Self.nudge(frame, of: window)) {
+                        guard current.highlightedItem === entry else { return fail("\(title) did not highlight") }
                         Self.click(frame, of: window)
                         Self.after(0.6) {
                             clicks += 1
@@ -930,7 +930,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     }
                 } else if let submenu = entry.submenu, let window = Self.window(of: current), let frame = Self.frame(of: title, in: window) {
                     Self.pointer(onto: frame, of: window)
-                    Self.waitFor(5, { Self.window(of: submenu)?.isVisible == true }) {
+                    Self.waitFor(5, { Self.window(of: submenu)?.isVisible == true }, poke: Self.nudge(frame, of: window)) {
                         guard Self.window(of: submenu)?.isVisible == true else { return fail("\(title) did not open") }
                         current = submenu
                         step()
@@ -1016,10 +1016,26 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.postEvent(event, atStart: false)
     }
 
-    // Goes on once `ready`, or after `seconds` anyway, menu open or not.
-    private static func waitFor(_ seconds: Double, _ ready: @escaping @MainActor () -> Bool, then work: @escaping @MainActor () -> Void) {
+    // The pointer a point to one side of the middle of `frame`, then to the
+    // other: a menu that missed one move (macOS 14 leaving a submenu for
+    // another) sees the next.
+    private static func nudge(_ frame: NSRect, of window: NSWindow) -> @MainActor () -> Void {
+        var side: CGFloat = 1
+        return {
+            side = -side
+            pointer(onto: frame.offsetBy(dx: side, dy: 0), of: window)
+        }
+    }
+
+    // Goes on once `ready`, or after `seconds` anyway, menu open or not,
+    // with `poke` between tries.
+    private static func waitFor(_ seconds: Double, _ ready: @escaping @MainActor () -> Bool, poke: (@MainActor () -> Void)? = nil,
+                                then work: @escaping @MainActor () -> Void) {
         if ready() || seconds <= 0 { return work() }
-        after(0.1) { waitFor(seconds - 0.1, ready, then: work) }
+        after(0.1) {
+            poke?()
+            waitFor(seconds - 0.1, ready, poke: poke, then: work)
+        }
     }
 
     // A picture of `window`, saved as `name` in WHAM_SHOTS when set.
@@ -1150,12 +1166,21 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    // In a timed session: no end, the Mac stays awake until turned off.
+    // No end: the Mac stays awake until turned off. Off, it turns on.
     private func noTimeLimit() {
-        guard !busy, Sleep.isDisabled == true else { return }
-        setOffAt(nil)
-        show(true)
-        announce(true, caption: "Until you turn it off")
+        guard !busy, let current = Sleep.isDisabled else { return }
+        let caption = "Until you turn it off"
+        if current {
+            guard offAt != nil else { return }
+            setOffAt(nil)
+            show(true)
+            announce(true, caption: caption)
+        } else {
+            if refuses() { return }
+            ended = nil
+            setOffAt(nil)
+            change(to: true, mayInstall: true, caption: caption)
+        }
     }
 
     // A new limit counts at once: on battery under it, the session ends.
@@ -1267,7 +1292,6 @@ enum LoginItem {
 }
 
 // A menu item read again while its menu is open.
-@MainActor
 final class LiveItem: NSMenuItem {
-    var refresh: ((LiveItem) -> Void)?
+    var refresh: (@MainActor (LiveItem) -> Void)?
 }

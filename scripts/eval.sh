@@ -349,6 +349,8 @@ if [ -n "${CI:-}" ]; then
 fi
 
 # --- Appearance: each option on its own, then both, then back.
+defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true
+defaults delete sh.wham.app compact >/dev/null 2>&1 || true
 : >"$work/out"
 launch "Look,Appearance/Compact,Look,Appearance/Monochrome,Look,Appearance/Compact,Look,Appearance/Monochrome,Look"
 until_ "[ \"\$(grep -c '^look ' \"$work/out\")\" -ge 5 ]" 12
@@ -389,14 +391,14 @@ until_ "grep -q '^lengths ' \"$work/out\"" 6
 check "$(is "[ \"\$(flag)\" = 1 ] && [ -z \"\$(left)\" ] && ! defaults read sh.wham.app onAt >/dev/null 2>&1 && grep -q 'Until you turn it off' \"$work/out\"")" \
   "No Time Limit: stays on, with no end"
 lengths=$(grep '^lengths ' "$work/out" | tail -1)
-check "$(is "[ -n \"$lengths\" ] && ! echo \"$lengths\" | grep -q 'No Time Limit'")" "and No Time Limit is gone from the menu (${lengths:-no answer})"
+check "$(is "echo \"$lengths\" | grep -q '| - | No Time Limit checked$'")" "and No Time Limit is checked in the menu (${lengths:-no answer})"
 stop
 waitflag 0
 : >"$work/out"
 launch Status,Items
 until_ "grep -q '^items ' \"$work/out\"" 5
 lengths=$(grep '^lengths ' "$work/out" | tail -1)
-check "$(is "[ -n \"$lengths\" ] && ! echo \"$lengths\" | grep -q 'No Time Limit'")" "off, the lengths have no No Time Limit"
+check "$(is "echo \"$lengths\" | grep -q '| - | No Time Limit$'")" "off, No Time Limit is there, unchecked (${lengths:-no answer})"
 items=$(grep '^items ' "$work/out" | tail -1)
 check "$(is "echo \"$items\" | grep -q '| About Wham [^|]* | What.s New | Check for Updates | Made by Gwendall |'")" \
   "the menu has What's New and Check for Updates ($(echo "$items" | sed 's/.*| - | About/About/; s/ | - | Quit.*//'))"
@@ -404,7 +406,7 @@ stop
 # The switch's own options, clicked in the open menu: it stays open, its
 # first line says what the Mac does now, and the kernel's flag follows.
 : >"$work/out"
-export WHAM_CLICKS="Turn On,Stay Awake For/1 Hour,Stay Awake For/No Time Limit,Turn Off"
+export WHAM_CLICKS="Turn On,Stay Awake For/1 Hour,Stay Awake For/No Time Limit,Turn Off,Turn On For/No Time Limit,Turn Off"
 launch "Click Rows"
 until_ "grep -q '^click Turn On:' \"$work/out\"" 10
 waitflag 1
@@ -412,8 +414,8 @@ on=$(flag)
 until_ "grep -q '^outside\\|^menu closed\\|^menu missing' \"$work/out\"" 30
 waitflag 0
 clicked=$(grep '^click ' "$work/out" | sed 's/^click //; s/, look [^,]*,/,/' | paste -sd ';' -)
-check "$(is "echo \"$clicked\" | grep -Eq '^Turn On: menu open, Turn Off, status Mac stays awake, even with the lid closed;Stay Awake For/1 Hour: menu open, 1 Hour, status Mac stays awake until .*\\(1 hr left\\);Stay Awake For/No Time Limit: menu open, No Time Limit, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual$' && grep -q '^outside: menu closed' \"$work/out\"")" \
-  "Turn On, Stay Awake For, No Time Limit and Turn Off clicked in the open menu: it stays open and says so ($(echo "$clicked" | sed 's/;/; /g'))"
+check "$(is "echo \"$clicked\" | grep -Eq '^Turn On: menu open, Turn Off, status Mac stays awake, even with the lid closed;Stay Awake For/1 Hour: menu open, 1 Hour, status Mac stays awake until .*\\(1 hr left\\);Stay Awake For/No Time Limit: menu open, No Time Limit checked, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual;Turn On For/No Time Limit: menu open, No Time Limit checked, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual$' && grep -q '^outside: menu closed' \"$work/out\"")" \
+  "Turn On, Stay Awake For, No Time Limit (on, then off) and Turn Off clicked in the open menu: it stays open and says so ($(echo "$clicked" | sed 's/;/; /g'))"
 check "$(is "[ \"$on\" = 1 ] && [ \"\$(flag)\" = 0 ] && [ -z \"\$(left)\" ]")" "and the flag follows: on, then off with no end left"
 stop
 unset WHAM_CLICKS

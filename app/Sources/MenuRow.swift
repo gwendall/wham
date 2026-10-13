@@ -33,16 +33,22 @@ class MenuRow: NSView {
     }
 
     // Wide enough for every title the row can hold, with its detail or its
-    // spinner: the menu does not grow while open.
+    // spinner: the menu does not grow while open. As wide as the row's own
+    // fields need, from where the menu puts its titles, 2 points to spare.
     static func width(for titles: [String], details: [String] = [], accessory: Bool = false) -> CGFloat {
-        let widest = titles.map(textWidth).max() ?? 0
-        if accessory { return ceil(guessedTitleX + 2 + widest + gap + side + trailing) }
-        let detail = details.map(textWidth).max().map { detailGap + $0 } ?? 0
-        return ceil(guessedTitleX + 2 + widest + detail + textTrailing)
+        let x = max(guessedTitleX, measured?.x ?? 0) + 2
+        let widest = titles.map(fieldWidth).max() ?? 0
+        if accessory { return ceil(x + widest + gap + side + trailing) }
+        let detail = details.map(fieldWidth).max().map { detailGap - 4 + $0 } ?? 0
+        return ceil(x + widest + detail + textTrailing - 2)
     }
 
-    static func textWidth(_ text: String) -> CGFloat {
-        (text as NSString).size(withAttributes: [.font: NSFont.menuFont(ofSize: 0)]).width
+    // A label's width with `text` in it: the text, and the field's own
+    // margins around it.
+    private static func fieldWidth(_ text: String) -> CGFloat {
+        let field = NSTextField(labelWithString: text)
+        field.font = .menuFont(ofSize: 0)
+        return ceil(field.fittingSize.width)
     }
 
     // macOS 26 rows are taller, with rounder selections.

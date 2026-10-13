@@ -106,7 +106,7 @@ downloads nothing, and offers the new version in its menu (Update to Wham X).
 | Turn On For 1, 2, 4 or 8 hours; Stay Awake For, while on | Ends then. Each length says when it would end; once on, the menu says until when and what is left, the tooltip until when | Eval: both menu items, the menu's lines |
 | A timed session runs | The switch's candy drains from the far end toward the knob, whole at the start, a ring around the knob at the end. In quarter points, so the tick redraws only when there is something to see | Test: `Session.remaining` |
 | Five minutes before the end, lid open | A note drops down, without a sound ("5 minutes left", and when it ends). Not for a session under ten minutes, nor under a closed lid | Test: `Session.warnAt`; eval |
-| No Time Limit, during a timed session | Drops the end, stays on. Shown only then | Eval |
+| No Time Limit | During a timed session, drops the end and stays on; off, turns on with no end. Checked while on with no end. Always in the menu: a row shown or hidden while the menu is open would resize it under the pointer | Eval: pressed, and clicked in the open menu, on and off |
 | `wham on 2h` (also `45m`, `1h30m`, `1d`, `90s`) | The same. Anything else exits 64 and changes nothing | Test: the parser; eval: `wham on 3s` ends 3 to 7 s later, `wham on 2x` is refused |
 | `wham on` or `wham off` during a timed session | Drops the end | Eval |
 | The end passes while Wham is closed | Ends as soon as Wham opens; one still to come carries on | Eval |
