@@ -168,7 +168,7 @@ final class SwitchView: NSView {
 
     // Reduce Motion, in the system's Accessibility settings: changes jump to
     // their end. The evals' WHAM_MOTION=1 moves anyway, to film a change on a
-    // Mac set so.
+    // Mac set so (GitHub's macOS runners are).
     static let movesAnyway = ProcessInfo.processInfo.environment["WHAM_MOTION"] == "1"
     static var reducesMotion: Bool { !movesAnyway && NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 

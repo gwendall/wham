@@ -50,6 +50,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // For the evals' "Film": each frame of a change of look, when it was
     // drawn, the status item's width and how monochrome the switch was.
     private var film: [(time: CFTimeInterval, length: CGFloat, mono: CGFloat)]?
+    private var filmed = ""
     private var lidWasClosed = false
     // Set when macOS says it is about to restart, shut down or log out.
     private var poweringOff = false
@@ -766,10 +767,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 fflush(stdout)
             case ["Pause"]: break
             case ["Film", "Compact"], ["Film", "Monochrome"]:
+                // The film before, if a busy Mac has not printed it yet.
+                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(printFilm), object: nil)
+                if film != nil { printFilm() }
                 print("motion: Reduce Motion \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? "on" : "off")\(SwitchView.movesAnyway ? ", moving anyway" : "")")
                 film = []
+                filmed = path[1]
                 if path[1] == "Compact" { look.compact.toggle() } else { look.monochrome.toggle() }
-                perform(#selector(printFilm(_:)), with: path[1], afterDelay: 0.9, inModes: [.common])
+                perform(#selector(printFilm), with: nil, afterDelay: 0.9, inModes: [.common])
             case ["Items"]:
                 print("items", Self.describe(self.menu()))
                 fflush(stdout)
@@ -810,7 +815,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // "film Compact: 28 frames in 450 ms, longest gap 17 ms, 50.0 49.5 … 23.0":
     // the frames of the change of look, with the status item's width each
     // time, or how monochrome the switch was.
-    @objc private func printFilm(_ option: String) {
+    @objc private func printFilm() {
+        let option = filmed
         let frames = film ?? []
         film = nil
         // A screen that is off has no frames to give: the change ends at once.

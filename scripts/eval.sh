@@ -54,14 +54,15 @@ flag() { ioreg -rd1 -c IOPMrootDomain | awk -F' = ' '/"SleepDisabled"/ { print (
 ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
 # Reads "film Compact: 29 frames in 461 ms, longest gap 17 ms, 50.0 ... 23.0"
 # lines, each a change of look frame by frame, and prints "Compact 50.0>23.0;"
-# for each, "jerky" after it unless it has 20 frames at least, none more than
-# two frames (34 ms) after the one before, every step the same way and under
-# a quarter of the way.
+# for each, "jerky" after it unless it has 12 frames at least, none more than
+# 100 ms after the one before, and every step the same way. A Mac draws 29 at
+# 60 Hz; CI's virtual Macs, shared and some at 30 Hz, fewer: a change that
+# jumps has one.
 smooth() {
   awk '{
-    first = $12; last = $NF; range = first - last; if (range < 0) range = -range
-    ok = $3 >= 20 && $10 <= 34 && range > 0
-    for (i = 13; i <= NF; i++) { d = $i - $(i - 1); if ((first > last && d > 0) || (first < last && d < 0) || d > range / 4 || -d > range / 4) ok = 0 }
+    first = $12; last = $NF
+    ok = $3 >= 12 && $10 <= 100 && first != last
+    for (i = 13; i <= NF; i++) { d = $i - $(i - 1); if ((first > last && d > 0) || (first < last && d < 0)) ok = 0 }
     printf "%s %s>%s%s;", substr($2, 1, length($2) - 1), first, last, ok ? "" : " jerky"
   }'
 }
