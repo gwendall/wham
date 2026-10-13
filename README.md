@@ -187,8 +187,8 @@ writes a journal line when one of them changes.
 
 | | Wham |
 | --- | --- |
-| App on disk | 1.4 MB (536 KB of it the universal binary) |
-| Download | 2.7 MB (DMG), 1 MB (zip) |
+| App on disk | 2.5 MB (1.6 MB of it the universal binary) |
+| Download | 3.2 MB (DMG), 1.4 MB (zip) |
 | Memory | 10 MB |
 | Idle CPU | about 0.03 % of one core (0.01 s every 30 s) |
 | Dependencies | none |
@@ -206,7 +206,7 @@ Closing the lid, on battery, with no display plugged in:
 
 | | Lid closed | Size |
 | --- | --- | --- |
-| **Wham** | **Yes, on its own.** Download, drag, click; for as long as you say, and down to a flat battery only if you ask; macOS 11 or later, Intel too, notarized | 1.4 MB on disk |
+| **Wham** | **Yes, on its own.** Download, drag, click; for as long as you say, and down to a flat battery only if you ask; macOS 11 or later, Intel too, notarized | 2.5 MB on disk |
 | [Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704) | With helper apps: Amphetamine Enhancer from outside the App Store, and Power Protect on Apple silicon laptops | 6.7 MB download, plus helpers |
 | [Caffeine](https://intelliscapesolutions.com/apps/caffeine) | No: it holds a power assertion, which macOS drops when the lid closes | 0.8 MB on disk |
 | [KeepingYouAwake](https://github.com/newmarcel/KeepingYouAwake#readme) | No: it "will only prevent sleep on desktop Macs and portable Macs with an open lid" | 7.6 MB on disk |
