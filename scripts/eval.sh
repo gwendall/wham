@@ -12,15 +12,19 @@
 # on the kernel's real SleepDisabled flag:
 # - `wham on/off/toggle`, the switch and every menu item, and the app follows
 #   the command at once
-# - timed sessions: `wham on 3s`, "Turn On For", one that ran out while the app
-#   was closed, the app opened by `wham on 2h` when it is not running
-# - the battery and heat guards, read from a stand-in (WHAM_FAKE_POWER), and the
-#   real heat signal where macOS lets it be raised (CI)
+# - timed sessions: `wham on 3s`, "Turn On For", what the menu says is left,
+#   No Time Limit, the warning five minutes before the end, one that ran out
+#   while the app was closed, the app opened by `wham on 2h` when it is not
+#   running
+# - the battery and heat guards, read from a stand-in (WHAM_FAKE_POWER), the
+#   menu's Battery Limit, and the real heat signal where macOS lets it be
+#   raised (CI)
 # - `wham run`: exit statuses, Ctrl-C, hangups, kills, its watchdog
 # - however the app ends: killed while on or off, quit from its menu, quit from
 #   outside (back on at the next launch within a minute)
 #
-# The flag is put back as it was. The app plays no sound here, but its switch
+# The flag is put back as it was, with the battery limit and a timed session
+# running when the evals start. The app plays no sound here, but its switch
 # and its notes show in the menu bar meanwhile.
 set -eu
 cd "$(dirname "$0")/.."
@@ -45,6 +49,9 @@ left() {
 
 echo "macOS $(sw_vers -productVersion), $(uname -m)"
 start=$(flag)
+was=$(defaults read sh.wham.app offAt 2>/dev/null || true)
+limit=$(defaults read sh.wham.app batteryLimit 2>/dev/null || true)
+defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true
 work=$(mktemp -d)
 fake="$work/power"
 echo "ac 100" >"$fake"
@@ -80,8 +87,14 @@ cleanup() {
   stop
   [ "$(flag)" = "$start" ] || sudo -n /usr/bin/pmset -a disablesleep "$start" >/dev/null 2>&1 \
     || echo "note: could not put SleepDisabled back to $start"
-  defaults delete sh.wham.app offAt >/dev/null 2>&1 || true
-  defaults delete sh.wham.app resumeBefore >/dev/null 2>&1 || true
+  for key in offAt onAt resumeBefore batteryLimit; do defaults delete sh.wham.app "$key" >/dev/null 2>&1 || true; done
+  [ -z "$limit" ] || defaults write sh.wham.app batteryLimit -int "$limit"
+  # The session that was running goes on to its end, through the Wham that
+  # was running it (or ends now if its time ran out meanwhile).
+  if [ "$start" = 1 ] && [ -n "$was" ] && pgrep -f "/Contents/MacOS/Wham" >/dev/null; then
+    secs=$(($(date -j -f "%Y-%m-%d %H:%M:%S %z" "$was" +%s) - $(date +%s)))
+    if [ "$secs" -gt 0 ]; then "$bin" on "${secs}s" >/dev/null 2>&1 || true; else "$bin" off >/dev/null 2>&1 || true; fi
+  fi
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -201,12 +214,45 @@ stop
 waitflag 0
 
 # --- The menu.
-launch "Turn On For/1 Hour"
+: >"$work/out"
+launch "Turn On For/1 Hour,Status"
 waitflag 1
 until_ "[ -n \"\$(left)\" ]"
-check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(left)\" -ge 3590 ] && [ \"\$(left)\" -le 3600 ]")" "Turn On For 1 Hour: on, ends in an hour"
+check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(left)\" -ge 3590 ] && [ \"\$(left)\" -le 3600 ] && defaults read sh.wham.app onAt >/dev/null 2>&1")" \
+  "Turn On For 1 Hour: on, ends in an hour, its start shared"
+until_ "grep -q '^lengths ' \"$work/out\"" 4
+status=$(grep '^status ' "$work/out" | tail -1)
+lengths=$(grep '^lengths ' "$work/out" | tail -1)
+check "$(is "echo \"$status\" | grep -q 'until .*(1 hr left)'")" "the menu says until when and what is left (${status:-no answer})"
+check "$(is "echo \"$lengths\" | grep -Eq '^lengths 1 Hour.+[0-9]:[0-9][0-9].* \\| - \\| No Time Limit$'")" \
+  "each length says when it would end, then No Time Limit (${lengths:-no answer})"
 stop
 waitflag 0
+: >"$work/out"
+launch "Turn On For/1 Hour,Stay Awake For/No Time Limit,Status"
+until_ "grep -q '^lengths ' \"$work/out\"" 6
+check "$(is "[ \"\$(flag)\" = 1 ] && [ -z \"\$(left)\" ] && ! defaults read sh.wham.app onAt >/dev/null 2>&1 && grep -q 'Until you turn it off' \"$work/out\"")" \
+  "No Time Limit: stays on, with no end"
+lengths=$(grep '^lengths ' "$work/out" | tail -1)
+check "$(is "[ -n \"$lengths\" ] && ! echo \"$lengths\" | grep -q 'No Time Limit'")" "and No Time Limit is gone from the menu (${lengths:-no answer})"
+stop
+waitflag 0
+: >"$work/out"
+launch Status
+until_ "grep -q '^lengths ' \"$work/out\"" 4
+lengths=$(grep '^lengths ' "$work/out" | tail -1)
+check "$(is "[ -n \"$lengths\" ] && ! echo \"$lengths\" | grep -q 'No Time Limit'")" "off, the lengths have no No Time Limit"
+stop
+# Five minutes before a timed session ends, a pill says so.
+sudo -n /usr/bin/pmset -a disablesleep 1
+defaults write sh.wham.app onAt -date "$(date -u -v-1H '+%Y-%m-%d %H:%M:%S +0000')"
+defaults write sh.wham.app offAt -date "$(date -u -v+5M -v+3S '+%Y-%m-%d %H:%M:%S +0000')"
+launch
+until_ "grep -q '^toast 5 MINUTES LEFT' \"$work/out\"" 6
+warned=$(grep '^toast 5 MINUTES LEFT' "$work/out" | tail -1)
+check "$(is "[ -n \"$warned\" ] && [ \"\$(flag)\" = 1 ]")" "five minutes before the end, a pill says so, still on (${warned:-none})"
+"$bin" off >/dev/null
+stop
 launch "Turn On,Stay Awake For/2 Hours,Turn Off"
 until_ "[ -n \"\$(left)\" ]" 4
 check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(left)\" -ge 7190 ] && [ \"\$(left)\" -le 7200 ]")" "Stay Awake For 2 Hours while on: ends in two hours"
@@ -280,6 +326,28 @@ check "$(is "[ $code = 5 ] && grep -q 'without keeping' \"$work/err\" && [ \"\$(
 echo "ac 100 critical" >"$fake"
 WHAM_FAKE_POWER=$fake "$bin" on >/dev/null 2>"$work/err" && code=0 || code=$?
 check "$(is "[ $code = 1 ] && grep -q 'too hot' \"$work/err\"")" "wham on refuses when too hot: $(cat "$work/err")"
+stop
+# The battery limit, from the menu: raised over the charge, it ends the
+# session at once; lowered, it lets the Mac stay awake further down.
+echo "battery 15" >"$fake"
+launch "Switch,Battery Limit/20%"
+until_ "grep -q 'Battery at 15%' \"$work/out\"" 6
+waitflag 0
+check "$(is "[ \"\$(flag)\" = 0 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 20 ] && grep -q '^toast MAC CAN SLEEP: Battery at 15%' \"$work/out\"")" \
+  "Battery Limit 20% at 15% on battery: the app gives sleep back at once"
+WHAM_FAKE_POWER=$fake "$bin" on >/dev/null 2>"$work/err" && code=0 || code=$?
+check "$(is "[ $code = 1 ] && grep -q 'battery at 15%, plug in first' \"$work/err\" && \"$bin\" help | grep -q 'at 20% or less'")" \
+  "wham on follows the limit, and wham help says it"
+stop
+echo "battery 8" >"$fake"
+launch "Battery Limit/5%,Switch"
+waitflag 1 4
+check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 5 ]")" "Battery Limit 5%: stays awake at 8%"
+stop
+waitflag 0
+launch "Battery Limit/10%"
+sleep 1.5
+check "$(is "! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" "back to 10%, the default, nothing stored"
 stop
 guards=
 echo "ac 100" >"$fake"

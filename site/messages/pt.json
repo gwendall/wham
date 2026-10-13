@@ -165,7 +165,7 @@
       },
       {
         "q": "Posso ativar por um tempo?",
-        "a": "Sim. Clique com o botão direito no interruptor e escolha “Turn On For” por 1, 2, 4 ou 8 horas: o menu mostra até quando, e depois seu Mac dorme normalmente. No terminal, <code>wham on 2h</code>, ou <code>wham run</code> antes de um comando para ficar acordado só enquanto ele roda."
+        "a": "Sim. Clique com o botão direito no interruptor e escolha “Turn On For” por 1, 2, 4 ou 8 horas: cada opção mostra a que horas terminaria. Enquanto isso, o menu diz quanto tempo falta, as cores do interruptor vão se apagando e um aviso aparece cinco minutos antes do fim. “No Time Limit” o mantém ligado. No terminal, <code>wham on 2h</code>, ou <code>wham run</code> antes de um comando para ficar acordado só enquanto ele roda."
       },
       {
         "q": "Meu Mac vai esquentar demais dentro de uma bolsa?",
@@ -173,7 +173,7 @@
       },
       {
         "q": "E a bateria?",
-        "a": "O Wham em si praticamente não consome nada. Mas um Mac acordado gasta bateria como um Mac acordado, tampa fechada ou não, então na bateria o Wham solta em 10%: seu Mac dorme com o trabalho salvo, em vez de descarregar até zero. Para tarefas longas, deixe na tomada."
+        "a": "O Wham em si praticamente não consome nada. Mas um Mac acordado gasta bateria como um Mac acordado, tampa fechada ou não, então na bateria o Wham solta em 10%, ou em 5, 20 ou 30% se você mudar o “Battery Limit” dele: seu Mac dorme com o trabalho salvo, em vez de descarregar até zero. Para tarefas longas, deixe na tomada."
       },
       {
         "q": "Meu Mac fica bloqueado com a tampa fechada?",

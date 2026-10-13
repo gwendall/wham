@@ -62,7 +62,13 @@ Wham lives in your menu bar as a little switch.
   awake. Close the lid, unplug the screen: it keeps running.
 - **Click again**: the moon comes back and your Mac sleeps as usual.
 - **Right-click** (or control-click) for the menu: turn on for 1, 2, 4 or 8
-  hours, sound, open at login, automatic updates, quit.
+  hours (each says when it would end), sound, open at login, automatic
+  updates, the battery limit, quit.
+
+A timed session shows what is left: the menu says until when and how long, the
+switch's candy drains toward the knob, and a note drops down five minutes
+before the end. Stay Awake For gives it a new length, No Time Limit drops the
+end.
 
 The first time you turn it on, macOS asks for your password, once (see
 [how it works](#how-it-works)). Quitting Wham always gives sleep back.
@@ -70,8 +76,9 @@ The first time you turn it on, macOS asks for your password, once (see
 Wham also lets go on its own, and the menu says why:
 
 - **Time is up**, when you turned it on for a while.
-- **On battery, at 10%.** Your Mac sleeps with your work saved instead of
-  running flat.
+- **On battery, at 10%**, or at 5, 20 or 30% (Battery Limit, in the menu). Your
+  Mac sleeps with your work saved instead of running flat, and Wham will not
+  turn back on until you plug in.
 - **Your Mac gets critically hot.** Wham is for desks, docks and shelves, where
   air moves; in a closed bag an awake Mac has nowhere to put its heat. Turn it
   off before you pack up.
