@@ -5,6 +5,12 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.6.0 - 2026-10-13
+
+- Wham speaks your Mac's language: English, French, Spanish, German, Italian, Portuguese, Japanese, Korean or Chinese. The menu, the notes under the switch and the alerts follow the language your Mac is set to, with times and percentages written its way.
+- The notes' pixel letters draw Japanese, Korean and Chinese too, with your Mac's own fonts set on the same grid of pixels.
+- To see Wham in another language than your Mac's: System Settings > General > Language & Region > Applications. The `wham` command and its journal stay in English.
+
 ## 1.5.0 - 2026-10-13
 
 - Every option in the menu answers with a little sound, from the same family as the switch's chime: up when it checks, down when it unchecks, a tick for a length or a limit, and a low note when Wham can't (too hot, the battery too low). Sound, in the menu, turns them all off.
