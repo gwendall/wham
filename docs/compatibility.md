@@ -61,7 +61,9 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 ## Updates
 
 A minute after launch, then every 6 hours, Wham asks GitHub for the latest
-release; Check for Updates, in the menu, asks right away. A newer one is
+release; Check for Updates, in the menu, asks right away: the menu stays open,
+and the line itself says Checking for Updates… with a spinner, then how it went
+(up to date, no answer, or Updating to Wham X…). A newer one is
 downloaded next to the app, checked with `codesign` (Wham's identifier, signed
 by team `NQCA86NEA3`), run once (`wham version` must name the new version), and
 swapped in; Wham then reopens from the new copy, with the switch as it was, and
@@ -76,6 +78,7 @@ downloads nothing, and offers the new version in its menu (Update to Wham X).
 | Offline, GitHub down, a proxy that blocks it | Tries again in 6 hours, quietly; Check for Updates says it could not check | `curl --max-time`, `scripts/update-test.sh` |
 | Update Automatically off | Asks, downloads nothing, offers Update to Wham X in the menu; a click installs it | `scripts/update-test.sh` |
 | Check for Updates on the latest version | Says it is up to date | `scripts/update-test.sh` |
+| Check for Updates clicked in the open menu | The menu stays open and the line says how the check went, its title where the menu's own start (24-point rows on macOS 26, 22 before). Closed meanwhile, or chosen with Return, a note says it | `scripts/eval.sh`, its pictures in CI |
 | First launch of a new version | A note says which version it now is; not on a first install, nor for a build from source | `Update.isUpdate`, tests |
 | The switch is on, or a password prompt is open | On stays on through the update; it waits for the prompt to close | `reopen`, `scripts/update-test.sh` |
 | Opened from the disk image | No updates until it is in Applications | `runsFromTemporaryCopy` |

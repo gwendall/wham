@@ -10,7 +10,8 @@
 # - with Update Automatically off, 1.0.99 downloads nothing and its menu offers
 #   Update to Wham 9.9.9, which installs it
 # - Check for Updates says when the copy is the latest, and when GitHub does
-#   not answer
+#   not answer; clicked in the open menu, its line says it is checking, then
+#   up to date or updating, and the menu stays open
 #
 # Needs this Mac's Developer ID certificate (the updater only takes Wham signed
 # by its developer). A second switch shows in the menu bar for about a minute,
@@ -173,11 +174,30 @@ for _ in $(seq 50); do [ "$(defaults read sh.wham.app lastVersion 2>/dev/null)" 
 check "$(is "[ \"\$(defaults read sh.wham.app lastVersion 2>/dev/null)\" = 9.9.9 ]")" "9.9.9 knows it was just updated, and says so"
 quit
 
-# Check for Updates on the latest version, then with GitHub out of reach.
+# Check for Updates clicked in the open menu, with 9.9.9 out: the menu stays
+# open, its line says it is checking, then updating, and 9.9.9 opens.
+run "Click Updates" -updateBase "$base" -updateDelay 3600
+for _ in $(seq 600); do
+  now=$(running)
+  [ "$(version)" = 9.9.9 ] && [ -n "$now" ] && [ "$now" != "$old" ] && break
+  sleep 0.1
+done
+check "$(is "said '^row busy: Checking for Updates' && said '^row busy: Updating to Wham 9.9.9' && ! said '^toast UPDATING'")" \
+  "clicked in the open menu, the line says it is checking, then updating ($(grep '^row [a-z]*: \|^row missing\|^row highlighted\|^menu ' "$work/out" | sed 's/^row //' | tr '\n' '|'))"
+check "$(is "[ \"\$(version)\" = 9.9.9 ] && [ -n \"\$(running)\" ] && ! kill -0 $old 2>/dev/null")" "and 9.9.9 opens in its place"
+quit
+
+# Check for Updates on the latest version, then with GitHub out of reach
+# (in the open menu: scripts/eval.sh).
 echo v1.0.99 >"$work/github/latest"
 run "Check for Updates" -updateBase "$base" -updateDelay 3600
 for _ in $(seq 100); do said "^toast UP" && break; sleep 0.1; done
 check "$(is "said 'toast UP TO DATE: Wham 1.0.99 is the latest' && ! downloaded")" "Check for Updates on the latest: says so"
+quit
+run "Click Updates" -updateBase "$base" -updateDelay 3600
+for _ in $(seq 200); do said "^menu " && break; sleep 0.1; done
+check "$(is "said '^row done: Wham 1.0.99 is up to date' && said '^menu still open' && ! said '^toast'")" \
+  "and clicked in the open menu, its line says so ($(grep '^row [a-z]*: \|^row missing\|^row highlighted\|^menu ' "$work/out" | sed 's/^row //' | tr '\n' '|'))"
 quit
 run "Check for Updates" -updateBase "http://127.0.0.1:9" -updateDelay 3600
 for _ in $(seq 100); do said "^toast CAN" && break; sleep 0.1; done

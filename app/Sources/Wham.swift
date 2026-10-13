@@ -4,7 +4,7 @@ import ServiceManagement
 // The menu bar app. A click flips the switch; a right-click (or control-click)
 // opens the menu.
 @MainActor
-final class Wham: NSObject, NSApplicationDelegate {
+final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let toggleView = SwitchView()
     private let toast = Toast()
@@ -24,6 +24,9 @@ final class Wham: NSObject, NSApplicationDelegate {
     private var available: String?
     private var installing: String?
     private var asked = false
+    // Check for Updates while the menu is open: a check asked for there says
+    // how it went right there, rather than in a pill.
+    private weak var updateRow: UpdateRow?
     // Read at launch: once a new copy is in place, the files say its version.
     private let running = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     private var timer: Timer?
@@ -184,41 +187,66 @@ final class Wham: NSObject, NSApplicationDelegate {
             let latest = Update.latest()
             let newer = latest.flatMap { Update.isNewer($0, than: running) ? $0 : nil }
             let replaceable = newer != nil && Update.canReplace(app)
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { self.found(latest, newer: newer, replaceable: replaceable) }
-            }
+            Self.onMain { self.found(latest, newer: newer, replaceable: replaceable) }
         }
+    }
+
+    // Back on the main thread, menu open or not: a menu opened from the main
+    // queue holds that queue until it closes, while the run loop goes on.
+    nonisolated private static func onMain(_ work: @escaping @MainActor () -> Void) {
+        let loop = CFRunLoopGetMain()
+        CFRunLoopPerformBlock(loop, CFRunLoopMode.commonModes.rawValue) { MainActor.assumeIsolated { work() } }
+        CFRunLoopWakeUp(loop)
+    }
+
+    // After a delay, menu open or not (see onMain).
+    private static func after(_ seconds: TimeInterval, _ work: @escaping @MainActor () -> Void) {
+        RunLoop.main.add(Timer(timeInterval: seconds, repeats: false) { _ in MainActor.assumeIsolated { work() } }, forMode: .common)
     }
 
     private func found(_ latest: String?, newer: String?, replaceable: Bool) {
         if latest != nil { available = newer }
         guard let newer else {
-            return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later") : ("UP TO DATE", "Wham \(running) is the latest"))
+            return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later", .said(Line.noAnswer))
+                                        : ("UP TO DATE", "Wham \(running) is the latest", .done(Line.latest(running))))
         }
         guard asked || Update.isOn else { return settle(nil) }
         // Not in a folder its user may write to, or a build from source: the
         // download is on wham.sh.
-        guard replaceable else { return settle(("CAN'T UPDATE ITSELF", "Get Wham \(newer) at wham.sh"), openSite: true) }
-        if asked { pop(Toast.note("UPDATING", "To Wham \(newer), back in a moment")) }
+        guard replaceable else { return settle(("CAN'T UPDATE ITSELF", "Get Wham \(newer) at wham.sh", nil), openSite: true) }
         installing = newer
+        if let updateRow {
+            updateRow.state = updateState
+        } else if asked {
+            pop(Toast.note("UPDATING", "To Wham \(newer), back in a moment"))
+        }
         let app = Bundle.main.bundleURL
         DispatchQueue.global(qos: .utility).async {
             let installed = Update.install(newer, over: app)
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated {
-                    installed ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later"))
-                }
+            Self.onMain {
+                installed ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later", .said(Line.failed(newer))))
             }
         }
     }
 
-    // The check is over: tells whoever asked from the menu how it went.
-    private func settle(_ note: (title: String, caption: String)?, openSite: Bool = false) {
+    // The check is over: tells whoever asked from the menu how it went, in
+    // its row if the menu is still open (and the row has words for it),
+    // otherwise in a pill.
+    private func settle(_ note: (title: String, caption: String, row: UpdateRow.State?)?, openSite: Bool = false) {
         updating = false
         installing = nil
-        guard asked else { return }
+        let told = asked
         asked = false
-        if let note { pop(Toast.note(note.title, note.caption)) }
+        guard told, let note else {
+            updateRow?.state = updateState
+            return
+        }
+        if let updateRow, let row = note.row {
+            updateRow.state = row
+            return
+        }
+        updateRow?.enclosingMenuItem?.menu?.cancelTracking()
+        pop(Toast.note(note.title, note.caption))
         if openSite { self.openSite() }
     }
 
@@ -473,20 +501,58 @@ final class Wham: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q"))
         for entry in menu.items { entry.target = self }
+        menu.delegate = self
         return menu
     }
 
-    // Check for Updates, or the new version Wham found and did not install.
+    // Check for Updates, or the new version Wham found and did not install,
+    // as a row that keeps the menu open when clicked. Its action is for the
+    // keyboard: Return closes the menu, and a pill says how it went.
     private func updateItem() -> NSMenuItem {
-        let title: String
-        if let installing {
-            title = "Updating to Wham \(installing)…"
-        } else if updating {
-            title = "Checking for Updates…"
-        } else {
-            return NSMenuItem(title: available.map { "Update to Wham \($0)" } ?? "Check for Updates", action: #selector(checkNow), keyEquivalent: "")
+        // As wide as its widest line, with any version found while the menu is open.
+        let row = UpdateRow(updateState, width: UpdateRow.width(for: Line.all(running: running, found: available ?? "10.10.10")))
+        row.onClick = { [weak self, weak row] in
+            guard let self else { return }
+            self.checkForUpdate(asked: true)
+            row?.state = self.updateState
         }
-        return NSMenuItem(title: title, action: nil, keyEquivalent: "")
+        row.onChange = { print("row \($0)"); fflush(stdout) }
+        let entry = NSMenuItem(title: row.title, action: #selector(checkNow), keyEquivalent: "")
+        entry.view = row
+        return entry
+    }
+
+    private var updateState: UpdateRow.State {
+        if let installing { return .busy(Line.updating(to: installing)) }
+        if updating { return .busy(Line.checking) }
+        return .action(available.map { Line.update(to: $0) } ?? Line.check)
+    }
+
+    // What the update row says, each line written once.
+    private enum Line {
+        static let check = "Check for Updates"
+        static let checking = "Checking for Updates…"
+        static let noAnswer = "Can't check now, try later"
+        static func update(to version: String) -> String { "Update to Wham \(version)" }
+        static func updating(to version: String) -> String { "Updating to Wham \(version)…" }
+        static func latest(_ version: String) -> String { "Wham \(version) is up to date" }
+        static func failed(_ version: String) -> String { "Wham \(version) did not install" }
+        static func all(running: String, found: String) -> [String] {
+            [check, checking, noAnswer, update(to: found), updating(to: found), latest(running), failed(found)]
+        }
+    }
+
+    func menuWillOpen(_ menu: NSMenu) {
+        updateRow = menu.items.lazy.compactMap { $0.view as? UpdateRow }.first
+    }
+
+    func menuDidClose(_ menu: NSMenu) {
+        updateRow = nil
+    }
+
+    // The row draws the menu's selection itself.
+    func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
+        updateRow?.highlighted = item?.view === updateRow
     }
 
     // 1, 2, 4 or 8 hours from now, each with the time it would end on the
@@ -570,7 +636,8 @@ final class Wham: NSObject, NSApplicationDelegate {
     // other, as WHAM_PRESS lists them: "Turn On For/2 Hours,Turn Off". "Switch"
     // is a click on the switch, "Terminate" a quit from outside (an upgrade),
     // "Restart" the quit macOS sends before a restart, "Menu" opens the menu
-    // for real and says whether it showed whole, "Status" prints the menu's
+    // for real and says whether it showed whole, "Click Updates" opens it and
+    // clicks Check for Updates as a mouse would, "Status" prints the menu's
     // first line and its lengths, "Items" the menu's items, "Look" the
     // appearance and the status item's width, and "Pause" waits a step.
     private func pressForEvals() {
@@ -603,6 +670,10 @@ final class Wham: NSObject, NSApplicationDelegate {
                 let menu = self.menu()
                 perform(#selector(lookAt(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
                 showMenu(menu)
+            case ["Click Updates"]:
+                let menu = self.menu()
+                perform(#selector(clickUpdates(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
+                showMenu(menu)
             default:
                 var entry: NSMenuItem?, menu: NSMenu? = self.menu()
                 // A length's title also carries its end time, after a tab.
@@ -623,6 +694,127 @@ final class Wham: NSObject, NSApplicationDelegate {
         print("menu", shown.map { $0.frame.height >= menu.size.height ? "whole" : "cut, \(Int($0.frame.height)) of \(Int(menu.size.height)) points" } ?? "missing")
         fflush(stdout)
         menu.cancelTracking()
+    }
+
+    // Clicks Check for Updates in the open menu, follows its row until the
+    // check is over, says whether the menu stayed open, then closes it. On the
+    // way it says where the row's title starts against the row above's, in
+    // the menu as drawn, and with WHAM_SHOTS saves the menu at each step there.
+    // The menu goes by where the pointer really is: it moves onto the row for
+    // the click, then back.
+    @objc private func clickUpdates(_ menu: NSMenu) {
+        guard let row = updateRow, let window = row.window else {
+            print("row missing")
+            fflush(stdout)
+            return menu.cancelTracking()
+        }
+        let shots = ProcessInfo.processInfo.environment["WHAM_SHOTS"]
+        func shoot(_ name: String) -> CGImage? {
+            let image = Self.picture(of: window)
+            if let shots, let image {
+                try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(shots)/\(name).png"))
+            }
+            return image
+        }
+        let frame = row.convert(row.bounds, to: nil)
+        let measures = row.measures
+        print("row title at x \(measures.x), \(measures.height) points tall; the menu's at x \(measures.menuX.map { "\($0)" } ?? "-"), \(measures.menuHeight.map { "\($0)" } ?? "-") tall")
+        if let image = shoot("1-idle") {
+            let above = frame.offsetBy(dx: 0, dy: frame.height)
+            if Self.screenShows {
+                let mine = Self.ink(in: image, of: window, at: frame), theirs = Self.ink(in: image, of: window, at: above)
+                print("ink starts at x", theirs.map { "\($0.x)" } ?? "-", "above,", mine.map { "\($0.x)" } ?? "-", "in the row;",
+                      "contrast", theirs.map { String(format: "%.3f", $0.contrast) } ?? "-", "above,", mine.map { String(format: "%.3f", $0.contrast) } ?? "-", "in the row")
+            } else {
+                print("ink not drawn: the screen is locked or asleep")
+            }
+        }
+        fflush(stdout)
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        let home = CGEvent(source: nil)?.location
+        let onScreen = window.convertPoint(toScreen: center)
+        CGWarpMouseCursorPosition(CGPoint(x: onScreen.x, y: (NSScreen.screens.first?.frame.height ?? 0) - onScreen.y))
+        func post(_ type: NSEvent.EventType) {
+            guard let event = NSEvent.mouseEvent(with: type, location: center, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                                 windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                                                 pressure: type == .leftMouseDown ? 1 : 0) else { return }
+            NSApp.postEvent(event, atStart: false)
+        }
+        post(.mouseMoved)
+        // A busy Mac takes a while to highlight the row: the click waits for it.
+        var waited = 0.0
+        @MainActor func hovered() {
+            if !row.highlighted, waited < 5 {
+                waited += 0.1
+                return Self.after(0.1) { hovered() }
+            }
+            print("row highlighted", row.highlighted)
+            _ = shoot("2-highlighted")
+            post(.leftMouseDown)
+            post(.leftMouseUp)
+            waited = 0
+            Self.after(0.4) {
+                _ = shoot("3-busy")
+                over()
+            }
+        }
+        @MainActor func over() {
+            if case .busy = row.state, waited < 15 {
+                waited += 0.2
+                return Self.after(0.2) { over() }
+            }
+            // The picture once the menu has drawn the answer.
+            Self.after(0.3) {
+                _ = shoot("4-told")
+                print("menu", window.isVisible ? "still open" : "closed")
+                fflush(stdout)
+                menu.cancelTracking()
+                if let home { CGWarpMouseCursorPosition(home) }
+            }
+        }
+        Self.after(0.2) { hovered() }
+    }
+
+    // A window of this app as drawn, which needs no permission. Called by
+    // name: the SDK no longer lets Swift call it, the system still answers.
+    private static func picture(of window: NSWindow) -> CGImage? {
+        typealias Create = @convention(c) (CGRect, UInt32, UInt32, UInt32) -> Unmanaged<CGImage>?
+        guard let symbol = dlsym(UnsafeMutableRawPointer(bitPattern: -2), "CGWindowListCreateImage") else { return nil }
+        // Just this window, without its shadow, at the screen's resolution.
+        return unsafeBitCast(symbol, to: Create.self)(.null, 8, UInt32(window.windowNumber), 1 | 8)?.takeRetainedValue()
+    }
+
+    // Nothing is drawn while the screen is locked or asleep.
+    private static var screenShows: Bool {
+        let session = CGSessionCopyCurrentDictionary() as? [String: Any]
+        return CGDisplayIsAsleep(CGMainDisplayID()) == 0 && session?["CGSSessionScreenIsLocked"] as? Bool != true
+    }
+
+    // Where the first column of text starts in a row of a picture of the
+    // window, in points (the first pixel that differs from the row's
+    // background, taken three quarters of the way across), and how far its
+    // text gets from that background, from 0 to 1 (black on white).
+    private static func ink(in image: CGImage, of window: NSWindow, at row: NSRect) -> (x: CGFloat, contrast: Double)? {
+        guard let data = image.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return nil }
+        let scale = CGFloat(image.width) / window.frame.width
+        let top = Int((window.frame.height - row.maxY + 3) * scale), bottom = Int((window.frame.height - row.minY - 3) * scale)
+        guard top >= 0, bottom < image.height, top < bottom else { return nil }
+        func pixel(_ x: Int, _ y: Int) -> (Int, Int, Int) {
+            let at = y * image.bytesPerRow + x * image.bitsPerPixel / 8
+            return (Int(bytes[at]), Int(bytes[at + 1]), Int(bytes[at + 2]))
+        }
+        let background = pixel(Int(row.width * 0.75 * scale), (top + bottom) / 2)
+        var first: CGFloat?, contrast = 0
+        for x in Int(8 * scale)..<Int(row.width * 0.75 * scale) {
+            for y in top...bottom {
+                let p = pixel(x, y)
+                let distance = abs(p.0 - background.0) + abs(p.1 - background.1) + abs(p.2 - background.2)
+                guard distance > 90 else { continue }
+                if first == nil { first = CGFloat(x) / scale }
+                contrast = max(contrast, distance)
+            }
+        }
+        return first.map { ($0, Double(contrast) / 765) }
     }
 
     @objc private func toggleSound() { muted.toggle() }

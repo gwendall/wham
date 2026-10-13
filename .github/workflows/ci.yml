@@ -28,6 +28,16 @@ jobs:
         run: lipo -archs build/Wham.app/Contents/MacOS/Wham | grep -q "x86_64 arm64"
       - name: Eval (the real app, its budgets, the real flag)
         run: scripts/eval.sh
+        env:
+          WHAM_SHOTS: ${{ runner.temp }}/menu
+      # The open menu at each step of Check for Updates, as this macOS draws it.
+      - name: Keep the menu's pictures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: menu-${{ matrix.os }}
+          path: ${{ runner.temp }}/menu
+          if-no-files-found: warn
       - name: Check the npm package
         run: |
           node --check npm/bin/wham.js
