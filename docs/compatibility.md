@@ -93,6 +93,7 @@ downloads nothing, and offers the new version in its menu (Update to Wham X).
 | Light and dark menu bars | The track and the knob follow the menu bar's appearance |
 | A menu bar of monochrome icons | Appearance > Monochrome: everything in the menu bar's ink, the knob cut out of the track when on (eval: the setting, remembered) |
 | Little room, or a switch wider than the icons around it | Appearance > Compact: the knob alone in a ring 23 points wide instead of 50, turning in place; a timed session runs out around it like a timer (eval: the status item's width) |
+| A change of look | Colors and width move together over 0.45 s, on a critically damped spring, at the display's refresh rate (a display link on macOS 14 on, a 60 Hz timer before); Reduce Motion jumps to the end; a screen asleep ends it on time (eval: every frame of both options, there and back) |
 | Clicking the switch, or its menu open | No menu bar highlight around it: the knob is the only feedback |
 | A Mac with a notch, whose menu bar is taller than the switch | The menu hangs from the menu bar's bottom edge, whole, its first line in sight (eval: the menu opened for real, its window against its height) |
 | Reduce Motion | The switch changes without animating |

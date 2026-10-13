@@ -47,6 +47,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var endTimer: Timer?
     private var warnTimer: Timer?
     private var ended: (why: String, at: Date)?
+    // For the evals' "Film": each frame of a change of look, when it was
+    // drawn, the status item's width and how monochrome the switch was.
+    private var film: [(time: CFTimeInterval, length: CGFloat, mono: CGFloat)]?
+    // The menus open now, submenus too, as their delegate hears it: a
+    // submenu's window just closed can still say it is visible.
+    private var shownMenus: Set<ObjectIdentifier> = []
+    private var filmed = ""
     private var lidWasClosed = false
     // Set when macOS says it is about to restart, shut down or log out.
     private var poweringOff = false
@@ -54,8 +61,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.runsFromTemporaryCopy && offerToMove() { return }
         guard let button = item.button else { return }
-        toggleView.setLook(look)
+        toggleView.setLook(look, animated: false)
         item.length = toggleView.itemLength
+        // A change of look moves the status item's width with it, frame by frame.
+        toggleView.onFrame = { [weak self] in self?.lookMoved() }
         toggleView.frame = button.bounds
         toggleView.autoresizingMask = [.width, .height]
         button.addSubview(toggleView)
@@ -615,12 +624,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        shownMenus.insert(ObjectIdentifier(menu))
         guard menu.supermenu == nil else { return }
         openMenu = menu
         updateRow = menu.items.lazy.compactMap { $0.view as? UpdateRow }.first
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        shownMenus.remove(ObjectIdentifier(menu))
         // A submenu's rows lose their selection with it.
         for entry in menu.items { (entry.view as? MenuRow)?.highlighted = false }
         guard menu.supermenu == nil else { return }
@@ -709,9 +720,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         set {
             UserDefaults.standard.set(newValue.monochrome, forKey: "monochrome")
             UserDefaults.standard.set(newValue.compact, forKey: "compact")
-            toggleView.setLook(newValue)
-            item.length = toggleView.itemLength
+            toggleView.setLook(newValue, animated: true)
         }
+    }
+
+    private func lookMoved() {
+        item.length = toggleView.itemLength
+        film?.append((CACurrentMediaTime(), item.length, toggleView.blend.mono))
     }
 
     // On battery, the charge at which Wham lets the Mac sleep.
@@ -737,7 +752,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // WHAM_CLICKS lists, "Rows" draws the menu's own rows next to rows of
     // Wham's, "Status" prints the menu's first line and its lengths, "Items"
     // the menu's items, "Look" the appearance and the status item's width,
-    // and "Pause" waits a step.
+    // "Film/Compact" or "Film/Monochrome" changes the look and prints its
+    // frames, and "Pause" waits a step.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -755,6 +771,15 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 print("look", lookLine)
                 fflush(stdout)
             case ["Pause"]: break
+            case ["Film", "Compact"], ["Film", "Monochrome"]:
+                // The film before, if a busy Mac has not printed it yet.
+                NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(printFilm), object: nil)
+                if film != nil { printFilm() }
+                print("motion: Reduce Motion \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? "on" : "off")\(SwitchView.movesAnyway ? ", moving anyway" : "")")
+                film = []
+                filmed = path[1]
+                if path[1] == "Compact" { look.compact.toggle() } else { look.monochrome.toggle() }
+                perform(#selector(printFilm), with: nil, afterDelay: 0.9, inModes: [.common])
             case ["Items"]:
                 print("items", Self.describe(self.menu()))
                 fflush(stdout)
@@ -790,6 +815,26 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
+    }
+
+    // "film Compact: 28 frames in 450 ms, longest gap 17 ms, 50.0 49.5 … 23.0":
+    // the frames of the change of look, with the status item's width each
+    // time, or how monochrome the switch was.
+    @objc private func printFilm() {
+        let option = filmed
+        let frames = film ?? []
+        film = nil
+        // A screen that is off has no frames to give: the change ends at once.
+        guard Self.screenShows else {
+            print("film \(option): not drawn: the screen is locked or asleep")
+            fflush(stdout)
+            return
+        }
+        let gaps = zip(frames.dropFirst(), frames).map { $0.time - $1.time }
+        let values = frames.map { option == "Compact" ? String(format: "%.1f", $0.length) : String(format: "%.2f", $0.mono) }
+        print("film \(option): \(frames.count) frames in \(Int(((frames.last?.time ?? 0) - (frames.first?.time ?? 0)) * 1000)) ms,",
+              "longest gap \(Int((gaps.max() ?? 0) * 1000)) ms,", values.joined(separator: " "))
+        fflush(stdout)
     }
 
     // "monochrome compact 23": the switch's look and the status item's width.
@@ -903,12 +948,25 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
             let path = paths.removeFirst()
-            var titles = path[...], current = menu
+            var titles = path[...], current = menu, retried = false
             @MainActor func fail(_ why: String) {
+                if let window = Self.window(of: current) { _ = Self.shoot(window, "click-\(clicks + 1)-failed") }
                 print("click \(path.joined(separator: "/")): \(why)")
                 next()
             }
             @MainActor func step() {
+                // A pointer the menu did not follow (macOS 14 now and then):
+                // the whole path once more from the top, said on its own line.
+                @MainActor func again(_ why: String) -> Bool {
+                    guard !retried else { return false }
+                    retried = true
+                    print("retry \(path.joined(separator: "/")): \(why)")
+                    fflush(stdout)
+                    titles = path[...]
+                    current = menu
+                    step()
+                    return true
+                }
                 let title = titles.removeFirst()
                 guard let entry = current.items.first(where: { $0.title == title && !$0.isHidden }) else { return fail("no \(title)") }
                 if let row = entry.view as? MenuRow, titles.isEmpty, let window = row.window {
@@ -916,10 +974,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     Self.pointer(onto: frame, of: window)
                     // Only a row the menu itself has selected: a click on any
                     // other would be the menu's.
-                    Self.waitFor(5, { current.highlightedItem === entry && row.highlighted }, poke: Self.nudge(frame, of: window)) {
-                        guard current.highlightedItem === entry else { return fail("\(title) did not highlight") }
+                    // A submenu that closes meanwhile ends the wait.
+                    let selected = { current.highlightedItem === entry && row.highlighted }
+                    Self.waitFor(5, { selected() || !self.shownMenus.contains(ObjectIdentifier(current)) }, poke: Self.nudge(frame, of: window)) {
+                        guard current.highlightedItem === entry else {
+                            if !again("\(title) did not highlight") { fail("\(title) did not highlight") }
+                            return
+                        }
                         Self.click(frame, of: window)
-                        Self.after(0.6) {
+                        // Once a change of look has settled.
+                        Self.after(0.8) {
                             clicks += 1
                             _ = Self.shoot(window, "click-\(clicks)")
                             let open = root.isVisible && self.openMenu != nil
@@ -930,8 +994,12 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     }
                 } else if let submenu = entry.submenu, let window = Self.window(of: current), let frame = Self.frame(of: title, in: window) {
                     Self.pointer(onto: frame, of: window)
-                    Self.waitFor(5, { Self.window(of: submenu)?.isVisible == true }, poke: Self.nudge(frame, of: window)) {
-                        guard Self.window(of: submenu)?.isVisible == true else { return fail("\(title) did not open") }
+                    let shown = { self.shownMenus.contains(ObjectIdentifier(submenu)) && Self.window(of: submenu)?.isVisible == true }
+                    Self.waitFor(5, shown, poke: Self.nudge(frame, of: window)) {
+                        guard shown() else {
+                            if !again("\(title) did not open") { fail("\(title) did not open") }
+                            return
+                        }
                         current = submenu
                         step()
                     }

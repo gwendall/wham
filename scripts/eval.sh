@@ -30,7 +30,8 @@
 #   outside (back on at the next launch within a minute), a restart (back on
 #   at the next login with Stay On After Restart only, until a timed
 #   session's end)
-# - Appearance: Monochrome and Compact, and the status item's width
+# - Appearance: Monochrome and Compact, the status item's width, and each
+#   change of look frame by frame at the display's pace (where it shows)
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
 #   updates for real)
 #
@@ -51,6 +52,20 @@ is() { if eval "$1"; then echo 1; else echo 0; fi; }
 seconds() { awk -F: '{ s = 0; for (i = 1; i <= NF; i++) s = s * 60 + $i; print s }'; }
 flag() { ioreg -rd1 -c IOPMrootDomain | awk -F' = ' '/"SleepDisabled"/ { print ($2 == "Yes") ? 1 : 0 }'; }
 ms() { perl -MTime::HiRes=time -e 'printf "%d\n", time * 1000'; }
+# Reads "film Compact: 29 frames in 461 ms, longest gap 17 ms, 50.0 ... 23.0"
+# lines, each a change of look frame by frame, and prints "Compact 50.0>23.0;"
+# for each, "jerky" after it unless it has 12 frames at least, none more than
+# 100 ms after the one before, and every step the same way. A Mac draws 29 at
+# 60 Hz; CI's virtual Macs, shared and some at 30 Hz, fewer: a change that
+# jumps has one.
+smooth() {
+  awk '{
+    first = $12; last = $NF
+    ok = $3 >= 12 && $10 <= 100 && first != last
+    for (i = 13; i <= NF; i++) { d = $i - $(i - 1); if ((first > last && d > 0) || (first < last && d < 0)) ok = 0 }
+    printf "%s %s>%s%s;", substr($2, 1, length($2) - 1), first, last, ok ? "" : " jerky"
+  }'
+}
 # Polls, every 50 ms for up to $2 s, until the command $1 succeeds.
 until_() { n=$(echo "${2:-3} * 20" | bc | cut -d. -f1); while ! eval "$1" && [ "$n" -gt 0 ]; do sleep 0.05; n=$((n - 1)); done; }
 waitflag() { until_ "[ \"\$(flag)\" = $1 ]" "${2:-3}"; }
@@ -183,6 +198,7 @@ check "$(is "grep -q '^menu still open' \"$work/out\" && grep -q '^outside: menu
   "a click outside closes it ($(grep '^menu \|^outside' "$work/out" | paste -sd ',' - | sed 's/,/, /g'))"
 check "$(is "[ \"\$(defaults read sh.wham.app monochrome)\" = 0 ] && [ \"\$(defaults read sh.wham.app compact)\" = 0 ] && ! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" \
   "and the options clicked are remembered"
+grep '^retry ' "$work/out" | sed 's/^/note: /'
 stop
 unset WHAM_CLICKS
 guards=
@@ -369,6 +385,25 @@ check "$(is "grep -q '^look monochrome compact 23$' \"$work/out\" && [ \"\$(flag
 stop
 defaults delete sh.wham.app compact >/dev/null 2>&1 || true
 defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true
+# Each change of look moves frame by frame at the display's pace for about
+# half a second, there and back: the status item's width, the switch's ink.
+# Moving even where Reduce Motion is on, which makes them jump.
+: >"$work/out"
+export WHAM_MOTION=1
+launch "Film/Compact,Film/Compact,Film/Monochrome,Film/Monochrome"
+until_ "[ \"\$(grep -c '^film ' \"$work/out\")\" -ge 4 ]" 12
+films=$(grep '^film ' "$work/out" | cut -d, -f1-2 | paste -sd ';' - | sed 's/;/; /g')
+films="$films; $(grep '^motion: ' "$work/out" | head -1)"
+if echo "$films" | grep -q 'not drawn'; then
+  echo "skip the changes of look (${films})"
+else
+  check "$(is "[ \"\$(grep '^film ' \"$work/out\" | smooth)\" = 'Compact 50.0>23.0;Compact 23.0>50.0;Monochrome 0.00>1.00;Monochrome 1.00>0.00;' ]")" \
+    "Compact and Monochrome move at the display's pace, there and back (${films:-no answer})"
+fi
+stop
+unset WHAM_MOTION
+defaults delete sh.wham.app compact >/dev/null 2>&1 || true
+defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true
 
 # --- The menu.
 : >"$work/out"
@@ -417,6 +452,7 @@ clicked=$(grep '^click ' "$work/out" | sed 's/^click //; s/, look [^,]*,/,/' | p
 check "$(is "echo \"$clicked\" | grep -Eq '^Turn On: menu open, Turn Off, status Mac stays awake, even with the lid closed;Stay Awake For/1 Hour: menu open, 1 Hour, status Mac stays awake until .*\\(1 hr left\\);Stay Awake For/No Time Limit: menu open, No Time Limit checked, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual;Turn On For/No Time Limit: menu open, No Time Limit checked, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual$' && grep -q '^outside: menu closed' \"$work/out\"")" \
   "Turn On, Stay Awake For, No Time Limit (on, then off) and Turn Off clicked in the open menu: it stays open and says so ($(echo "$clicked" | sed 's/;/; /g'))"
 check "$(is "[ \"$on\" = 1 ] && [ \"\$(flag)\" = 0 ] && [ -z \"\$(left)\" ]")" "and the flag follows: on, then off with no end left"
+grep '^retry ' "$work/out" | sed 's/^/note: /'
 stop
 unset WHAM_CLICKS
 # Five minutes before a timed session ends, a pill says so.
