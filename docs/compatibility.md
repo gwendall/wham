@@ -191,8 +191,8 @@ Measured on a MacBook Air (Apple silicon), macOS 26.6, by `scripts/eval.sh`:
 | Idle CPU, once settled | 0.01 s per 30 s (about 0.03 %) | 0.1 s per 30 s |
 | Memory (physical footprint) | 10 MB | 40 MB |
 | `wham` command | 0.03 s | 0.3 s |
-| App on disk | 1.4 MB (536 KB of it the universal binary) | |
-| Download (zip) | about 1 MB | |
+| App on disk | 2.5 MB (1.6 MB of it the universal binary) | |
+| Download (zip) | about 1.4 MB | |
 
 CI holds every runner to the same budgets, and runs every eval above on each.
 The run of 2026-10-12, with sessions, guards and the watchdog:
