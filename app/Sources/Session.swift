@@ -11,9 +11,11 @@ enum Session {
     enum End: Equatable { case time, battery, heat }
 
     // On battery, at or under this charge, Wham gives sleep back: 10% unless
-    // the menu's Battery Limit says otherwise.
+    // the menu's Battery Limit says otherwise. Never (0): the Mac stays awake
+    // until its battery runs out.
     static let batteryLimits = [5, 10, 20, 30]
     static let defaultBatteryLimit = 10
+    static let never = 0
 
     struct Reading {
         var now = Date()
@@ -26,7 +28,7 @@ enum Session {
 
     static func end(_ reading: Reading) -> End? {
         if reading.critical { return .heat }
-        if reading.onBattery, let level = reading.battery, level <= reading.batteryLimit { return .battery }
+        if reading.onBattery, reading.batteryLimit != never, let level = reading.battery, level <= reading.batteryLimit { return .battery }
         if let offAt = reading.offAt, reading.now >= offAt { return .time }
         return nil
     }
@@ -144,7 +146,7 @@ enum Session {
         get {
             CFPreferencesAppSynchronize(domain)
             let value = CFPreferencesCopyAppValue("batteryLimit" as CFString, domain) as? Int
-            return value.flatMap { batteryLimits.contains($0) ? $0 : nil } ?? defaultBatteryLimit
+            return value.flatMap { batteryLimits.contains($0) || $0 == never ? $0 : nil } ?? defaultBatteryLimit
         }
         set { set("batteryLimit", newValue == defaultBatteryLimit ? nil : newValue as NSNumber) }
     }
@@ -203,6 +205,12 @@ enum Power {
 // Mac as its settings say. Only when the built-in screen is the only one
 // connected, so a closed MacBook driving a monitor is left alone.
 enum Screen {
+    // The displays connected, the Mac's own included.
+    static var count: Int {
+        var count: UInt32 = 0
+        return CGGetOnlineDisplayList(0, nil, &count) == .success ? Int(count) : 0
+    }
+
     static var builtInAloneAndLit: Bool {
         var ids = [CGDirectDisplayID](repeating: 0, count: 16), count: UInt32 = 0
         guard CGGetOnlineDisplayList(UInt32(ids.count), &ids, &count) == .success, count > 0 else { return false }

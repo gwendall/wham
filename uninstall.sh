@@ -4,7 +4,7 @@
 #   curl -fsSL wham.sh/uninstall | sh
 #
 # Quits Wham (which gives sleep back), removes the app, the `wham` command,
-# its settings and the sudoers rule it installed. Removing the rule asks for
+# its settings, its journal and the sudoers rule it installed. Removing the rule asks for
 # your password, since it lives in /etc.
 set -eu
 
@@ -24,6 +24,7 @@ for link in /usr/local/bin/wham "$HOME/.local/bin/wham"; do
   [ -L "$link" ] && rm -f "$link" && say "removed $link"
 done
 defaults delete sh.wham.app >/dev/null 2>&1 || true
+[ -d "$HOME/Library/Logs/Wham" ] && rm -rf "$HOME/Library/Logs/Wham" && say "removed ~/Library/Logs/Wham"
 # The login item on macOS 11 and 12 (from 13 on, it goes with the app).
 rm -f "$HOME/Library/LaunchAgents/sh.wham.app.plist"
 

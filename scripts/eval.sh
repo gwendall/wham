@@ -34,6 +34,10 @@
 #   change of look frame by frame at the display's pace (where it shows)
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
 #   updates for real)
+# - the journal (in a folder of the evals' own): a line for each of these,
+#   who asked and how it went, the network while on, the watchdog when it
+#   fires, a run that did not quit; every line in its format, none naming
+#   the user or the Mac, nor what `wham run` was given
 #
 # The flag is put back as it was, with the battery limit, the appearance,
 # Stay On After Restart, the version the user's Wham last ran as, and a timed
@@ -85,6 +89,10 @@ compact=$(defaults read sh.wham.app compact 2>/dev/null || true)
 restart=$(defaults read sh.wham.app stayOnAfterRestart 2>/dev/null || true)
 defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true
 work=$(mktemp -d)
+# Wham's journal, in a folder of the evals' own; `logged` greps it (-E).
+export WHAM_LOG_DIR="$work/log"
+journal() { cat "$WHAM_LOG_DIR/Wham.1.log" "$WHAM_LOG_DIR/Wham.log" 2>/dev/null || true; }
+logged() { journal | grep -Eq "$1"; }
 fake="$work/power"
 echo "ac 100" >"$fake"
 pid=
@@ -179,6 +187,9 @@ views=$(grep '^row title at' "$work/out" | tail -1)
 ink=$(grep '^ink ' "$work/out" | tail -1)
 check "$(is "echo \"$views\" | awk '{ exit !(\$1 == \"row\" && (\$13 == \"-,\" || (\$5 + 0 == \$13 + 0 && \$6 + 0 == \$14 + 0))) }' && echo \"$ink\" | awk '/not drawn/ { exit 0 } { d = \$5 - \$7; c = \$12 - \$14; exit !(\$5 ~ /^[0-9.]+\$/ && \$7 ~ /^[0-9.]+\$/ && d >= -1 && d <= 1 && \$12 ~ /^[0-9.]+\$/ && \$14 ~ /^[0-9.]+\$/ && c >= -0.03 && c <= 0.03) }'")" \
   "and its title starts where the menu's own do, as dark (${views:-no answer}; ${ink:-no picture})"
+until_ "logged ' update-check '" 2
+check "$(is "logged ' app\[[0-9]+\] launch version=[^ ]+ build=[0-9]+ macos=[0-9.]+ arch=[a-z0-9_-]+ model=[^ ]+ path=' && logged ' app\[[0-9]+\] settings sound=' && logged ' update-check asked=yes failure=\"curl exited [0-9]+\"'")" \
+  "the journal says the launch, the settings and how the check went ($(journal | grep -E ' launch | update-check ' | cut -d' ' -f4- | cut -c1-90 | paste -sd '|' - | sed 's/|/ | /g'))"
 stop
 # Every option, clicked in the open menu as a mouse would: the menu stays
 # open, the option checks or unchecks there and then, the switch changes at
@@ -198,6 +209,9 @@ check "$(is "grep -q '^menu still open' \"$work/out\" && grep -q '^outside: menu
   "a click outside closes it ($(grep '^menu \|^outside' "$work/out" | paste -sd ',' - | sed 's/,/, /g'))"
 check "$(is "[ \"\$(defaults read sh.wham.app monochrome)\" = 0 ] && [ \"\$(defaults read sh.wham.app compact)\" = 0 ] && ! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" \
   "and the options clicked are remembered"
+changed=$(journal | sed -nE 's/.* setting (monochrome|compact|battery-limit)=/\1=/p' | paste -sd ',' -)
+check "$(is "[ \"$changed\" = 'monochrome=yes,compact=yes,battery-limit=20%,battery-limit=10%,monochrome=no,compact=no' ]")" \
+  "and the journal says each change (${changed:-none})"
 grep '^retry ' "$work/out" | sed 's/^/note: /'
 stop
 unset WHAM_CLICKS
@@ -247,6 +261,11 @@ t0=$(ms)
 until_ dog 1
 t1=$(ms)
 check "$(is "[ \"\$(flag)\" = 1 ] && dog")" "wham on sets the flag; the app follows and arms its watchdog in $((t1 - t0)) ms"
+until_ "logged ' app\[[0-9]+\] wifi why=start'" 3
+check "$(is "logged ' cli\[[0-9]+\] flag on=yes why=\"cli on\" ok=yes took=[0-9]+ms$' && logged ' app\[[0-9]+\] flag-changed to=on by=outside$' && logged ' app\[[0-9]+\] watchdog armed=yes shell=[0-9]+$'")" \
+  "the journal says who set it, that the app saw it and armed its watchdog"
+check "$(is "logged ' app\[[0-9]+\] network status=(up|down|waiting)' && logged ' app\[[0-9]+\] wifi why=start (interface=none|power=)'")" \
+  "while on, it follows the network ($(journal | grep -E ' (network|wifi) ' | tail -2 | cut -d' ' -f4- | paste -sd '|' - | sed 's/|/ | /g'))"
 "$bin" toggle >/dev/null
 check "$(is "[ \"\$(flag)\" = 0 ]")" "wham toggle turns it off"
 "$bin" toggle >/dev/null
@@ -280,10 +299,16 @@ launch Switch
 waitflag 1
 until_ dog 1
 check "$(is "[ \"\$(flag)\" = 1 ] && dog")" "a click on the switch turns it on"
+check "$(is "logged ' app\[$pid\] flag on=yes why=switch ok=yes'")" "the journal says the switch did it"
+killed=$pid
 stop
 waitflag 0
 check "$(is "[ \"\$(flag)\" = 0 ]")" "the app killed with -9 while on: its watchdog gives sleep back"
+until_ "logged ' watchdog\[[0-9]+\] fired for=$killed '" 2
+check "$(is "logged ' watchdog\[[0-9]+\] fired for=$killed status=0$'")" "and says so in the journal"
 launch Switch
+until_ "logged ' app\[$pid\] previous-run '" 2
+check "$(is "logged ' app\[$pid\] previous-run ended=\"without quitting\" started='")" "the next launch says the run before did not quit"
 waitflag 1
 sleep 0.5
 stop TERM
@@ -293,6 +318,8 @@ launch "Turn On,Quit Wham (lets your Mac sleep)"
 waitflag 1
 until_ "! kill -0 $pid 2>/dev/null" 5
 check "$(is "[ \"\$(flag)\" = 0 ] && ! kill -0 $pid 2>/dev/null")" "Quit from the menu while on: the app leaves, sleep comes back"
+check "$(is "logged ' app\[$pid\] flag on=no why=\"quit from the menu\" ok=yes' && logged ' app\[$pid\] quit by=menu flag=off$'")" \
+  "the journal says it quit from its menu, sleep given back"
 stop
 launch
 sleep 2
@@ -302,10 +329,12 @@ launch "Turn On,Terminate"
 waitflag 1
 until_ "! kill -0 $pid 2>/dev/null" 5
 check "$(is "[ \"\$(flag)\" = 0 ] && ! kill -0 $pid 2>/dev/null")" "quit from outside while on (a logout, an upgrade): sleep comes back"
+check "$(is "logged ' app\[$pid\] quit by=outside flag=off resume=\"within a minute\"$'")" "the journal says so, and that it comes back within a minute"
 stop
 launch
 waitflag 1
 check "$(is "[ \"\$(flag)\" = 1 ]")" "opened again within a minute, it turns back on"
+check "$(is "logged ' app\[$pid\] flag on=yes why=\"resume after quit from outside\" ok=yes'")" "and the journal says why"
 stop
 waitflag 0
 # A restart, a shutdown or a logout: macOS says so, then quits the app.
@@ -326,6 +355,7 @@ waitflag 1
 until_ "! kill -0 $pid 2>/dev/null" 5
 check "$(is "[ \"\$(flag)\" = 0 ] && [ \"\$(defaults read sh.wham.app resumeAtLogin 2>/dev/null)\" = 1 ]")" \
   "with Stay On After Restart, a restart while on gives sleep back and remembers"
+check "$(is "logged ' app\[$pid\] quit by=\"restart, shutdown or logout\" flag=off resume=\"at login\"$'")" "the journal says so"
 stop
 : >"$work/out"
 launch
@@ -353,6 +383,7 @@ defaults write sh.wham.app stayOnAfterRestart -bool NO
 launch
 sleep 2
 check "$(is "[ \"\$(flag)\" = 0 ] && ! defaults read sh.wham.app resumeAtLogin >/dev/null 2>&1")" "turned off since: stays off"
+check "$(is "logged ' app\[$pid\] resume after=restart skipped=\"Stay On After Restart is off\"$'")" "and the journal says why"
 stop
 defaults delete sh.wham.app stayOnAfterRestart >/dev/null 2>&1 || true
 # The option itself, pressed in the menu, only where it is no one's setting.
@@ -506,6 +537,7 @@ echo "battery 9" >"$fake"
 launch "Switch,Turn On,Turn On For/2 Hours"
 sleep 4
 check "$(is "[ \"\$(flag)\" = 0 ] && [ -z \"\$(left)\" ]")" "on battery at 9%: the switch and the menu refuse to turn on"
+check "$(is "[ \"\$(journal | grep -c ' app\[$pid\] refused reason=battery battery=9 limit=10%')\" = 3 ]")" "the journal says each refusal, with the charge and the limit"
 stop
 echo "ac 100 critical" >"$fake"
 launch Switch
@@ -521,6 +553,8 @@ check "$(is "[ \"\$(flag)\" = 1 ]")" "on battery at 50%: stays on"
 echo "battery 10" >"$fake"
 waitflag 0 5
 check "$(is "[ \"\$(flag)\" = 0 ]")" "down to 10%: the app gives sleep back"
+check "$(is "logged ' app\[$pid\] session-ended reason=battery battery=10 limit=10%' && logged ' app\[$pid\] flag on=no why=\"session ended: battery\" ok=yes'")" \
+  "the journal says why the session ended"
 echo "ac 100" >"$fake"
 sleep 3
 check "$(is "[ \"\$(flag)\" = 0 ]")" "plugged back in: stays off until asked"
@@ -555,6 +589,18 @@ echo "battery 8" >"$fake"
 launch "Battery Limit/5%,Switch"
 waitflag 1 4
 check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 5 ]")" "Battery Limit 5%: stays awake at 8%"
+stop
+waitflag 0
+echo "battery 1" >"$fake"
+launch "Battery Limit/Never,Switch"
+waitflag 1 4
+sleep 3
+check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 0 ] && logged ' app\[$pid\] setting battery-limit=never$'")" \
+  "Battery Limit Never: stays awake at 1%, until the battery runs out"
+check "$(is "\"$bin\" help | grep -q 'until the battery runs out' && WHAM_FAKE_POWER=$fake \"$bin\" on >/dev/null 2>&1")" "wham help says it, and wham on turns on at 1%"
+echo "battery 1 critical" >"$fake"
+waitflag 0 5
+check "$(is "[ \"\$(flag)\" = 0 ]")" "the heat still ends it"
 stop
 waitflag 0
 launch "Battery Limit/10%"
@@ -600,6 +646,8 @@ check "$(is "[ $code = 127 ] && [ \"\$(flag)\" = 0 ]")" "a command that does not
 printf 'not a program' >"$work/plain"
 "$bin" run "$work/plain" 2>/dev/null && code=0 || code=$?
 check "$(is "[ $code = 126 ] && [ \"\$(flag)\" = 0 ]")" "a file that is not a program: 126"
+check "$(is "logged ' cli\[[0-9]+\] run-ended program=sh status=3 took=[0-9]+s$' && ! journal | grep -Eq 'exit 3|ioreg|not a program'")" \
+  "the journal names the program wham run ran, not what it was given"
 "$bin" run "$bin" off >/dev/null && code=0 || code=$?
 check "$(is "[ $code = 0 ] && [ \"\$(flag)\" = 0 ]")" "a command that turns it off itself is left alone"
 "$bin" on >/dev/null
@@ -635,6 +683,17 @@ waitflag 0
 check "$(is "[ \"\$(flag)\" = 0 ] && kill -0 $command 2>/dev/null")" "wham run killed with -9: its watchdog gives sleep back, the command still running"
 kill "$command" 2>/dev/null || true
 stop
+
+# --- The journal, as a whole.
+bad=$(journal | grep -Evc '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})? [+-][0-9]{4} (app|cli|watchdog)\[[0-9]+\] [a-z-]+( [a-z0-9-]+=("([^"\\]|\\.)*"|[^ "]+))*$' || true)
+check "$(is "[ \"$bad\" = 0 ] && [ \"\$(journal | wc -l)\" -gt 50 ]")" \
+  "every line of the journal in its format ($(journal | wc -l | tr -d ' ') lines, $bad not; $(journal | grep -Ev '^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{3})? [+-][0-9]{4} (app|cli|watchdog)\[[0-9]+\] [a-z-]+( [a-z0-9-]+=("([^"\\]|\\.)*"|[^ "]+))*$' | head -1))"
+user=$(id -un)
+host=$(hostname -s)
+check "$(is "! journal | grep -Fq \"$HOME\" && ! journal | grep -Fqw \"$user\" && ! journal | grep -Fqi \"$host\"")" \
+  "and none names the user or the Mac"
+check "$(is "[ \"\$(\"$bin\" log 7 | wc -l | tr -d ' ')\" = 7 ] && [ \"\$(\"$bin\" log 7)\" = \"\$(journal | tail -7)\" ]")" "wham log prints its last lines"
+check "$(is "[ \"\$(stat -f %Lp \"$WHAM_LOG_DIR\")\" = 700 ] && [ \"\$(stat -f %Lp \"$WHAM_LOG_DIR/Wham.log\")\" = 600 ]")" "only its user can read it"
 
 echo
 if [ "$failures" = 0 ]; then echo "all evals passed"; else echo "$failures eval(s) failed"; exit 1; fi

@@ -19,6 +19,11 @@ if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--arm-and-di
     withExtendedLifetime(watchdog) { _ = kill(getpid(), SIGKILL) }
 }
 
+// The journal goes to a folder of the tests' own (set before anything
+// writes; the run above inherits it).
+let journalDir = NSTemporaryDirectory() + "wham-journal-\(getpid())"
+setenv("WHAM_LOG_DIR", journalDir, 1)
+
 var failures = 0
 func check(_ condition: Bool, _ message: String, line: Int = #line) {
     if condition {
@@ -189,6 +194,10 @@ check(Session.end(.init(now: now, onBattery: true, battery: 21, batteryLimit: 20
 check(Session.end(.init(now: now, onBattery: false, battery: 3)) == nil && Session.end(.init(now: now, onBattery: true, battery: nil)) == nil,
       "plugged in, or without a battery, the charge does not matter")
 check(Session.end(.init(now: now, offAt: now, onBattery: true, battery: 3, critical: true)) == .heat, "the heat comes first")
+check(Session.end(.init(now: now, onBattery: true, battery: 0, batteryLimit: Session.never)) == nil
+      && Session.end(.init(now: now, onBattery: true, battery: 1, critical: true, batteryLimit: Session.never)) == .heat
+      && Session.end(.init(now: now, offAt: now, onBattery: true, battery: 1, batteryLimit: Session.never)) == .time,
+      "Battery Limit Never: the battery never ends it, the heat and the time still do")
 check(Session.why(.battery, battery: 9) == "Battery at 9%" && Session.refusal(.heat, battery: nil).contains("too hot"), "it says why")
 
 let durations: [(String, TimeInterval?)] = [
@@ -241,6 +250,13 @@ killed.waitUntilExit()
 let orphan = Int32(String(decoding: killedOutput.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
     .trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
 check(killed.terminationReason == .uncaughtSignal && fired(bark), "killed with -9, the watchdog fires")
+func barkedLines() -> [String] { Journal.tail(50).filter { $0.contains(" watchdog[") && $0.contains(" fired for=\(killed.processIdentifier) status=0") } }
+// The shell writes its line just after its command ran.
+let barkDeadline = Date().addingTimeInterval(2)
+while barkedLines().isEmpty && Date() < barkDeadline { usleep(20_000) }
+let barked = barkedLines()
+check(barked.count == 1 && barked[0].range(of: #"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d [+-]\d{4} watchdog\[\d+\] "#, options: .regularExpression) != nil,
+      "and says so in the journal (\(barked.first ?? "no line"))")
 check(orphan > 0 && kill(orphan, 0) == 0, "even with a child of the dead process still running (it does not hold the pipe)")
 if orphan > 0 { kill(orphan, SIGTERM) }
 let calm = Watchdog()
@@ -299,6 +315,9 @@ check(Session.batteryLimit == 20 && shell("defaults read sh.wham.app batteryLimi
 check(CLI.help.contains("at 20% or less"), "wham help says the limit")
 _ = shell("defaults write sh.wham.app batteryLimit -int 7")
 check(Session.batteryLimit == Session.defaultBatteryLimit, "a limit the menu does not offer counts as the default")
+Session.batteryLimit = Session.never
+check(Session.batteryLimit == Session.never && shell("defaults read sh.wham.app batteryLimit").output.hasPrefix("0")
+      && CLI.help.contains("until the battery runs out") && !CLI.help.contains("% or less"), "Never is kept, and wham help says it")
 Session.batteryLimit = Session.defaultBatteryLimit
 check(shell("defaults read sh.wham.app batteryLimit 2>/dev/null").status != 0, "the default is not stored")
 Session.batteryLimit = savedLimit
@@ -318,10 +337,48 @@ if kernelAnswers && (Sleep.isDisabled == true || shell("true", root: true).statu
     check(CLI.run(["run", "/bin/sh", "-c", "exit 3"]) == 3, "wham run exits with its command's status")
     check(CLI.run(["run", "/bin/sh", "-c", "kill -TERM $$"]) == 128 + SIGTERM, "or 128 + the signal that killed it")
     check(CLI.run(["run", "wham-no-such-command"]) == 127, "127 for a command that does not exist")
+    let ran = Journal.tail(200).filter { $0.contains(" run") }
+    check(ran.contains { $0.hasSuffix("run-ended program=sh status=3") || $0.contains("run-ended program=sh status=3 ") }
+          && !ran.contains { $0.contains("exit 3") || $0.contains("-c") },
+          "the journal names the program wham run ran, not its arguments")
     check(Sleep.isDisabled == before, "and leaves sleep as it found it")
 } else {
     print("skip wham run (it would ask for a password here)")
 }
+
+// The journal: one line per event, "date time.ms zone source[pid] event
+// key=value", quoted where a value has a space, the user's names taken out,
+// two files of `limit` at most, only its user can read them.
+check(Journal.text("flag", [("on", true), ("why", "menu 2h"), ("sudo", nil as Int32?), ("took", "84ms"), ("left", 3.5)])
+      == #"flag on=yes why="menu 2h" took=84ms left=3.5"#, "a line: the event, its fields, nil left out")
+check(Journal.quote("say \"hi\"\nnow") == #""say \"hi\" now""# && Journal.quote("a=b") == #""a=b""# && Journal.quote("plain") == "plain",
+      "quotes, on one line")
+check(Journal.scrub(NSHomeDirectory() + "/Applications/Wham.app, \(NSUserName())") == "~/Applications/Wham.app, <user>",
+      "the home folder and the user's name taken out")
+check(Journal.stamp(Date()).range(of: #"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3} [+-]\d{4}$"#, options: .regularExpression) != nil,
+      "dated to the millisecond, with the zone (\(Journal.stamp(Date())))")
+try? FileManager.default.removeItem(atPath: journalDir)
+Journal.note("test", ["n": 1])
+Journal.flush()
+let firstLine = (try? String(contentsOf: Journal.file, encoding: .utf8)) ?? ""
+check(firstLine.hasSuffix(" cli[\(getpid())] test n=1\n") || firstLine.hasSuffix(" app[\(getpid())] test n=1\n"),
+      "written to WHAM_LOG_DIR, with who wrote it (\(firstLine.trimmingCharacters(in: .newlines)))")
+let modes = [journalDir, Journal.file.path].map { (try? FileManager.default.attributesOfItem(atPath: $0)[.posixPermissions] as? Int) ?? -1 }
+check(modes == [0o700, 0o600], "only its user can read it (\(modes.map { String($0, radix: 8) }))")
+let filler = String(repeating: "x", count: 200)
+for n in 0..<3000 { Journal.note("fill", [("n", n), ("pad", filler)]) }
+Journal.flush()
+let sizes = [Journal.file, Journal.older].map { (try? FileManager.default.attributesOfItem(atPath: $0.path)[.size] as? Int) ?? -1 }
+check(sizes.allSatisfy { $0 > 0 && $0 <= Journal.limit }, "past its limit, it goes on in a new file and keeps one older (\(sizes) bytes)")
+let lastLines = Journal.tail(3)
+check(lastLines.count == 3 && lastLines[2].contains("fill n=2999 ") && lastLines[0].contains("fill n=2997 "), "wham log reads the last lines, in order")
+check(CLI.run(["log", "2"]) == 0 && CLI.run(["log", "x"]) == 64 && CLI.run(["log", "0"]) == 64, "wham log takes a count")
+Journal.markStopped()
+check(Journal.markRunning() == nil, "a run after one that quit: clean")
+let unclean = Journal.markRunning()
+check(unclean.map { abs($0.timeIntervalSinceNow) < 5 } == true, "after one that did not quit: says when that one started")
+Journal.markStopped()
+try? FileManager.default.removeItem(atPath: journalDir)
 
 print(failures == 0 ? "\nall checks passed" : "\n\(failures) check(s) failed")
 exit(failures == 0 ? 0 : 1)

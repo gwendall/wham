@@ -90,7 +90,8 @@ Wham also lets go on its own, and the menu says why:
 - **Time is up**, when you turned it on for a while.
 - **On battery, at 10%**, or at 5, 20 or 30% (Battery Limit, in the menu). Your
   Mac sleeps with your work saved instead of running flat, and Wham will not
-  turn back on until you plug in.
+  turn back on until you plug in. Battery Limit: **Never** keeps it awake until
+  the battery runs out: save your work first.
 - **Your Mac gets critically hot.** Wham is for desks, docks and shelves, where
   air moves; in a closed bag an awake Mac has nowhere to put its heat. Turn it
   off before you pack up.
@@ -108,10 +109,19 @@ wham off         # your Mac sleeps as usual
 wham run make    # awake while make runs, then as it was before
 wham toggle
 wham status
+wham log         # what Wham did and saw lately (wham log 200: more)
 ```
 
 `wham run` exits with its command's status and passes Ctrl-C to it. Killed
 itself, it still gives sleep back.
+
+Wham keeps a journal, to tell afterwards what happened: when it turned on and
+off and why, the lid, sleep and wake, the battery and the heat, and while on,
+whether the network stayed up (and the Wi-Fi link's strength) with the lid
+closed. `wham log` prints its last lines; it is in `~/Library/Logs/Wham`, which
+Console opens too. It never leaves your Mac and names no one: no network name,
+no address, no user or Mac name, and of a `wham run` command only the program.
+Two files of 256 KB at most, the older one dropped.
 
 ## How it works
 
@@ -152,7 +162,7 @@ the watchdog to stand down. `wham run` keeps one too.
 
 ## Is it safe?
 
-- About 2,100 lines of Swift, no dependencies, no analytics.
+- About 3,100 lines of Swift, no dependencies, no analytics.
 - One network request, a few times a day: Wham asks GitHub which release is
   the latest, and the request carries nothing about you or your Mac. When there
   is a newer one, Wham downloads it, checks that it is signed by the same
@@ -166,11 +176,14 @@ the watchdog to stand down. `wham run` keeps one too.
   (`NQCA86NEA3`) and notarized by Apple. The `curl` installer and the updater
   both refuse an app signed by anyone else.
 - The only privilege Wham holds is the rule above. Uninstalling removes it.
+- The journal (see [Use it](#use-it)) stays on your Mac, readable by you
+  alone, and holds nothing that names you, your Mac or your network.
 
 ## Tiny
 
 One timer reads one kernel flag every two seconds. While on, Wham also listens
-for the battery, the heat and the lid, which macOS announces.
+for the battery, the heat, the lid and the network, which macOS announces, and
+writes a journal line when one of them changes.
 
 | | Wham |
 | --- | --- |
@@ -193,7 +206,7 @@ Closing the lid, on battery, with no display plugged in:
 
 | | Lid closed | Size |
 | --- | --- | --- |
-| **Wham** | **Yes, on its own.** Download, drag, click; for as long as you say, and never down to a flat battery; macOS 11 or later, Intel too, notarized | 1.4 MB on disk |
+| **Wham** | **Yes, on its own.** Download, drag, click; for as long as you say, and down to a flat battery only if you ask; macOS 11 or later, Intel too, notarized | 1.4 MB on disk |
 | [Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704) | With helper apps: Amphetamine Enhancer from outside the App Store, and Power Protect on Apple silicon laptops | 6.7 MB download, plus helpers |
 | [Caffeine](https://intelliscapesolutions.com/apps/caffeine) | No: it holds a power assertion, which macOS drops when the lid closes | 0.8 MB on disk |
 | [KeepingYouAwake](https://github.com/newmarcel/KeepingYouAwake#readme) | No: it "will only prevent sleep on desktop Macs and portable Macs with an open lid" | 7.6 MB on disk |
@@ -216,7 +229,7 @@ curl -fsSL wham.sh/uninstall | sh
 ```
 
 This quits Wham (your Mac sleeps as usual again), removes the app, the `wham`
-command, its settings and the sudoers rule (that last step asks for your
+command, its settings, its journal and the sudoers rule (that last step asks for your
 password). With Homebrew: `brew uninstall --zap wham`. With npm:
 `npx wham.sh uninstall`.
 

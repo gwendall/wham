@@ -29,6 +29,7 @@ cask "wham" do
   zap delete: "/private/etc/sudoers.d/wham",
       trash:  [
         "~/Library/LaunchAgents/sh.wham.app.plist",
+        "~/Library/Logs/Wham",
         "~/Library/Preferences/sh.wham.app.plist",
       ]
 
