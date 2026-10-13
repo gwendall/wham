@@ -8,10 +8,16 @@
 # - the `wham` command answers in under 0.3 s (after macOS's one-time check)
 # - the menu bar app, settled, uses under 0.1 s of CPU per 30 s and under
 #   40 MB of memory
+# - the open menu, clicked as a mouse would: Check for Updates, Appearance and
+#   Battery Limit keep it open, the option checks or says how it went there
+#   and then, and only a click outside closes it; its rows look like the
+#   menu's own, titles, check marks and grays (with WHAM_SHOTS=dir, pictures
+#   of the menu go there)
 # Where sudo sets the flag without a password (CI, or a Mac with Wham's rule),
 # on the kernel's real SleepDisabled flag:
 # - `wham on/off/toggle`, the switch and every menu item, and the app follows
-#   the command at once
+#   the command at once; Turn On, Stay Awake For and Turn Off clicked in the
+#   open menu, which stays open and says what the Mac does now
 # - timed sessions: `wham on 3s`, "Turn On For", what the menu says is left,
 #   No Time Limit, the warning five minutes before the end, one that ran out
 #   while the app was closed, the app opened by `wham on 2h` when it is not
@@ -26,13 +32,13 @@
 #   session's end)
 # - Appearance: Monochrome and Compact, and the status item's width
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
-#   updates for real); Check for Updates clicked in the open menu, which
-#   stays open and says how the check went, its title where the menu's own
-#   start (with WHAM_SHOTS=dir, pictures of the menu go there)
+#   updates for real)
 #
-# The flag is put back as it was, with the battery limit, the version the
-# user's Wham last ran as, and a timed session running when the evals start. The app plays no sound here, but its switch
-# and its notes show in the menu bar meanwhile.
+# The flag is put back as it was, with the battery limit, the appearance,
+# Stay On After Restart, the version the user's Wham last ran as, and a timed
+# session running when the evals start. The app plays no sound here, but its
+# switch, its menu and its notes show meanwhile, and the pointer moves for
+# the clicks in the menu, then goes back.
 set -eu
 cd "$(dirname "$0")/.."
 app=$(cd "${1:-build/Wham.app}" && pwd)
@@ -158,6 +164,40 @@ views=$(grep '^row title at' "$work/out" | tail -1)
 ink=$(grep '^ink ' "$work/out" | tail -1)
 check "$(is "echo \"$views\" | awk '{ exit !(\$1 == \"row\" && (\$13 == \"-,\" || (\$5 + 0 == \$13 + 0 && \$6 + 0 == \$14 + 0))) }' && echo \"$ink\" | awk '/not drawn/ { exit 0 } { d = \$5 - \$7; c = \$12 - \$14; exit !(\$5 ~ /^[0-9.]+\$/ && \$7 ~ /^[0-9.]+\$/ && d >= -1 && d <= 1 && \$12 ~ /^[0-9.]+\$/ && \$14 ~ /^[0-9.]+\$/ && c >= -0.03 && c <= 0.03) }'")" \
   "and its title starts where the menu's own do, as dark (${views:-no answer}; ${ink:-no picture})"
+stop
+# Every option, clicked in the open menu as a mouse would: the menu stays
+# open, the option checks or unchecks there and then, the switch changes at
+# once, and only a click outside closes the menu. The battery is the
+# stand-in's, on power.
+defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true
+defaults delete sh.wham.app compact >/dev/null 2>&1 || true
+: >"$work/out"
+guards=1
+export WHAM_CLICKS="Appearance/Monochrome,Appearance/Compact,Battery Limit/20%,Battery Limit/10%,Appearance/Monochrome,Appearance/Compact"
+launch "Click Rows"
+until_ "grep -q '^outside\\|^menu closed\\|^menu missing' \"$work/out\"" 30
+clicked=$(grep '^click ' "$work/out" | sed 's/^click [^:]*: //; s/, status .*//' | paste -sd ';' -)
+check "$(is "[ \"$clicked\" = 'menu open, Monochrome checked, look monochrome wide 50;menu open, Compact checked, look monochrome compact 23;menu open, 20% checked, look monochrome compact 23;menu open, 10% checked, look monochrome compact 23;menu open, Monochrome, look color compact 23;menu open, Compact, look color wide 50' ]")" \
+  "Appearance and Battery Limit clicked in the open menu: it stays open, the option checks, the switch follows (${clicked:-no answer})"
+check "$(is "grep -q '^menu still open' \"$work/out\" && grep -q '^outside: menu closed' \"$work/out\"")" \
+  "a click outside closes it ($(grep '^menu \|^outside' "$work/out" | paste -sd ',' - | sed 's/,/, /g'))"
+check "$(is "[ \"\$(defaults read sh.wham.app monochrome)\" = 0 ] && [ \"\$(defaults read sh.wham.app compact)\" = 0 ] && ! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" \
+  "and the options clicked are remembered"
+stop
+unset WHAM_CLICKS
+guards=
+# The menu's own rows over Wham's that say the same, plain, checked and gray:
+# alike, their text where the menu's starts (where the screen shows).
+: >"$work/out"
+launch Rows
+until_ "grep -q '^pairs\\|^pair Gray' \"$work/out\"" 10
+pairs=$(grep '^pair' "$work/out" | paste -sd ';' - | sed 's/;/; /g')
+if echo "$pairs" | grep -q 'not drawn'; then
+  echo "skip the rows' pictures (${pairs})"
+else
+  check "$(is "grep '^pair ' \"$work/out\" | awk '{ n++; d = \$8 - \$12; if (!(\$3 ~ /^[0-9.]+\$/ && \$3 <= 0.02 && \$8 ~ /^[0-9.]+\$/ && \$12 ~ /^[0-9.]+\$/ && d >= -0.5 && d <= 0.5)) bad++ } END { exit !(n == 3 && !bad) }'")" \
+    "Wham's rows look like the menu's own (${pairs:-no answer})"
+fi
 stop
 : >"$work/out"
 
@@ -361,6 +401,22 @@ items=$(grep '^items ' "$work/out" | tail -1)
 check "$(is "echo \"$items\" | grep -q '| About Wham [^|]* | What.s New | Check for Updates | Made by Gwendall |'")" \
   "the menu has What's New and Check for Updates ($(echo "$items" | sed 's/.*| - | About/About/; s/ | - | Quit.*//'))"
 stop
+# The switch's own options, clicked in the open menu: it stays open, its
+# first line says what the Mac does now, and the kernel's flag follows.
+: >"$work/out"
+export WHAM_CLICKS="Turn On,Stay Awake For/1 Hour,Stay Awake For/No Time Limit,Turn Off"
+launch "Click Rows"
+until_ "grep -q '^click Turn On:' \"$work/out\"" 10
+waitflag 1
+on=$(flag)
+until_ "grep -q '^outside\\|^menu closed\\|^menu missing' \"$work/out\"" 30
+waitflag 0
+clicked=$(grep '^click ' "$work/out" | sed 's/^click //; s/, look [^,]*,/,/' | paste -sd ';' -)
+check "$(is "echo \"$clicked\" | grep -Eq '^Turn On: menu open, Turn Off, status Mac stays awake, even with the lid closed;Stay Awake For/1 Hour: menu open, 1 Hour, status Mac stays awake until .*\\(1 hr left\\);Stay Awake For/No Time Limit: menu open, No Time Limit, status Mac stays awake, even with the lid closed;Turn Off: menu open, Turn On, status Mac sleeps as usual$' && grep -q '^outside: menu closed' \"$work/out\"")" \
+  "Turn On, Stay Awake For, No Time Limit and Turn Off clicked in the open menu: it stays open and says so ($(echo "$clicked" | sed 's/;/; /g'))"
+check "$(is "[ \"$on\" = 1 ] && [ \"\$(flag)\" = 0 ] && [ -z \"\$(left)\" ]")" "and the flag follows: on, then off with no end left"
+stop
+unset WHAM_CLICKS
 # Five minutes before a timed session ends, a pill says so.
 sudo -n /usr/bin/pmset -a disablesleep 1
 defaults write sh.wham.app onAt -date "$(date -u -v-1H '+%Y-%m-%d %H:%M:%S +0000')"
