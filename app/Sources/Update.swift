@@ -22,9 +22,12 @@ enum Update {
     }
 
     // GitHub answers /releases/latest with a redirect to /releases/tag/v1.2.0.
-    static func latest() -> String? {
-        output("/usr/bin/curl", ["-fsS", "--max-time", "30", "-o", "/dev/null", "-w", "%{redirect_url}", base + "/releases/latest"])
-            .flatMap(version(fromTag:))
+    // No version: why, for the journal.
+    static func latest() -> (version: String?, failure: String?) {
+        let (status, answer) = output("/usr/bin/curl", ["-fsS", "--max-time", "30", "-o", "/dev/null", "-w", "%{redirect_url}", base + "/releases/latest"])
+        guard status == 0 else { return (nil, "curl exited \(status)") }
+        guard let version = answer.flatMap(version(fromTag:)) else { return (nil, "no release in the answer") }
+        return (version, nil)
     }
 
     static func version(fromTag url: String) -> String? {
@@ -60,22 +63,30 @@ enum Update {
         FileManager.default.isWritableFile(atPath: app.deletingLastPathComponent().path) && isGenuine(app)
     }
 
-    // Downloads `version` and puts it where `app` is.
-    static func install(_ version: String, over app: URL) -> Bool {
+    // Downloads `version` and puts it where `app` is. Nil once done, or the
+    // step that failed, for the journal.
+    static func install(_ version: String, over app: URL) -> String? {
         let files = FileManager.default
         // A folder on the app's own volume, so the swap is a rename.
         guard let folder = try? files.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: app, create: true) else {
-            return false
+            return "no folder to download to"
         }
         defer { try? files.removeItem(at: folder) }
         let zip = folder.appendingPathComponent("Wham.zip")
         let fresh = folder.appendingPathComponent("Wham.app")
-        guard Sleep.run("/usr/bin/curl", ["-fsSL", "--max-time", "300", "-o", zip.path, "\(base)/releases/download/v\(version)/Wham.zip"]) == 0,
-              Sleep.run("/usr/bin/ditto", ["-x", "-k", zip.path, folder.path]) == 0,
-              isGenuine(fresh),
-              output(fresh.appendingPathComponent("Contents/MacOS/Wham").path, ["version"]) == "wham \(version)"
-        else { return false }
-        return (try? files.replaceItemAt(app, withItemAt: fresh)) != nil
+        let download = Sleep.run("/usr/bin/curl", ["-fsSL", "--max-time", "300", "-o", zip.path, "\(base)/releases/download/v\(version)/Wham.zip"])
+        guard download == 0 else { return "download: curl exited \(download)" }
+        let unzip = Sleep.run("/usr/bin/ditto", ["-x", "-k", zip.path, folder.path])
+        guard unzip == 0 else { return "unzip: ditto exited \(unzip)" }
+        guard isGenuine(fresh) else { return "signature" }
+        let said = output(fresh.appendingPathComponent("Contents/MacOS/Wham").path, ["version"])
+        guard said.status == 0, said.text == "wham \(version)" else { return "version: said \(said.text ?? "nothing") (exit \(said.status))" }
+        do {
+            _ = try files.replaceItemAt(app, withItemAt: fresh)
+        } catch {
+            return "replace: \(error.localizedDescription)"
+        }
+        return nil
     }
 
     private static func numbers(_ version: String) -> [Int]? {
@@ -84,16 +95,17 @@ enum Update {
         return parts.compactMap { $0 }
     }
 
-    private static func output(_ path: String, _ args: [String]) -> String? {
+    // Its exit status, and what it printed when it succeeded.
+    private static func output(_ path: String, _ args: [String]) -> (status: Int32, text: String?) {
         let process = Process(), pipe = Pipe()
         process.executableURL = URL(fileURLWithPath: path)
         process.arguments = args
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
-        do { try process.run() } catch { return nil }
+        do { try process.run() } catch { return (-1, nil) }
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        guard process.terminationStatus == 0 else { return nil }
-        return String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard process.terminationStatus == 0 else { return (process.terminationStatus, nil) }
+        return (0, String(decoding: data, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }

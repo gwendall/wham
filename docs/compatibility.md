@@ -115,6 +115,7 @@ downloads nothing, and offers the new version in its menu (Update to Wham X).
 | The clock jumps, or macOS naps the app | The end is a timer in the run loop's common modes, and every look compares it with the clock | Code: `Session.end`, the 2 s tick |
 | On battery, at 10% or less | Turns off ("Battery at 10%") and will not turn on until plugged in, saying so | Test: `Session.end`; eval: the switch, the menu and `wham on` |
 | Battery Limit at 5, 20 or 30% | The same at that charge. The app and `wham` share it (`defaults write sh.wham.app batteryLimit -int 20`); any other value counts as 10%. Raised over the charge on battery, it ends the session at once | Test; eval: 20% at 15% ends it and `wham on` refuses, 5% stays awake at 8% |
+| Battery Limit: Never | Stays awake on battery until it runs out; the heat still turns it off. Stored as 0 (`defaults write sh.wham.app batteryLimit -int 0`); the menu's tooltip says to save your work first | Test: `Session.end`, the setting; eval: stays on at 1%, `wham on` at 1%, still turns off when critically hot |
 | Plugged in at any charge, or no battery | The charge never stops it | Test |
 | Plugged back in after the battery stopped it | Stays off until asked | Eval |
 | Critically hot (`thermalState` critical, or macOS's thermal pressure at trapping) | Turns off ("Your Mac got too hot") and will not turn on until it cools. Below critical it carries on, so a busy server is left alone | Test; eval, also with macOS's own thermal signal raised as root on CI |
@@ -149,6 +150,19 @@ writes to. However Wham ends, macOS closes the pipe and the shell runs
 | `wham run` killed with -9 | Its own watchdog gives sleep back; the command keeps running | Eval |
 | Already on | Left on | Test, eval |
 | The command turns sleep back on itself, or Wham does (battery, heat) | Left alone: `wham run` only undoes what it did | Eval |
+
+## The journal
+
+| Case | What Wham does | Checked by |
+| --- | --- | --- |
+| Where | `~/Library/Logs/Wham/Wham.log`, 256 KB at most, then `Wham.1.log`; the one before is dropped. The folder opens for its user only (0700), the files too (0600). Each line also goes to the unified log, subsystem `sh.wham.app` | Test: rotation, modes; eval: modes |
+| What it holds | The launch (version, macOS, model, the flag, the rule, the lid, power, battery, heat), the settings and each change, every turn on and off with why and how long `pmset` took, refusals, session ends, the lid, sleep and wake, the power source, the battery by steps of 5%, the heat, the watchdog armed and fired, update checks and installs, quits. While on: the network (up or down, through what, a hotspot) and the Wi-Fi link (signal, noise, rate, band, channel) on each change, when the lid moves, and every ten minutes under a closed lid | Eval: the lines for each |
+| What it never holds | A network name or BSSID, an IP or hardware address, the user's or the Mac's name (sudo's words have them taken out), the home folder (written `~`), a `wham run` command's arguments | Test: the scrub; eval: no line has the home folder, the user's or the Mac's name, `wham run` logs the program alone |
+| Wi-Fi without the Location permission | CoreWLAN gives no network name without it, and Wham does not ask for it | Code |
+| A crash, a force quit, the Mac losing power | The next launch says the previous run ended without quitting, when it started, and the name of Wham's newest crash report since | Test: the marker; eval |
+| The watchdog gives sleep back | Its shell adds a line with the process it outlived and `pmset`'s status | Test; eval |
+| The app and `wham` write together | Whole lines, appended (O_APPEND), from a background queue, a file opened and closed per line. Nothing on the 2 s tick | Test |
+| `wham log [n]` | The last n lines (50), across both files; anything but a positive number exits 64 | Test; eval |
 
 ## The lid and the screen
 
@@ -195,8 +209,10 @@ Where the little it does goes:
 - One timer, every 2 s with 1 s of tolerance so macOS can batch it with other
   wakeups, reads one IORegistry property, and while on, the power source and
   the thermal state.
-- The battery, the heat and the lid arrive as notifications from macOS, not
-  polls. Off, Wham reads nothing else.
+- The battery, the heat, the lid and, while on, the network arrive as
+  notifications from macOS, not polls (but the Wi-Fi link, read every ten
+  minutes under a closed lid). Off, Wham reads nothing else.
+- The journal writes a line when something happens, never on the tick.
 - While on, the watchdog waits on its pipe: a `/bin/sh` that uses no CPU.
 - The sounds are made on the first click, so CoreAudio is not loaded until
   there is something to play.

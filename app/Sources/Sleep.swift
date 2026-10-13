@@ -35,10 +35,34 @@ enum Sleep {
 
     // `sudo -n` never prompts, so this fails until the rule is installed. It
     // trusts the kernel, not the exit code. Blocks for up to 2 s: call it off
-    // the main thread.
-    static func set(_ on: Bool) -> Bool {
-        guard run("/usr/bin/sudo", ["-n", pmset, "-a", "disablesleep", on ? "1" : "0"]) == 0 else { return false }
-        return confirm(on)
+    // the main thread. The journal says why, and how it went.
+    static func set(_ on: Bool, why: String) -> Bool {
+        let started = Date()
+        let (status, error) = runReading("/usr/bin/sudo", ["-n", pmset, "-a", "disablesleep", on ? "1" : "0"])
+        let ok = status == 0 && confirm(on)
+        if ok { wrote(on) }
+        Journal.note("flag", ["on": on, "why": why, "ok": ok, "took": "\(Int(Date().timeIntervalSince(started) * 1000))ms",
+                              "sudo": ok ? nil : status, "error": ok ? nil : error,
+                              "kernel": ok || status != 0 ? nil : isDisabled.map { $0 ? "on" : "off" } ?? "unreadable"])
+        return ok
+    }
+
+    // What this process last wrote to the flag, and when: a change it did
+    // not make is someone else's, which the journal says.
+    private static let lock = NSLock()
+    private static var lastWrite: (on: Bool, at: Date)?
+
+    static func wrote(_ on: Bool) {
+        lock.lock()
+        lastWrite = (on, Date())
+        lock.unlock()
+    }
+
+    static func wroteLately(_ on: Bool, within seconds: TimeInterval = 10) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let lastWrite else { return false }
+        return lastWrite.on == on && Date().timeIntervalSince(lastWrite.at) < seconds
     }
 
     // Waits for the kernel to report the new value.
@@ -87,6 +111,20 @@ enum Sleep {
             + "&& chown root:wheel \(tmp) && chmod 0440 \(tmp) && mv \(tmp) \(file) || { rm -f \(tmp); exit 1; }"
     }
 
+    // Its exit status and the first line it wrote to stderr.
+    static func runReading(_ path: String, _ args: [String]) -> (status: Int32, error: String?) {
+        let process = Process(), errors = Pipe()
+        process.executableURL = URL(fileURLWithPath: path)
+        process.arguments = args
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = errors
+        do { try process.run() } catch { return (-1, error.localizedDescription) }
+        let data = errors.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        let line = String(decoding: data, as: UTF8.self).split(separator: "\n").first.map(String.init)
+        return (process.terminationStatus, line)
+    }
+
     @discardableResult
     static func run(_ path: String, _ args: [String], quiet: Bool = true) -> Int32 {
         let process = Process()
@@ -111,9 +149,10 @@ final class Watchdog {
     private var input: FileHandle?
     var isArmed: Bool { input != nil }
 
-    // `command` is for the tests.
+    // `command` is for the tests. Once it ran, the shell says so in the journal.
     func arm(command: String = "/usr/bin/sudo -n \(Sleep.pmset) -a disablesleep 0") {
         guard input == nil else { return }
+        Journal.prepare()
         let pipe = Pipe(), shell = Process()
         // The writing end stays in this process alone: a child holding it,
         // the shell included, would keep the pipe open.
@@ -121,16 +160,18 @@ final class Watchdog {
         _ = fcntl(pipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
         shell.executableURL = URL(fileURLWithPath: "/bin/sh")
         // A Ctrl-C or a hangup meant for a terminal does not reach it.
-        shell.arguments = ["-c", "trap '' INT QUIT HUP; read -r word; [ \"$word\" = stand-down ] || exec \(command)"]
+        shell.arguments = ["-c", "trap '' INT QUIT HUP; read -r word; [ \"$word\" = stand-down ] && exit 0; \(command); status=$?; \(Journal.watchdogLine)"]
         shell.standardInput = pipe
         shell.standardOutput = FileHandle.nullDevice
         shell.standardError = FileHandle.nullDevice
-        guard (try? shell.run()) != nil else { return }
+        guard (try? shell.run()) != nil else { return Journal.note("watchdog", ["armed": false]) }
         input = pipe.fileHandleForWriting
+        Journal.note("watchdog", ["armed": true, "shell": shell.processIdentifier])
     }
 
     func standDown() {
         guard let input else { return }
+        Journal.note("watchdog", ["armed": false])
         // Throws rather than signals if the shell is already gone.
         try? input.write(contentsOf: Data("stand-down\n".utf8))
         try? input.close()

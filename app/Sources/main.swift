@@ -16,7 +16,9 @@ if args.first == "--render-sounds", args.count > 1 {
 // in the terminal. Launched from Finder or at login: run the menu bar app.
 let calledAsCommand = URL(fileURLWithPath: CommandLine.arguments[0]).lastPathComponent == "wham"
 if calledAsCommand || args.first.map(CLI.commands.contains) == true {
-    exit(CLI.run(args))
+    let status = CLI.run(args)
+    Journal.flush()
+    exit(status)
 }
 
 MainActor.assumeIsolated {

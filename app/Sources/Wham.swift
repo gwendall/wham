@@ -63,8 +63,15 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var lidWasClosed = false
     // Set when macOS says it is about to restart, shut down or log out.
     private var poweringOff = false
+    // For the journal: the flag as last seen, the power and the heat as
+    // last read, and the network while on.
+    private var seenFlag: Bool??
+    private var sensed: Sensed?
+    private let connectivity = Connectivity()
+    private var sampleTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        launched()
         if Self.runsFromTemporaryCopy && offerToMove() { return }
         guard let button = item.button else { return }
         toggleView.setLook(look, animated: false)
@@ -90,6 +97,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         resumeAfterRestart(restarted)
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.poweringOff = true }
+            Journal.note("system", ["event": "power-off"])
+        }
+        // The Mac's sleep and its screens', for the journal: a Mac that sleeps
+        // while Wham is on is what the journal is there to catch.
+        let system: [(NSNotification.Name, String)] = [(NSWorkspace.willSleepNotification, "sleep"), (NSWorkspace.didWakeNotification, "wake"),
+                                                       (NSWorkspace.screensDidSleepNotification, "screens-sleep"), (NSWorkspace.screensDidWakeNotification, "screens-wake")]
+        for (name, event) in system {
+            NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { _ in
+                Journal.note("system", ["event": event, "flag": Self.flagWord(Sleep.isDisabled), "lid": Sleep.lidClosed ? "closed" : "open"])
+            }
         }
         // Catches anything else flipping the flag (`wham on` in a terminal, pmset,
         // a reboot). The tolerance lets macOS batch these wakeups with others.
@@ -103,7 +120,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tick.tolerance = 1
         RunLoop.main.add(tick, forMode: .common)
         timer = tick
-        watch = Watch { [weak self] in self?.check() }
+        watch = Watch { [weak self] in
+            self?.sense()
+            self?.check()
+        }
         // `wham on 2h` in a terminal.
         DistributedNotificationCenter.default().addObserver(forName: Session.changed, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -125,7 +145,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             defaults.set(running, forKey: "lastVersion")
             if !defaults.bool(forKey: "loginItemSet") {
                 defaults.set(true, forKey: "loginItemSet")
-                if (try? LoginItem.set(true)) == false { LoginItem.askForApproval() }
+                let set = try? LoginItem.set(true)
+                Journal.note("setting", ["open-at-login": set != nil, "approval": set == false ? "asked" : nil, "first-launch": true])
+                if set == false { LoginItem.askForApproval() }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.hello() }
             } else if updated {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.pop(Toast.note("UPDATED TO \(self.running)", "What's New is in the menu")) }
@@ -137,6 +159,86 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         hello()
         return false
+    }
+
+    // The journal's first lines: this run, the Mac, the settings, and how the
+    // run before ended when it did not quit.
+    private func launched() {
+        let previous = Journal.markRunning()
+        let reading = Session.read(offAt: nil)
+        sensed = Sensed(reading)
+        let flag = Sleep.isDisabled
+        seenFlag = .some(flag)
+        let defaults = UserDefaults.standard
+        let resume: String? = defaults.object(forKey: "resumeAtLogin") != nil ? "after restart"
+            : defaults.object(forKey: "resumeBefore") != nil ? "after quit from outside" : nil
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String
+        Journal.note("launch", ["version": running, "build": build, "macos": Machine.macOS, "arch": Machine.arch, "model": Machine.model,
+                                "path": Bundle.main.bundlePath, "booted": Machine.booted, "flag": Self.flagWord(flag), "rule": Sleep.hasRule,
+                                "lid": Sleep.lidClosed ? "closed" : "open", "displays": Screen.count,
+                                "power": reading.onBattery ? "battery" : "ac", "battery": reading.battery, "heat": Self.heatWord,
+                                "session-end": Session.offAt, "resume": resume])
+        Journal.note("settings", ["sound": !muted, "monochrome": look.monochrome, "compact": look.compact, "open-at-login": LoginItem.isOn,
+                                  "stay-on-after-restart": Self.staysOnAfterRestart, "update-automatically": Update.isOn,
+                                  "battery-limit": Self.limitWord])
+        if let previous {
+            Journal.note("previous-run", ["ended": "without quitting", "started": previous, "crash-report": Journal.crashReport(since: previous)])
+        }
+    }
+
+    // The words the journal uses.
+    nonisolated private static func flagWord(_ state: Bool?) -> String { state.map { $0 ? "on" : "off" } ?? "unreadable" }
+
+    private static var limitWord: String {
+        Session.batteryLimit == Session.never ? "never" : "\(Session.batteryLimit)%"
+    }
+
+    private static var heatWord: String {
+        switch ProcessInfo.processInfo.thermalState {
+        case .nominal: return "nominal"
+        case .fair: return "fair"
+        case .serious: return "serious"
+        case .critical: return "critical"
+        @unknown default: return "unknown"
+        }
+    }
+
+    // The power source, the battery by steps of 5% while on it, the heat: a
+    // line in the journal when one of them changes, as macOS says (Watch).
+    private func sense() {
+        let reading = Session.read(offAt: nil)
+        let now = Sensed(reading)
+        let before = sensed
+        sensed = now
+        guard let before, now != before else { return }
+        if now.onBattery != before.onBattery {
+            Journal.note("power", ["source": now.onBattery ? "battery" : "ac", "battery": reading.battery])
+        } else if now.onBattery && now.step != before.step {
+            Journal.note("battery", ["level": reading.battery, "limit": Self.limitWord, "flag": Self.flagWord(Sleep.isDisabled)])
+        }
+        if now.thermal != before.thermal || now.pressure != before.pressure || now.critical != before.critical {
+            Journal.note("heat", ["state": Self.heatWord, "pressure": Heat.level, "critical": reading.critical])
+        }
+    }
+
+    // The lid, with the screens connected, and with Wham on, the Wi-Fi as
+    // it is then.
+    private func lidMoved(_ closed: Bool, on: Bool) {
+        Journal.note("lid", ["closed": closed, "displays": Screen.count, "flag": Self.flagWord(Sleep.isDisabled)])
+        if on { connectivity.sample(closed ? "lid-closed" : "lid-opened") }
+    }
+
+    // Every ten minutes while the Mac stays awake under its closed lid.
+    private func sampleWhileClosed(_ on: Bool) {
+        sampleTimer?.invalidate()
+        sampleTimer = nil
+        guard on else { return }
+        let timer = Timer(timeInterval: 600, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.connectivity.sample("lid-closed") }
+        }
+        timer.tolerance = 60
+        RunLoop.main.add(timer, forMode: .common)
+        sampleTimer = timer
     }
 
     private func hello() {
@@ -171,7 +273,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ask.addButton(withTitle: "Move to Applications")
         ask.addButton(withTitle: "Not Now")
         activate()
-        guard ask.runModal() == .alertFirstButtonReturn else { return false }
+        guard ask.runModal() == .alertFirstButtonReturn else {
+            Journal.note("move", ["answer": "not now"])
+            return false
+        }
         let files = FileManager.default
         let folder = files.isWritableFile(atPath: "/Applications")
             ? URL(fileURLWithPath: "/Applications") : files.homeDirectoryForCurrentUser.appendingPathComponent("Applications")
@@ -181,9 +286,11 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if files.fileExists(atPath: destination.path) { try files.removeItem(at: destination) }
             try files.copyItem(at: Bundle.main.bundleURL, to: destination)
         } catch {
+            Journal.note("move", ["to": folder.path, "ok": false, "error": error.localizedDescription])
             alert("Wham could not move itself: \(error.localizedDescription). Drag it into Applications instead.")
             return false
         }
+        Journal.note("move", ["to": folder.path, "ok": true])
         // This copy already passed Gatekeeper; without the flag it opens from Applications for real.
         Sleep.run("/usr/bin/xattr", ["-dr", "com.apple.quarantine", destination.path])
         let configuration = NSWorkspace.OpenConfiguration()
@@ -214,10 +321,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         updating = true
         let app = Bundle.main.bundleURL, running = running
         DispatchQueue.global(qos: .utility).async {
-            let latest = Update.latest()
+            let (latest, failure) = Update.latest()
             let newer = latest.flatMap { Update.isNewer($0, than: running) ? $0 : nil }
             let replaceable = newer != nil && Update.canReplace(app)
-            Self.onMain { self.found(latest, newer: newer, replaceable: replaceable) }
+            Self.onMain {
+                Journal.note("update-check", ["asked": self.asked, "latest": latest, "failure": failure, "newer": newer != nil,
+                                              "replaceable": newer == nil ? nil : replaceable, "automatic": Update.isOn])
+                self.found(latest, newer: newer, replaceable: replaceable)
+            }
         }
     }
 
@@ -252,9 +363,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         let app = Bundle.main.bundleURL
         DispatchQueue.global(qos: .utility).async {
-            let installed = Update.install(newer, over: app)
+            let failure = Update.install(newer, over: app)
+            Journal.note("update-install", ["version": newer, "ok": failure == nil, "failure": failure])
             Self.onMain {
-                installed ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later", .said(Line.failed(newer)), .refused))
+                failure == nil ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later", .said(Line.failed(newer)), .refused))
             }
         }
     }
@@ -293,16 +405,21 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
         relaunch.arguments = ["-c", "while kill -0 \(getpid()) 2>/dev/null; do sleep 0.1; done; exec /usr/bin/open \"$0\"",
                               Bundle.main.bundlePath]
-        guard (try? relaunch.run()) != nil else { return }
+        guard (try? relaunch.run()) != nil else { return Journal.note("relaunch", ["ok": false]) }
         watchdog.standDown()
+        Journal.note("relaunch", ["for": "update", "flag": Self.flagWord(Sleep.isDisabled)])
+        Journal.markStopped()
+        Journal.flush()
         exit(0)
     }
 
     // Quitting gives sleep back, whoever asks: the menu, a script, logging out.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        if !sleepGivenBack && Sleep.isDisabled == true && Sleep.set(false) {
+        let powerOff = poweringOff || Self.quitToPowerOff
+        let by = sleepGivenBack ? "menu" : powerOff ? "restart, shutdown or logout" : "outside"
+        if !sleepGivenBack && Sleep.isDisabled == true && Sleep.set(false, why: "quit by \(by)") {
             let defaults = UserDefaults.standard
-            if poweringOff || Self.quitToPowerOff {
+            if powerOff {
                 // A restart, a shutdown or a logout: on again at the next login
                 // with Stay On After Restart, until the session's end if timed.
                 if Self.staysOnAfterRestart { defaults.set(offAt ?? true as Any, forKey: "resumeAtLogin") }
@@ -313,6 +430,11 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         if Sleep.isDisabled != true { watchdog.standDown() }
+        let defaults = UserDefaults.standard
+        Journal.note("quit", ["by": by, "flag": Self.flagWord(Sleep.isDisabled),
+                              "resume": defaults.object(forKey: "resumeAtLogin") != nil ? "at login" : defaults.object(forKey: "resumeBefore") != nil ? "within a minute" : nil])
+        Journal.markStopped()
+        Journal.flush()
         return .terminateNow
     }
 
@@ -336,9 +458,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let saved else { return }
         UserDefaults.standard.removeObject(forKey: "resumeAtLogin")
         let until = saved as? Date
-        guard Self.staysOnAfterRestart, until.map({ $0 > Date() }) ?? true, Sleep.isDisabled == false, !refuses() else { return }
+        func skip(_ why: String) { Journal.note("resume", ["after": "restart", "skipped": why]) }
+        guard Self.staysOnAfterRestart else { return skip("Stay On After Restart is off") }
+        guard until.map({ $0 > Date() }) ?? true else { return skip("its session ended meanwhile") }
+        guard Sleep.isDisabled == false else { return skip("flag \(Self.flagWord(Sleep.isDisabled))") }
+        guard !refuses() else { return }
         DispatchQueue.global(qos: .userInitiated).async {
-            guard Sleep.set(true) else { return }
+            guard Sleep.set(true, why: "resume after restart") else { return }
             DispatchQueue.main.async {
                 MainActor.assumeIsolated {
                     self.setOffAt(until)
@@ -353,10 +479,12 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func resumeAfterUpdate() {
         guard let deadline = UserDefaults.standard.object(forKey: "resumeBefore") as? Date else { return }
         UserDefaults.standard.removeObject(forKey: "resumeBefore")
-        guard deadline > Date() && Sleep.isDisabled == false else { return }
+        func skip(_ why: String) { Journal.note("resume", ["after": "quit from outside", "skipped": why]) }
+        guard deadline > Date() else { return skip("opened more than a minute later") }
+        guard Sleep.isDisabled == false else { return skip("flag \(Self.flagWord(Sleep.isDisabled))") }
         // `sudo -n` never prompts: without the rule this quietly does nothing.
         DispatchQueue.global(qos: .userInitiated).async {
-            guard Sleep.set(true) else { return }
+            guard Sleep.set(true, why: "resume after quit from outside") else { return }
             DispatchQueue.main.async { MainActor.assumeIsolated { self.show(true); self.announce(true); self.check() } }
         }
     }
@@ -384,14 +512,24 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard !busy else { return }
         let state = Sleep.isDisabled
         if !toggleView.hasShown || state != toggleView.state { show(state) }
+        // A change this app did not write: `wham` in a terminal, pmset, a
+        // watchdog, a restart.
+        if seenFlag != .some(state) {
+            if !(state.map { Sleep.wroteLately($0) } ?? false) { Journal.note("flag-changed", ["to": Self.flagWord(state), "by": "outside"]) }
+            seenFlag = .some(state)
+        }
         let lidClosed = Sleep.lidClosed
         defer { lidWasClosed = lidClosed }
+        if lidClosed != lidWasClosed { lidMoved(lidClosed, on: state == true) }
+        if (state == true && lidClosed) != (sampleTimer != nil) { sampleWhileClosed(state == true && lidClosed) }
         guard state == true else {
             watchdog.standDown()
+            connectivity.stop()
             if offAt != nil { setOffAt(nil) }
             return
         }
         watchdog.arm()
+        connectivity.start()
         let reading = Session.read(offAt: offAt)
         if let end = Session.end(reading) { return stop(end, battery: reading.battery) }
         drain()
@@ -404,16 +542,18 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func stop(_ end: Session.End, battery: Int?) {
-        let why = Session.why(end, battery: battery)
-        ended = (why, Date())
+        let caption = Session.why(end, battery: battery)
+        Journal.note("session-ended", ["reason": "\(end)", "battery": battery, "limit": Self.limitWord, "heat": Self.heatWord])
+        ended = (caption, Date())
         setOffAt(nil)
-        change(to: false, mayInstall: false, caption: why)
+        change(to: false, mayInstall: false, caption: caption, why: "session ended: \(end)")
     }
 
     // Low battery or a hot Mac: says so instead of turning on.
     private func refuses() -> Bool {
         let reading = Session.read(offAt: nil)
         guard let end = Session.end(reading) else { return false }
+        Journal.note("refused", ["reason": "\(end)", "battery": reading.battery, "limit": Self.limitWord, "heat": Self.heatWord])
         let refusal = Session.refusal(end, battery: reading.battery)
         if openMenu != nil { said = refusal }
         announce(false, caption: refusal, sound: .refused)
@@ -423,6 +563,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // From now until `date`, or untimed (nil).
     private func setOffAt(_ date: Date?) {
+        if date != offAt { Journal.note("session", ["end": date.map(Journal.stamp) ?? "none"]) }
         Session.setEnd(date)
         offAt = Session.offAt
         onAt = Session.onAt
@@ -455,6 +596,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // sound: time to pick another length, or No Time Limit. Not to a closed lid.
     private func warn() {
         guard let offAt, Sleep.isDisabled == true, !Sleep.lidClosed, offAt > Date() else { return }
+        Journal.note("warning", ["end": offAt])
         pop(Toast.soon.saying("Then back to normal sleep, at \(Session.clock(offAt))"))
     }
 
@@ -462,7 +604,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // MacBook has taken over first, if there is one.
     private func sleepScreenSoon() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            guard Sleep.isDisabled == true, Sleep.lidClosed, Screen.builtInAloneAndLit else { return }
+            guard Sleep.isDisabled == true, Sleep.lidClosed else { return }
+            guard Screen.builtInAloneAndLit else { return Journal.note("screen", ["action": "left alone", "displays": Screen.count]) }
+            Journal.note("screen", ["action": "put to sleep", "why": "lid closed"])
             DispatchQueue.global(qos: .utility).async { Screen.sleep() }
         }
     }
@@ -517,7 +661,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         status.offStateImage = Self.blankState
         status.refresh = { [unowned self] in $0.title = statusLine }
         menu.addItem(status)
-        menu.addItem(row(["Turn On", "Turn Off"]) { [unowned self] in .init(title: isOn ? "Turn Off" : "Turn On") } click: { [unowned self] in toggle() })
+        menu.addItem(row(["Turn On", "Turn Off"]) { [unowned self] in .init(title: isOn ? "Turn Off" : "Turn On") } click: { [unowned self] in flip("menu") })
         let timed = LiveItem(title: "", action: nil, keyEquivalent: "")
         timed.refresh = { [unowned self] in $0.title = isOn ? "Stay Awake For" : "Turn On For" }
         timed.submenu = lengths()
@@ -526,6 +670,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(row(["Sound"]) { [unowned self] in .init(title: "Sound", checked: !muted) } click: { [unowned self] in
             // Turned on, it says so; turned off, it is quiet already.
             muted.toggle()
+            Journal.note("setting", ["sound": !muted])
             if !muted { play(.check(true)) }
         })
         let appearance = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
@@ -536,6 +681,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .init(title: "Stay On After Restart", checked: Self.staysOnAfterRestart)
         } click: { [unowned self] in
             Self.staysOnAfterRestart.toggle()
+            Journal.note("setting", ["stay-on-after-restart": Self.staysOnAfterRestart])
             play(.check(Self.staysOnAfterRestart))
         })
         menu.addItem(row(["Update Automatically"]) { .init(title: "Update Automatically", checked: Update.isOn) } click: { [unowned self] in toggleUpdates() })
@@ -735,12 +881,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .init(title: "Monochrome", checked: look.monochrome)
         } click: { [unowned self] in
             look.monochrome.toggle()
+            Journal.note("setting", ["monochrome": look.monochrome])
             play(.check(look.monochrome))
         })
         looks.addItem(row(titles, tip: "As wide as an icon: the switch turns instead of sliding.") { [unowned self] in
             .init(title: "Compact", checked: look.compact)
         } click: { [unowned self] in
             look.compact.toggle()
+            Journal.note("setting", ["compact": look.compact])
             play(.check(look.compact))
         })
         return looks
@@ -767,10 +915,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         header.isEnabled = false
         header.offStateImage = Self.blankState
         limits.addItem(header)
-        let titles = Session.batteryLimits.map { "\($0)%" }
+        let titles = Session.batteryLimits.map { "\($0)%" } + ["Never"]
         for percent in Session.batteryLimits {
             limits.addItem(row(titles) { .init(title: "\(percent)%", checked: percent == Session.batteryLimit) } click: { [unowned self] in setBatteryLimit(percent) })
         }
+        limits.addItem(.separator())
+        limits.addItem(row(titles, tip: "On battery, your Mac stays awake until the battery runs out. Save your work first.") {
+            .init(title: "Never", checked: Session.batteryLimit == Session.never)
+        } click: { [unowned self] in setBatteryLimit(Session.never) })
         return limits
     }
 
@@ -1068,11 +1220,12 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         current = submenu
                         mark("\(title) open")
                         guard let inside = Self.window(of: submenu) else { return step() }
-                        // As a hand goes, not in one jump (which macOS 14 now
-                        // and then takes for the pointer leaving both menus,
-                        // and closes the submenu): once the submenu stands
-                        // still, along its title to the side it opened on,
-                        // then just inside it, level with the title.
+                        // As a hand goes, not in one jump: once the submenu
+                        // stands still, along its title to the side it opened
+                        // on, then just inside it, level with the title. macOS
+                        // 14 still closes it now and then right after a
+                        // synthetic move, the pointer inside; the retry above
+                        // covers that, and the trail says when it happened.
                         Self.after(0.3) {
                             mark("\(title) still open")
                             let left = inside.frame.midX < window.frame.midX
@@ -1281,6 +1434,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func toggleUpdates() {
         Update.isOn.toggle()
+        Journal.note("setting", ["update-automatically": Update.isOn])
         play(.check(Update.isOn))
         if Update.isOn { checkForUpdate() }
     }
@@ -1291,6 +1445,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do {
             let on = !LoginItem.isOn
             let set = try LoginItem.set(on)
+            Journal.note("setting", ["open-at-login": on, "approval": set ? nil : "asked"])
             play(.check(on))
             if !set { closeMenu { LoginItem.askForApproval() } }
         } catch {
@@ -1328,7 +1483,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         playing?.play()
     }
 
-    @objc private func toggle() {
+    @objc private func toggle() { flip("switch") }
+
+    // The switch or the menu's Turn On and Turn Off, which the journal tells apart.
+    private func flip(_ why: String) {
         guard !busy else { return }
         guard let current = Sleep.isDisabled else {
             return alert("Wham can't read your Mac's sleep setting.")
@@ -1336,7 +1494,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if !current && refuses() { return }
         ended = nil
         setOffAt(nil)
-        change(to: !current, mayInstall: true)
+        change(to: !current, mayInstall: true, why: why)
     }
 
     // "Turn On For" and "Stay Awake For": from now, for that many hours.
@@ -1351,7 +1509,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             show(true)
             announce(true, caption: caption, sound: .select)
         } else {
-            change(to: true, mayInstall: true, caption: caption)
+            change(to: true, mayInstall: true, caption: caption, why: "menu \(hours)h")
         }
     }
 
@@ -1369,7 +1527,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             if refuses() { return }
             ended = nil
             setOffAt(nil)
-            change(to: true, mayInstall: true, caption: caption)
+            change(to: true, mayInstall: true, caption: caption, why: "menu no time limit")
         }
     }
 
@@ -1377,31 +1535,33 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // and its chime cuts the limit's sound.
     private func setBatteryLimit(_ percent: Int) {
         Session.batteryLimit = percent
+        Journal.note("setting", ["battery-limit": Self.limitWord])
         play(.select)
         check()
     }
 
     // The switch moves on the click, then pmset runs off the main thread. If the
     // Mac refuses, the switch slides back to the kernel's state.
-    private func change(to target: Bool, mayInstall: Bool, caption: String? = nil) {
+    // `why` is what the journal says asked for it.
+    private func change(to target: Bool, mayInstall: Bool, caption: String? = nil, why: String) {
         said = nil
         show(target)
         announce(target, caption: caption)
-        apply(target, mayInstall: mayInstall)
+        apply(target, mayInstall: mayInstall, why: why)
     }
 
-    private func apply(_ target: Bool, mayInstall: Bool) {
+    private func apply(_ target: Bool, mayInstall: Bool, why: String) {
         busy = true
         DispatchQueue.global(qos: .userInitiated).async {
-            let ok = Sleep.set(target)
-            Self.onMain { self.finish(target, ok: ok, mayInstall: mayInstall) }
+            let ok = Sleep.set(target, why: why)
+            Self.onMain { self.finish(target, ok: ok, mayInstall: mayInstall, why: why) }
         }
     }
 
-    private func finish(_ target: Bool, ok: Bool, mayInstall: Bool) {
+    private func finish(_ target: Bool, ok: Bool, mayInstall: Bool, why: String) {
         // The password prompt comes once the menu is gone.
         if !ok && mayInstall && !Sleep.hasRule && openMenu != nil {
-            return closeMenu { self.finish(target, ok: ok, mayInstall: mayInstall) }
+            return closeMenu { self.finish(target, ok: ok, mayInstall: mayInstall, why: why) }
         }
         busy = false
         if ok { return check() }
@@ -1409,10 +1569,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             revert(from: target)
             return alert(target ? "Your Mac refused the setting: it can still go to sleep." : "Your Mac refused: sleep is still blocked.")
         }
+        Journal.note("rule", ["install": "asking"])
         switch Sleep.installRule() {
-        case .done: apply(target, mayInstall: false)
-        case .cancelled: revert(from: target)
+        case .done:
+            Journal.note("rule", ["install": "done"])
+            apply(target, mayInstall: false, why: why)
+        case .cancelled:
+            Journal.note("rule", ["install": "cancelled"])
+            revert(from: target)
         case .failed(let message):
+            Journal.note("rule", ["install": "failed", "error": message])
             revert(from: target)
             alert("Permission not installed: \(message)")
         }
@@ -1426,7 +1592,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     @objc private func quit() {
         let wasOn = Sleep.isDisabled == true
-        if wasOn && !Sleep.set(false) {
+        if wasOn && !Sleep.set(false, why: "quit from the menu") {
             return alert("Your Mac refused to allow sleep again, so Wham stays open.")
         }
         sleepGivenBack = true
@@ -1437,6 +1603,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func alert(_ text: String) {
         guard openMenu == nil else { return closeMenu { self.alert(text) } }
+        Journal.note("alert", ["text": text])
         let alert = NSAlert()
         alert.messageText = "Wham"
         alert.informativeText = text
@@ -1489,4 +1656,21 @@ enum LoginItem {
 // A menu item read again while its menu is open.
 final class LiveItem: NSMenuItem {
     var refresh: (@MainActor (LiveItem) -> Void)?
+}
+
+// The power and the heat as last read, for the journal to say when they change.
+private struct Sensed: Equatable {
+    var onBattery: Bool
+    var step: Int?
+    var thermal: Int
+    var pressure: UInt64?
+    var critical: Bool
+
+    init(_ reading: Session.Reading) {
+        onBattery = reading.onBattery
+        step = reading.battery.map { $0 / 5 }
+        thermal = ProcessInfo.processInfo.thermalState.rawValue
+        pressure = Heat.level
+        critical = reading.critical
+    }
 }

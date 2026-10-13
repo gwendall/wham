@@ -6,7 +6,7 @@ import Foundation
 // `wham` command is a link to the app's own binary; the app sees the name it
 // was called by and answers here instead of opening the menu bar item.
 enum CLI {
-    static let commands: Set<String> = ["on", "off", "toggle", "status", "run", "version", "--version", "-v", "help", "--help", "-h"]
+    static let commands: Set<String> = ["on", "off", "toggle", "status", "run", "log", "version", "--version", "-v", "help", "--help", "-h"]
 
     // Called through the `wham` link, Bundle.main is the link's folder: the
     // version comes from the bundle the binary really sits in.
@@ -21,25 +21,32 @@ enum CLI {
     }
 
     static func run(_ args: [String]) -> Int32 {
+        Journal.source = "cli"
         switch args.first ?? "help" {
         case "on":
             guard args.count <= 2 else { return usage() }
-            guard args.count == 2 else { return on(for: nil) }
+            guard args.count == 2 else { return on(for: nil, why: "cli on") }
             guard let length = Session.duration(args[1]) else {
                 fputs("wham: '\(args[1])' is not a duration: try 45m, 2h or 1h30m\n", stderr)
                 return 64
             }
-            return on(for: length)
-        case "off": return args.count == 1 ? off() : usage()
+            return on(for: length, why: "cli on \(args[1])")
+        case "off": return args.count == 1 ? off(why: "cli off") : usage()
         case "toggle":
             guard let current = Sleep.isDisabled else { return unreadable() }
-            return current ? off() : on(for: nil)
+            return current ? off(why: "cli toggle") : on(for: nil, why: "cli toggle")
         case "status":
             guard let current = Sleep.isDisabled else { return unreadable() }
             print(describe(current, until: current ? Session.offAt : nil))
             return 0
         case "run":
             return keepAwake(while: Array(args.dropFirst()))
+        case "log":
+            guard args.count <= 2, let count = args.count == 2 ? Int(args[1]) : 50, count > 0 else { return usage() }
+            let lines = Journal.tail(count)
+            if lines.isEmpty { fputs("wham: nothing in the journal yet (\(Journal.scrub(Journal.file.path)))\n", stderr) }
+            for line in lines { print(line) }
+            return 0
         case "version", "--version", "-v":
             print("wham \(version)")
             return 0
@@ -57,12 +64,12 @@ enum CLI {
         return "on\(until.map { " until \(Session.clock($0))" } ?? ""): your Mac stays awake, even with the lid closed"
     }
 
-    private static func on(for length: TimeInterval?) -> Int32 {
+    private static func on(for length: TimeInterval?, why: String) -> Int32 {
         if let refusal = refusal() {
             fputs("wham: \(refusal)\n", stderr)
             return 1
         }
-        guard flip(true) else { return 1 }
+        guard flip(true, why: why) else { return 1 }
         let until = length.map { Date().addingTimeInterval($0) }
         share(until)
         openApp()
@@ -70,8 +77,8 @@ enum CLI {
         return 0
     }
 
-    private static func off() -> Int32 {
-        guard flip(false) else { return 1 }
+    private static func off(why: String) -> Int32 {
+        guard flip(false, why: why) else { return 1 }
         share(nil)
         print(describe(false))
         return 0
@@ -81,6 +88,7 @@ enum CLI {
     private static func refusal() -> String? {
         let reading = Session.read(offAt: nil)
         guard let end = Session.end(reading) else { return nil }
+        Journal.note("refused", ["reason": "\(end)", "battery": reading.battery, "limit": reading.batteryLimit])
         let text = Session.refusal(end, battery: reading.battery)
         return text.prefix(1).lowercased() + text.dropFirst()
     }
@@ -102,10 +110,12 @@ enum CLI {
 
     // Without the app's sudoers rule, falls back to a plain `sudo`, which asks
     // for the password in the terminal.
-    private static func flip(_ on: Bool) -> Bool {
-        if Sleep.isDisabled == on || Sleep.set(on) { return true }
-        Sleep.run("/usr/bin/sudo", [Sleep.pmset, "-a", "disablesleep", on ? "1" : "0"], quiet: false)
-        guard Sleep.confirm(on) else {
+    private static func flip(_ on: Bool, why: String) -> Bool {
+        if Sleep.isDisabled == on || Sleep.set(on, why: why) { return true }
+        let status = Sleep.run("/usr/bin/sudo", [Sleep.pmset, "-a", "disablesleep", on ? "1" : "0"], quiet: false)
+        let confirmed = Sleep.confirm(on)
+        Journal.note("flag", ["on": on, "why": why, "via": "password", "ok": confirmed, "sudo": status])
+        guard confirmed else {
             fputs("wham: your Mac refused the setting, it is still \(on ? "off" : "on")\n", stderr)
             return false
         }
@@ -116,6 +126,9 @@ enum CLI {
     // If this process is killed first, its watchdog gives sleep back.
     private static func keepAwake(while command: [String]) -> Int32 {
         guard !command.isEmpty else { return usage() }
+        // The program's name only: its arguments may say anything.
+        let program = URL(fileURLWithPath: command[0]).lastPathComponent
+        let started = Date()
         let watchdog = Watchdog()
         var turnedOn = false
         if Sleep.isDisabled != true {
@@ -123,7 +136,7 @@ enum CLI {
                 fputs("wham: \(refusal), running it without keeping your Mac awake\n", stderr)
             } else {
                 watchdog.arm()
-                turnedOn = flip(true)
+                turnedOn = flip(true, why: "cli run")
                 if turnedOn {
                     share(nil)
                     openApp()
@@ -132,9 +145,11 @@ enum CLI {
                 }
             }
         }
+        Journal.note("run", ["program": program, "awake": turnedOn || Sleep.isDisabled == true])
         let status = spawn(command)
+        Journal.note("run-ended", ["program": program, "status": status, "took": "\(Int(Date().timeIntervalSince(started)))s"])
         if turnedOn {
-            if Sleep.isDisabled == true && flip(false) { share(nil) }
+            if Sleep.isDisabled == true && flip(false, why: "cli run ended") { share(nil) }
             watchdog.standDown()
         }
         return status
@@ -193,13 +208,28 @@ enum CLI {
       wham run <cmd>     stays awake while the command runs, then as it was
       wham toggle        flip it
       wham status        say which one it is
+      wham log [50]      the last lines of Wham's journal, to see what happened
       wham version
 
-    On battery at \(Session.batteryLimit)% or less (Battery Limit, in the menu), or when your
-    Mac gets critically hot, Wham lets it sleep.
+    \(guards)
 
     The menu bar app does the same with one click. https://wham.sh
     """ }
+
+    // When Wham lets the Mac sleep on its own, with the menu's Battery Limit.
+    private static var guards: String {
+        let limit = Session.batteryLimit
+        guard limit != Session.never else {
+            return """
+            When your Mac gets critically hot, Wham lets it sleep. On battery, it stays
+            awake until the battery runs out (Battery Limit: Never, in the menu).
+            """
+        }
+        return """
+        On battery at \(limit)% or less (Battery Limit, in the menu), or when your
+        Mac gets critically hot, Wham lets it sleep.
+        """
+    }
 }
 
 // The command `wham run` waits on, for the signal handlers (which cannot capture).

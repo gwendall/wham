@@ -7,7 +7,7 @@ mkdir -p build
 
 swiftc -swift-version 5 -o build/wham-tests \
   tests/main.swift app/Sources/Chime.swift app/Sources/Sleep.swift app/Sources/Session.swift app/Sources/CLI.swift \
-  app/Sources/Pixels.swift app/Sources/Update.swift
+  app/Sources/Pixels.swift app/Sources/Update.swift app/Sources/Journal.swift
 build/wham-tests
 
 for script in install.sh uninstall.sh scripts/*.sh; do
