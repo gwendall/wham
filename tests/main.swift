@@ -405,7 +405,7 @@ let languages = ((try? FileManager.default.contentsOfDirectory(atPath: "app/Reso
     .filter { $0.hasSuffix(".lproj") }.map { String($0.dropLast(".lproj".count)) }.sorted()
 let english = strings("en")
 let listed = NSDictionary(contentsOfFile: "app/Info.plist")?["CFBundleLocalizations"] as? [String] ?? []
-check(languages.count == 9 && Set(listed) == Set(languages), "Info.plist lists the languages Wham speaks (\(languages.joined(separator: " ")))")
+check(languages.count == 10 && Set(listed) == Set(languages), "Info.plist lists the languages Wham speaks (\(languages.joined(separator: " ")))")
 check(!english.isEmpty && english.allSatisfy { $0.key == $0.value }, "English says its keys (\(english.count) lines)")
 for language in languages {
     let table = strings(language)

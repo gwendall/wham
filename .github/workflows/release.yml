@@ -26,7 +26,7 @@ jobs:
           version=${GITHUB_REF_NAME#v}
           awk -v version="$version" '/^## / { on = ($2 == version); next } on' CHANGELOG.md | sed '/./,$!d' > "$RUNNER_TEMP/notes.md"
           grep -q . "$RUNNER_TEMP/notes.md" || { echo "CHANGELOG.md has nothing for $version"; exit 1; }
-          printf '\nIn nine languages: https://wham.sh/changelog/%s\n' "$version" >> "$RUNNER_TEMP/notes.md"
+          printf '\nIn ten languages: https://wham.sh/changelog/%s\n' "$version" >> "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
       - name: Developer ID certificate

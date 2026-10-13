@@ -306,7 +306,7 @@ enum TitleFont {
         return NSFont.monospacedSystemFont(ofSize: 14, weight: .bold) as CTFont
     }()
     static let size: CGFloat = 15
-    static let faces = ["ja": "HiraginoSans-W3", "ko": "AppleSDGothicNeo-Medium", "zh-Hans": "STHeitiSC-Light"]
+    static let faces = ["ja": "HiraginoSans-W3", "ko": "AppleSDGothicNeo-Medium", "zh-Hans": "STHeitiSC-Light", "zh-Hant": "STHeitiTC-Light"]
 
     struct Letter {
         let text: String

@@ -85,5 +85,5 @@
 "Permission not installed: %@" = "許可をインストールできませんでした：%@";
 "this Mac is set up by an organization in a way that does not let apps turn sleep off (common on work Macs)." = "このMacは、アプリがスリープを無効にできないように組織によって設定されています（仕事用のMacによくあります）。";
 "Your Mac refused to allow sleep again, so Wham stays open." = "Macがスリープの再許可を拒否したため、Whamは開いたままです。";
-"Your Mac refused the setting: it can still go to sleep." = "Macが設定を拒否しました。スリープする可能性があります。";
+"Your Mac refused the setting: it can still go to sleep." = "Macが設定を拒否しました。スリープは有効のままです。";
 "Your Mac refused: sleep is still blocked." = "Macが拒否しました。スリープは無効のままです。";

@@ -1,9 +1,14 @@
 # Changelog
 
 What changed in each version of Wham, newest first. Also on
-[wham.sh/changelog](https://wham.sh/changelog), in nine languages.
+[wham.sh/changelog](https://wham.sh/changelog), in ten languages.
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
+
+## 1.7.0 - 2026-10-14
+
+- Wham speaks Traditional Chinese too, as written in Taiwan and Hong Kong, and draws it in the notes' pixel letters.
+- Every language reread, line by line: the menu, the notes and the alerts read more naturally, and call your Mac's settings by the names macOS gives them.
 
 ## 1.6.0 - 2026-10-13
 

@@ -233,11 +233,12 @@ else
 fi
 stop
 : >"$work/out"
-# The menu, its submenus and every kind of note in German, Japanese and
-# French, pictured in WHAM_SHOTS for a person to look at (where the screen shows).
+# The menu, its submenus and every kind of note in German, Japanese, French
+# and Traditional Chinese, pictured in WHAM_SHOTS for a person to look at
+# (where the screen shows). Each as region/language: Taiwan's Mac speaks zh-Hant.
 if [ -n "${WHAM_SHOTS:-}" ]; then
-  for locale in de_DE ja_JP fr_FR; do
-    lang=${locale%_*}
+  for pair in de_DE/de ja_JP/ja fr_FR/fr zh_TW/zh-Hant; do
+    locale=${pair%/*} lang=${pair#*/}
     launch Pictures -AppleLocale "$locale"
     until_ "grep -q '^pictures ' \"$work/out\"" 30
     pictured=$(grep '^pictures ' "$work/out" | tail -1)
