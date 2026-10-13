@@ -1220,11 +1220,12 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         current = submenu
                         mark("\(title) open")
                         guard let inside = Self.window(of: submenu) else { return step() }
-                        // As a hand goes, not in one jump (which macOS 14 now
-                        // and then takes for the pointer leaving both menus,
-                        // and closes the submenu): once the submenu stands
-                        // still, along its title to the side it opened on,
-                        // then just inside it, level with the title.
+                        // As a hand goes, not in one jump: once the submenu
+                        // stands still, along its title to the side it opened
+                        // on, then just inside it, level with the title. macOS
+                        // 14 still closes it now and then right after a
+                        // synthetic move, the pointer inside; the retry above
+                        // covers that, and the trail says when it happened.
                         Self.after(0.3) {
                             mark("\(title) still open")
                             let left = inside.frame.midX < window.frame.midX
