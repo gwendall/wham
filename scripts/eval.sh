@@ -21,7 +21,10 @@
 #   raised (CI)
 # - `wham run`: exit statuses, Ctrl-C, hangups, kills, its watchdog
 # - however the app ends: killed while on or off, quit from its menu, quit from
-#   outside (back on at the next launch within a minute)
+#   outside (back on at the next launch within a minute), a restart (back on
+#   at the next login with Stay On After Restart only, until a timed
+#   session's end)
+# - Appearance: Monochrome and Compact, and the status item's width
 # - the menu's What's New and Check for Updates (scripts/update-test.sh
 #   updates for real)
 #
@@ -54,6 +57,7 @@ start=$(flag)
 was=$(defaults read sh.wham.app offAt 2>/dev/null || true)
 limit=$(defaults read sh.wham.app batteryLimit 2>/dev/null || true)
 last=$(defaults read sh.wham.app lastVersion 2>/dev/null || true)
+looks=$(defaults export sh.wham.app - 2>/dev/null | plutil -extract monochrome raw - 2>/dev/null || true),$(defaults export sh.wham.app - 2>/dev/null | plutil -extract compact raw - 2>/dev/null || true),$(defaults export sh.wham.app - 2>/dev/null | plutil -extract stayOnAfterRestart raw - 2>/dev/null || true)
 defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true
 work=$(mktemp -d)
 fake="$work/power"
@@ -91,7 +95,16 @@ cleanup() {
   stop
   [ "$(flag)" = "$start" ] || sudo -n /usr/bin/pmset -a disablesleep "$start" >/dev/null 2>&1 \
     || echo "note: could not put SleepDisabled back to $start"
-  for key in offAt onAt resumeBefore batteryLimit; do defaults delete sh.wham.app "$key" >/dev/null 2>&1 || true; done
+  for key in offAt onAt resumeBefore resumeAtLogin batteryLimit monochrome compact stayOnAfterRestart; do
+    defaults delete sh.wham.app "$key" >/dev/null 2>&1 || true
+  done
+  # Monochrome, Compact and Stay On After Restart, as they were.
+  IFS=, read -r mono compact restart <<END
+$looks
+END
+  [ -z "$mono" ] || defaults write sh.wham.app monochrome -bool "$mono"
+  [ -z "$compact" ] || defaults write sh.wham.app compact -bool "$compact"
+  [ -z "$restart" ] || defaults write sh.wham.app stayOnAfterRestart -bool "$restart"
   [ -z "$limit" ] || defaults write sh.wham.app batteryLimit -int "$limit"
   if [ -n "$last" ]; then defaults write sh.wham.app lastVersion "$last"; else defaults delete sh.wham.app lastVersion >/dev/null 2>&1 || true; fi
   # The session that was running goes on to its end, through the Wham that
@@ -217,6 +230,81 @@ waitflag 1
 check "$(is "[ \"\$(flag)\" = 1 ]")" "opened again within a minute, it turns back on"
 stop
 waitflag 0
+# A restart, a shutdown or a logout: macOS says so, then quits the app.
+defaults delete sh.wham.app stayOnAfterRestart >/dev/null 2>&1 || true
+launch "Turn On,Restart"
+waitflag 1
+until_ "! kill -0 $pid 2>/dev/null" 5
+check "$(is "[ \"\$(flag)\" = 0 ] && ! defaults read sh.wham.app resumeAtLogin >/dev/null 2>&1 && ! defaults read sh.wham.app resumeBefore >/dev/null 2>&1")" \
+  "a restart while on: sleep comes back, nothing saved for later"
+stop
+launch
+sleep 2
+check "$(is "[ \"\$(flag)\" = 0 ]")" "and it stays off after the restart, by default"
+stop
+defaults write sh.wham.app stayOnAfterRestart -bool YES
+launch "Turn On,Restart"
+waitflag 1
+until_ "! kill -0 $pid 2>/dev/null" 5
+check "$(is "[ \"\$(flag)\" = 0 ] && [ \"\$(defaults read sh.wham.app resumeAtLogin 2>/dev/null)\" = 1 ]")" \
+  "with Stay On After Restart, a restart while on gives sleep back and remembers"
+stop
+: >"$work/out"
+launch
+waitflag 1 4
+check "$(is "[ \"\$(flag)\" = 1 ] && ! defaults read sh.wham.app resumeAtLogin >/dev/null 2>&1 && grep -q '^toast MAC STAYS AWAKE: Back on after the restart$' \"$work/out\"")" \
+  "and turns back on at the next launch, saying why ($(grep '^toast' "$work/out" | tail -1))"
+stop
+waitflag 0
+launch "Turn On For/1 Hour,Restart"
+waitflag 1
+until_ "! kill -0 $pid 2>/dev/null" 5
+stop
+launch
+waitflag 1 4
+check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(left)\" -ge 3580 ] && [ \"\$(left)\" -le 3600 ]")" "a timed session comes back with the same end"
+stop
+waitflag 0
+defaults write sh.wham.app resumeAtLogin -date "2001-01-01 00:00:00 +0000"
+launch
+sleep 2
+check "$(is "[ \"\$(flag)\" = 0 ] && ! defaults read sh.wham.app resumeAtLogin >/dev/null 2>&1")" "one whose end passed meanwhile stays off"
+stop
+defaults write sh.wham.app resumeAtLogin -bool YES
+defaults write sh.wham.app stayOnAfterRestart -bool NO
+launch
+sleep 2
+check "$(is "[ \"\$(flag)\" = 0 ] && ! defaults read sh.wham.app resumeAtLogin >/dev/null 2>&1")" "turned off since: stays off"
+stop
+defaults delete sh.wham.app stayOnAfterRestart >/dev/null 2>&1 || true
+# The option itself, pressed in the menu, only where it is no one's setting.
+if [ -n "${CI:-}" ]; then
+  launch "Stay On After Restart"
+  sleep 1.5
+  check "$(is "[ \"\$(defaults read sh.wham.app stayOnAfterRestart 2>/dev/null)\" = 1 ]")" "Stay On After Restart in the menu turns the option on"
+  stop
+  defaults delete sh.wham.app stayOnAfterRestart >/dev/null 2>&1 || true
+fi
+
+# --- Appearance: each option on its own, then both, then back.
+: >"$work/out"
+launch "Look,Appearance/Compact,Look,Appearance/Monochrome,Look,Appearance/Compact,Look,Appearance/Monochrome,Look"
+until_ "[ \"\$(grep -c '^look ' \"$work/out\")\" -ge 5 ]" 12
+seen=$(grep '^look ' "$work/out" | sed 's/^look //' | tr '\n' ',' | sed 's/,$//')
+check "$(is "[ \"$seen\" = 'color wide 50,color compact 23,monochrome compact 23,monochrome wide 50,color wide 50' ]")" \
+  "Appearance: Compact takes 23 points instead of 50, Monochrome on its own or with it (${seen:-no answer})"
+check "$(is "[ \"\$(defaults read sh.wham.app compact)\" = 0 ] && [ \"\$(defaults read sh.wham.app monochrome)\" = 0 ]")" "and they are remembered"
+stop
+defaults write sh.wham.app compact -bool YES
+defaults write sh.wham.app monochrome -bool YES
+: >"$work/out"
+launch "Look,Switch"
+waitflag 1
+check "$(is "grep -q '^look monochrome compact 23$' \"$work/out\" && [ \"\$(flag)\" = 1 ]")" "opened with both, it starts with both, and its switch still works"
+"$bin" off >/dev/null
+stop
+defaults delete sh.wham.app compact >/dev/null 2>&1 || true
+defaults delete sh.wham.app monochrome >/dev/null 2>&1 || true
 
 # --- The menu.
 : >"$work/out"

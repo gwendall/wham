@@ -37,7 +37,7 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 
 | Case | What Wham does | Checked by |
 | --- | --- | --- |
-| Admin account | macOS asks for the password once; Wham installs `/private/etc/sudoers.d/wham` | Test: the rule passes `visudo`; CI installs it as root with stand-in paths and checks 0440, root, exact content |
+| Admin account | macOS asks for the password once, its prompt saying why (a setting only an administrator can change, and the one Wham then turns on and off); Wham installs `/private/etc/sudoers.d/wham` | Test: the rule passes `visudo`, the prompt says why; CI installs it as root with stand-in paths and checks 0440, root, exact content |
 | Standard (non-admin) account | The same prompt takes an administrator's name and password; the rule is for the standard user | Same rule, by user ID |
 | User names with spaces, dots, `@`, a domain (`DOMAIN\user`, `first.last@corp`) | The rule names the user by ID (`#501`), never by name | Test: rule text, `visudo` |
 | Managed Macs whose `/etc/sudoers` does not read `sudoers.d` | Refuses to write a rule that would do nothing and says why in plain words; an administrator can still run `wham on` in Terminal, which asks for the password each time | Test: a stand-in sudoers without `includedir` is refused and nothing is written |
@@ -88,6 +88,8 @@ downloads nothing, and offers the new version in its menu (Update to Wham X).
 | Menu bar too full, or the switch hidden by the notch | Opening Wham again (Finder, Spotlight, Launchpad) shows a toast under the switch, or, if the switch is not visible, says so and how to make room (hold ⌘ and drag other icons away) |
 | First launch | A "HI, I'M WHAM" toast points at the switch |
 | Light and dark menu bars | The track and the knob follow the menu bar's appearance |
+| A menu bar of monochrome icons | Appearance > Monochrome: everything in the menu bar's ink, the knob cut out of the track when on (eval: the setting, remembered) |
+| Little room, or a switch wider than the icons around it | Appearance > Compact: the knob alone in a ring 23 points wide instead of 50, turning in place; a timed session runs out around it like a timer (eval: the status item's width) |
 | Clicking the switch, or its menu open | No menu bar highlight around it: the knob is the only feedback |
 | A Mac with a notch, whose menu bar is taller than the switch | The menu hangs from the menu bar's bottom edge, whole, its first line in sight (eval: the menu opened for real, its window against its height) |
 | Reduce Motion | The switch changes without animating |
@@ -123,7 +125,8 @@ writes to. However Wham ends, macOS closes the pipe and the shell runs
 | Case | What happens | Checked by |
 | --- | --- | --- |
 | Quit from the menu | Sleep comes back, and stays back at the next launch | Eval |
-| Quit from outside while on (logging out, `brew upgrade`, a script) | Sleep comes back; opened again within a minute, Wham turns back on | Eval |
+| Quit from outside while on (`brew upgrade`, a script) | Sleep comes back; opened again within a minute, Wham turns back on | Eval |
+| A restart, a shutdown or a logout while on | Sleep comes back. With Stay On After Restart (off by default: a Mac restarted then put in a bag should sleep), Wham turns back on at the next login, until a timed session's end; one that ended meanwhile stays off. Without it, stays off, however quick the restart | Eval: the quit macOS sends, with and without the option, timed, expired |
 | A crash, a force quit, `kill -9`, `kill` | The watchdog gives sleep back within a second | Test: a process killed with -9; eval: the app killed with -9 and with TERM |
 | The same while off | Nothing changes | Eval |
 | Something Wham started outlives it | The watchdog's pipe is closed on exec, so it still fires | Test |
