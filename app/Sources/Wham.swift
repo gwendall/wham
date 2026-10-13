@@ -973,7 +973,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
             let path = paths.removeFirst()
-            var titles = path[...], current = menu, retried = false
+            var titles = path[...], current = menu, retried = false, gentle = false
+            // Where the pointer, the menus and the selection were at each
+            // move, said with a failure: what a menu that would not follow saw.
+            var trail: [String] = []
+            @MainActor func mark(_ label: String) {
+                let at = NSEvent.mouseLocation
+                let sub = current === menu ? nil : Self.window(of: current)
+                trail.append("\(label): pointer \(Int(at.x)),\(Int(at.y)), \(self.shownMenus.count) shown, menu selects \(menu.highlightedItem?.title ?? "none")"
+                    + (sub.map { ", submenu \($0.isVisible ? "visible" : "hidden") at \(Self.box($0.frame)) selects \(current.highlightedItem?.title ?? "none")" } ?? ""))
+            }
             @MainActor func fail(_ why: String) {
                 if let window = Self.window(of: current) { _ = Self.shoot(window, "click-\(clicks + 1)-failed") }
                 print("click \(path.joined(separator: "/")): \(why)")
@@ -984,11 +993,15 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 // the whole path once more from the top, said on its own line.
                 // Its submenus closed first, the pointer on the first line, which
                 // opens none: a submenu left open does not open again.
+                // This time the pointer goes as a hand would: along the
+                // submenu's title to its edge, then into the submenu.
                 @MainActor func again(_ why: String) -> Bool {
                     guard !retried else { return false }
                     retried = true
-                    print("retry \(path.joined(separator: "/")): \(why)")
+                    gentle = true
+                    print("retry \(path.joined(separator: "/")): \(why) [\(trail.joined(separator: "; "))]")
                     fflush(stdout)
+                    trail = []
                     titles = path[...]
                     current = menu
                     guard let first = Self.frame(of: menu.items.first?.title ?? "", in: root) else { step(); return true }
@@ -1001,16 +1014,26 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if let row = entry.view as? MenuRow, titles.isEmpty, let window = row.window {
                     let frame = row.convert(row.bounds, to: nil)
                     Self.pointer(onto: frame, of: window)
+                    mark("onto \(title) at \(Self.box(window.convertToScreen(frame)))")
                     // Only a row the menu itself has selected: a click on any
                     // other would be the menu's.
                     // A submenu that closes meanwhile ends the wait.
                     let selected = { current.highlightedItem === entry && row.highlighted }
-                    Self.waitFor(5, { selected() || !self.shownMenus.contains(ObjectIdentifier(current)) }, poke: Self.nudge(frame, of: window)) {
+                    let start = Date()
+                    var closed = false
+                    let ready = { () -> Bool in
+                        if !closed && !self.shownMenus.contains(ObjectIdentifier(current)) {
+                            closed = true
+                            mark(String(format: "closed after %.1f s", Date().timeIntervalSince(start)))
+                        }
+                        return selected() || closed
+                    }
+                    Self.waitFor(5, ready, poke: Self.nudge(frame, of: window)) {
                         guard current.highlightedItem === entry else {
                             // What the menu showed instead, to tell a pointer it
                             // missed from a submenu that was not there.
                             let seen = "\(title) did not highlight (\(self.shownMenus.count) menus shown, \(self.shownMenus.contains(ObjectIdentifier(current)) ? "this one" : "not this one"), selected \(current.highlightedItem?.title ?? "none"), its window \(window.isVisible ? "visible" : "hidden") \(window.windowNumber == root.windowNumber ? "the menu's own" : "its own"))"
-                            if !again(seen) { fail(seen) }
+                            if !again(seen) { fail("\(seen) [\(trail.joined(separator: "; "))]") }
                             return
                         }
                         self.heard = nil
@@ -1026,6 +1049,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                     }
                 } else if let submenu = entry.submenu, let window = Self.window(of: current), let frame = Self.frame(of: title, in: window) {
+                    mark("to \(title) at \(Self.box(window.convertToScreen(frame)))")
                     Self.pointer(onto: frame, of: window)
                     let shown = { self.shownMenus.contains(ObjectIdentifier(submenu)) && Self.window(of: submenu)?.isVisible == true }
                     Self.waitFor(5, shown, poke: Self.nudge(frame, of: window)) {
@@ -1034,7 +1058,24 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                             return
                         }
                         current = submenu
-                        step()
+                        mark("\(title) open")
+                        guard gentle, let inside = Self.window(of: submenu) else { return step() }
+                        // Once the submenu stands still: to the end of its
+                        // title, then just inside the submenu, level with it.
+                        Self.after(0.3) {
+                            mark("\(title) still open")
+                            let edge = NSRect(x: frame.maxX - 6, y: frame.minY, width: 1, height: frame.height)
+                            Self.pointer(onto: edge, of: window)
+                            Self.after(0.15) {
+                                let level = window.convertToScreen(edge)
+                                let door = inside.convertFromScreen(NSRect(x: inside.frame.minX + 8, y: level.minY, width: 1, height: level.height))
+                                Self.pointer(onto: door, of: inside)
+                                Self.after(0.15) {
+                                    mark("inside \(title)")
+                                    step()
+                                }
+                            }
+                        }
                     }
                 } else {
                     fail("\(title) not shown")
@@ -1077,6 +1118,11 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let a = Self.ink(in: image, of: window, at: theirs), b = Self.ink(in: image, of: window, at: mine)
             print("pair \(row.title): \(differ.map { String(format: "%.4f", $0) } ?? "-") differ, ink at x \(a.map { "\($0.x)" } ?? "-") in the menu's, \(b.map { "\($0.x)" } ?? "-") in Wham's")
         }
+    }
+
+    // "x,y wxh", in points on the screen.
+    private static func box(_ frame: NSRect) -> String {
+        "\(Int(frame.minX)),\(Int(frame.minY)) \(Int(frame.width))x\(Int(frame.height))"
     }
 
     // The window a menu shows in, found through one of its rows.
