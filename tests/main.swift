@@ -70,6 +70,8 @@ check(Sleep.sudoersFile == "/private/etc/sudoers.d/wham" && !URL(fileURLWithPath
 // with stand-in paths. As root only where sudo needs no password (CI).
 var compileError: NSDictionary?
 check(NSAppleScript(source: Sleep.installScript)?.compileAndReturnError(&compileError) == true, "install AppleScript compiles")
+check(Sleep.installScript.contains("with prompt \"\(Sleep.prompt)\"") && !Sleep.prompt.contains("\"") && Sleep.prompt.contains("administrator"),
+      "the password prompt says why Wham asks")
 let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("wham-install-\(getpid())")
 try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
 func shell(_ script: String, root: Bool = false) -> (status: Int32, output: String) {

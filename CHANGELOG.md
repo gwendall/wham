@@ -5,6 +5,13 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.3.0 - 2026-10-13
+
+- Appearance, in the menu: Monochrome draws the switch in the color of your other menu bar icons, black or white.
+- Appearance > Compact keeps only the sun or the moon, in a ring as wide as an icon: it turns in place instead of sliding, and a timed session runs out around it.
+- Stay On After Restart, in the menu: if Wham is on when your Mac restarts or shuts down, it turns back on when you log in again, until a timed session's end. Unchecked, as it comes, Wham stays off after a restart.
+- The first time, the password prompt now says why Wham asks: keeping your Mac awake with the lid closed takes a setting only an administrator can change.
+
 ## 1.2.3 - 2026-10-13
 
 - Check for Updates, in the menu, looks for a new version right away: it installs it, or tells you that you already have the latest.

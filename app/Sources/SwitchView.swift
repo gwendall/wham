@@ -8,17 +8,30 @@ import QuartzCore
 // drains toward the knob as the time runs out. Built from Core Animation
 // layers, so it moves at the display's refresh rate even while the main thread
 // waits on pmset or a password prompt.
+//
+// The menu's Appearance changes two things. Monochrome draws it all in the
+// menu bar's ink, like the icons around it: on, the track is solid and the
+// knob a hole in it, with its sun in ink. Compact keeps the knob alone, in a
+// ring as wide as an icon: it turns where it is instead of sliding, and in a
+// timed session the ring runs out like a timer's.
 final class SwitchView: NSView {
+    struct Look: Equatable {
+        var monochrome = false
+        var compact = false
+    }
+
     // An odd knob for an odd glyph: the 11-point sun and moon sit exactly 3
     // points from the knob's edge, on whole pixels at any scale.
-    static let track = NSSize(width: 42, height: 21)
+    static let height: CGFloat = 21
     static let inset: CGFloat = 2
-    static let knobSize: CGFloat = track.height - 2 * inset
+    static let knobSize: CGFloat = height - 2 * inset
     static let glyphInset = (knobSize - CGFloat(Pixels.sun.count)) / 2
 
+    private let track = CALayer() // the groove and the candy
     private let groove = CAShapeLayer()
     private let candy = CAGradientLayer()
     private let drained = CAShapeLayer() // the candy's mask: what is left of a timed session
+    private let hole = CAShapeLayer() // the track's mask when monochrome: the menu bar shows through the knob
     private let knob = CALayer() // slides and rolls, carrying both faces
     private let day = CALayer()
     private let sun = CAShapeLayer()
@@ -31,34 +44,34 @@ final class SwitchView: NSView {
     private(set) var hasShown = false
     // The share of a timed session still to run; 1 when untimed.
     private(set) var left: CGFloat = 1
+    private(set) var look = Look()
 
-    var contentWidth: CGFloat { Self.track.width }
+    // The track: 42 by 21, or a ring of 21 when compact.
+    var trackSize: NSSize { NSSize(width: look.compact ? Self.height : 42, height: Self.height) }
+    // The status item's width: the track and a little room around it.
+    var itemLength: CGFloat { trackSize.width + (look.compact ? 2 : 8) }
 
     init() {
         super.init(frame: .zero)
         wantsLayer = true
-        candy.colors = Pixels.candy
         candy.startPoint = CGPoint(x: 0, y: 0.5)
         candy.endPoint = CGPoint(x: 1, y: 0.5)
-        candy.cornerRadius = Self.track.height / 2
         candy.masksToBounds = true
-        drained.fillColor = CGColor(gray: 0, alpha: 1)
-        drained.frame = CGRect(origin: .zero, size: Self.track)
-        drained.path = drainedPath()
         candy.mask = drained
+        hole.fillRule = .evenOdd
+        hole.fillColor = CGColor(gray: 0, alpha: 1)
+        track.addSublayer(groove)
+        track.addSublayer(candy)
 
         let disk = CGRect(x: 0, y: 0, width: Self.knobSize, height: Self.knobSize)
         let glyphOrigin = CGPoint(x: Self.glyphInset, y: Self.glyphInset)
         knob.bounds = disk
         day.frame = disk
         day.cornerRadius = Self.knobSize / 2
-        day.backgroundColor = CGColor(gray: 1, alpha: 1)
         day.shadowColor = CGColor(gray: 0, alpha: 1)
-        day.shadowOpacity = 0.3
         day.shadowRadius = 1
         day.shadowOffset = .zero // it rolls: an offset shadow would turn with it
         sun.path = Pixels.path(Pixels.sun, origin: glyphOrigin)
-        sun.fillColor = Pixels.ink
         day.addSublayer(sun)
         night.frame = disk
         let cutout = CGMutablePath()
@@ -69,7 +82,7 @@ final class SwitchView: NSView {
         knob.addSublayer(day)
         knob.addSublayer(night)
 
-        for sublayer in [groove, candy, knob] { layer?.addSublayer(sublayer) }
+        for sublayer in [track, knob] { layer?.addSublayer(sublayer) }
         resolveColors()
     }
 
@@ -103,22 +116,34 @@ final class SwitchView: NSView {
         super.layout()
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        trackRect = NSRect(x: snap((bounds.width - Self.track.width) / 2), y: snap((bounds.height - Self.track.height) / 2),
-                           width: Self.track.width, height: Self.track.height)
-        let radius = Self.track.height / 2
-        groove.path = CGPath(roundedRect: trackRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
-        candy.frame = trackRect
+        let size = trackSize, radius = size.height / 2
+        trackRect = NSRect(x: snap((bounds.width - size.width) / 2), y: snap((bounds.height - size.height) / 2),
+                           width: size.width, height: size.height)
+        track.frame = trackRect
+        groove.path = CGPath(roundedRect: track.bounds, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        candy.frame = track.bounds
+        candy.cornerRadius = radius
         drained.frame = candy.bounds
-        drained.path = drainedPath()
-        knob.position = CGPoint(x: knobX(state), y: trackRect.midY)
+        hole.frame = track.bounds
+        shapeDrained()
+        applyModel()
         CATransaction.commit()
     }
 
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let scale = window?.backingScaleFactor ?? 2
-        for sublayer in [groove, candy, drained, knob, day, sun, night] { sublayer.contentsScale = scale }
+        for sublayer in [track, groove, candy, drained, hole, knob, day, sun, night] { sublayer.contentsScale = scale }
         needsLayout = true
+    }
+
+    // From the menu's Appearance; the status item takes the new itemLength.
+    func setLook(_ newLook: Look) {
+        guard newLook != look else { return }
+        look = newLook
+        for layer in [knob, hole, drained, groove, candy, day, night] { layer.removeAllAnimations() }
+        needsLayout = true
+        resolveColors()
     }
 
     // The menu bar flips between light and dark with the wallpaper.
@@ -146,14 +171,23 @@ final class SwitchView: NSView {
         CATransaction.setDisableActions(true)
         if animate && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
             let toX = knobX(newState)
-            let move = spring("position.x", duration: 0.42, bounce: 0.2)
-            move.fromValue = fromX
-            move.toValue = toX
-            knob.add(move, forKey: "move")
+            if toX != fromX {
+                let move = spring("position.x", duration: 0.42, bounce: 0.2)
+                move.fromValue = fromX
+                move.toValue = toX
+                knob.add(move, forKey: "move")
+                // A monochrome track's hole goes along, on the same spring.
+                let follow = spring("path", duration: 0.42, bounce: 0.2)
+                follow.fromValue = holePath(fromX)
+                follow.toValue = holePath(toX)
+                hole.add(follow, forKey: "move")
+            }
             // It rolls without slipping: one radian per radius travelled, clockwise
-            // going right, and lands upright.
+            // going right, and lands upright. A compact knob turns where it is,
+            // half a turn, the same way: clockwise to turn on.
+            let turn = look.compact ? (on ? CGFloat.pi : -CGFloat.pi) : (toX - fromX) / (Self.knobSize / 2)
             let roll = spring("transform.rotation.z", duration: 0.42, bounce: 0.2)
-            roll.fromValue = fromTurn + (toX - fromX) / (Self.knobSize / 2)
+            roll.fromValue = fromTurn + turn
             roll.toValue = 0
             knob.add(roll, forKey: "roll")
             // The sun and the moon trade places in the first turn.
@@ -167,35 +201,79 @@ final class SwitchView: NSView {
     }
 
     // A timed session's candy drains from the far end toward the knob: whole at
-    // the start, a ring around the knob at the end. Moves in quarter points, so
-    // the tick that calls this redraws only when there is something to see.
+    // the start, a ring around the knob at the end. A compact ring runs out
+    // from the top, counterclockwise. Moves in quarter points, so the tick that
+    // calls this redraws only when there is something to see.
     func drain(_ newLeft: CGFloat, animated: Bool) {
         let newLeft = min(1, max(0, newLeft))
-        guard drainedWidth(newLeft) != drainedWidth(left) else { return }
-        let from = drained.presentation()?.path ?? drained.path
+        guard step(newLeft) != step(left) else { return }
+        let fromPath = drained.presentation()?.path ?? drained.path
+        let fromEnd = drained.presentation()?.strokeEnd ?? drained.strokeEnd
         let fromGroove = groove.presentation()?.opacity ?? groove.opacity
         left = newLeft
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        let path = drainedPath()
+        let path = drainedPath(), end = ringEnd(left)
         if animated && state == true && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-            fade(drained, "path", from: from, to: path, duration: 0.4)
+            if look.compact {
+                fade(drained, "strokeEnd", from: fromEnd, to: end, duration: 0.4)
+            } else {
+                fade(drained, "path", from: fromPath, to: path, duration: 0.4)
+            }
             fade(groove, "opacity", from: fromGroove, to: grooveOpacity, duration: 0.4)
         }
-        drained.path = path
+        if look.compact { drained.strokeEnd = end } else { drained.path = path }
         groove.opacity = grooveOpacity
         CATransaction.commit()
     }
 
+    private func step(_ left: CGFloat) -> CGFloat { look.compact ? ringEnd(left) : drainedWidth(left) }
+
     private func drainedWidth(_ left: CGFloat) -> CGFloat {
-        let size = Self.track
+        let size = trackSize
         return ((size.height + (size.width - size.height) * left) * 4).rounded() / 4
     }
 
     private func drainedPath() -> CGPath {
-        let size = Self.track, width = drainedWidth(left), radius = size.height / 2
+        let size = trackSize, width = drainedWidth(left), radius = size.height / 2
         return CGPath(roundedRect: CGRect(x: size.width - width, y: 0, width: width, height: size.height),
                       cornerWidth: radius, cornerHeight: radius, transform: nil)
+    }
+
+    // The share of a compact ring left, in quarter points of its edge.
+    private func ringEnd(_ left: CGFloat) -> CGFloat {
+        let edge = .pi * trackSize.height
+        return (left * edge * 4).rounded() / 4 / edge
+    }
+
+    // The candy's mask: a bar, or for a compact ring a stroke as thick as the
+    // ring's radius, from the top, clockwise, cut short by strokeEnd.
+    private func shapeDrained() {
+        let size = trackSize
+        if look.compact {
+            let center = CGPoint(x: size.width / 2, y: size.height / 2), radius = size.height / 4
+            let ring = CGMutablePath()
+            ring.addArc(center: center, radius: radius, startAngle: .pi / 2, endAngle: -.pi / 2, clockwise: true)
+            ring.addArc(center: center, radius: radius, startAngle: -.pi / 2, endAngle: -3 * .pi / 2, clockwise: true)
+            drained.path = ring
+            drained.fillColor = nil
+            drained.strokeColor = CGColor(gray: 0, alpha: 1)
+            drained.lineWidth = size.height / 2
+            drained.strokeEnd = ringEnd(left)
+        } else {
+            drained.path = drainedPath()
+            drained.fillColor = CGColor(gray: 0, alpha: 1)
+            drained.strokeColor = nil
+            drained.strokeEnd = 1
+        }
+    }
+
+    // The track, less the knob's disk with the knob at x.
+    private func holePath(_ x: CGFloat) -> CGPath {
+        let path = CGMutablePath()
+        path.addRect(CGRect(origin: .zero, size: trackSize))
+        path.addEllipse(in: CGRect(x: x - trackRect.minX - Self.knobSize / 2, y: Self.inset, width: Self.knobSize, height: Self.knobSize))
+        return path
     }
 
     // The soft track shows where the candy has drained, and when off.
@@ -223,6 +301,7 @@ final class SwitchView: NSView {
     private func knobX(_ state: Bool?) -> CGFloat {
         let x: CGFloat
         switch state {
+        case _ where look.compact: x = trackRect.midX
         case true?: x = trackRect.maxX - Self.inset - Self.knobSize / 2
         case false?: x = trackRect.minX + Self.inset + Self.knobSize / 2
         case nil: x = trackRect.midX
@@ -248,14 +327,22 @@ final class SwitchView: NSView {
     }
 
     private func applyModel() {
-        let on = state == true
-        let ink = state == nil ? orange : label
+        let on = state == true, mono = look.monochrome
+        // Unknown: orange, or the ink at half when monochrome.
+        let ink = state != nil ? label : mono ? label.copy(alpha: 0.5) ?? label : orange
         groove.fillColor = ink.copy(alpha: 0.2)
         groove.opacity = grooveOpacity
+        candy.colors = mono ? [label, label] : Pixels.candy
         candy.opacity = on ? 1 : 0
+        day.backgroundColor = mono ? nil : CGColor(gray: 1, alpha: 1)
+        day.shadowOpacity = mono ? 0 : 0.3
+        sun.fillColor = mono ? label : Pixels.ink
         night.fillColor = ink
         night.opacity = on ? 0 : 1
         day.opacity = on ? 1 : 0
-        knob.position = CGPoint(x: knobX(state), y: trackRect.midY)
+        track.mask = mono ? hole : nil
+        let x = knobX(state)
+        knob.position = CGPoint(x: x, y: trackRect.midY)
+        hole.path = holePath(x)
     }
 }

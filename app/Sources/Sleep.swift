@@ -66,9 +66,13 @@ enum Sleep {
         return .failed(message)
     }
 
+    // What macOS shows above the password field: why Wham asks, and what it
+    // can then do.
+    static let prompt = "Keeping your Mac awake with the lid closed takes a system setting that only an administrator can change. "
+        + "Wham asks once; after that, it can turn that one setting on and off, and nothing else."
+
     static var installScript: String {
-        let prompt = "Wham needs your permission, just once, to keep your Mac from sleeping."
-        return "do shell script \"\(installShell())\" with administrator privileges with prompt \"\(prompt)\""
+        "do shell script \"\(installShell())\" with administrator privileges with prompt \"\(prompt)\""
     }
 
     // What runs as root. The rule is checked by visudo before it goes live, and

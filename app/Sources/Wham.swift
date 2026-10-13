@@ -37,11 +37,14 @@ final class Wham: NSObject, NSApplicationDelegate {
     private var warnTimer: Timer?
     private var ended: (why: String, at: Date)?
     private var lidWasClosed = false
+    // Set when macOS says it is about to restart, shut down or log out.
+    private var poweringOff = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         if Self.runsFromTemporaryCopy && offerToMove() { return }
         guard let button = item.button else { return }
-        item.length = toggleView.contentWidth + 8
+        toggleView.setLook(look)
+        item.length = toggleView.itemLength
         toggleView.frame = button.bounds
         toggleView.autoresizingMask = [.width, .height]
         button.addSubview(toggleView)
@@ -54,9 +57,14 @@ final class Wham: NSObject, NSApplicationDelegate {
         offAt = Session.offAt
         onAt = Session.onAt
         lidWasClosed = Sleep.lidClosed
+        let restarted = UserDefaults.standard.object(forKey: "resumeAtLogin")
         check()
         scheduleEnd()
         resumeAfterUpdate()
+        resumeAfterRestart(restarted)
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.poweringOff = true }
+        }
         // Catches anything else flipping the flag (`wham on` in a terminal, pmset,
         // a reboot). The tolerance lets macOS batch these wakeups with others.
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
@@ -233,12 +241,53 @@ final class Wham: NSObject, NSApplicationDelegate {
     // Quitting gives sleep back, whoever asks: the menu, a script, logging out.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if !sleepGivenBack && Sleep.isDisabled == true && Sleep.set(false) {
-            // Quit by someone else while on. `brew upgrade` quits the old copy and
-            // opens the new one right away: that one turns back on.
-            UserDefaults.standard.set(Date().addingTimeInterval(60), forKey: "resumeBefore")
+            let defaults = UserDefaults.standard
+            if poweringOff || Self.quitToPowerOff {
+                // A restart, a shutdown or a logout: on again at the next login
+                // with Stay On After Restart, until the session's end if timed.
+                if Self.staysOnAfterRestart { defaults.set(offAt ?? true as Any, forKey: "resumeAtLogin") }
+            } else {
+                // Quit by someone else while on. `brew upgrade` quits the old copy and
+                // opens the new one right away: that one turns back on.
+                defaults.set(Date().addingTimeInterval(60), forKey: "resumeBefore")
+            }
         }
         if Sleep.isDisabled != true { watchdog.standDown() }
         return .terminateNow
+    }
+
+    // The reason macOS gives with its quit event, when it quits the apps to
+    // restart, shut down or log out.
+    private static var quitToPowerOff: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              let why = event.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason))?.enumCodeValue else { return false }
+        return [kAELogOut, kAEReallyLogOut, kAEShowRestartDialog, kAEShowShutdownDialog, kAERestart, kAEShutDown].map { OSType($0) }.contains(why)
+    }
+
+    // Stay On After Restart, off by default: a Mac restarted and then put in
+    // a bag should sleep. The Mac had restarted, shut down or logged out with
+    // Wham on; it turns back on, unless its timed session ended meanwhile.
+    private static var staysOnAfterRestart: Bool {
+        get { UserDefaults.standard.bool(forKey: "stayOnAfterRestart") }
+        set { UserDefaults.standard.set(newValue, forKey: "stayOnAfterRestart") }
+    }
+
+    private func resumeAfterRestart(_ saved: Any?) {
+        guard let saved else { return }
+        UserDefaults.standard.removeObject(forKey: "resumeAtLogin")
+        let until = saved as? Date
+        guard Self.staysOnAfterRestart, until.map({ $0 > Date() }) ?? true, Sleep.isDisabled == false, !refuses() else { return }
+        DispatchQueue.global(qos: .userInitiated).async {
+            guard Sleep.set(true) else { return }
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    self.setOffAt(until)
+                    self.show(true)
+                    self.announce(true, caption: until.map { "Back on after the restart, until \(Session.clock($0))" } ?? "Back on after the restart")
+                    self.check()
+                }
+            }
+        }
     }
 
     private func resumeAfterUpdate() {
@@ -400,9 +449,16 @@ final class Wham: NSObject, NSApplicationDelegate {
         let sound = NSMenuItem(title: "Sound", action: #selector(toggleSound), keyEquivalent: "")
         sound.state = muted ? .off : .on
         menu.addItem(sound)
+        let appearance = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
+        appearance.submenu = appearances()
+        menu.addItem(appearance)
         let login = NSMenuItem(title: "Open at Login", action: #selector(toggleLogin), keyEquivalent: "")
         login.state = LoginItem.isOn ? .on : .off
         menu.addItem(login)
+        let restart = NSMenuItem(title: "Stay On After Restart", action: #selector(toggleRestart), keyEquivalent: "")
+        restart.state = Self.staysOnAfterRestart ? .on : .off
+        restart.toolTip = "If Wham is on when your Mac restarts, it turns back on when you log in."
+        menu.addItem(restart)
         let updates = NSMenuItem(title: "Update Automatically", action: #selector(toggleUpdates), keyEquivalent: "")
         updates.state = Update.isOn ? .on : .off
         menu.addItem(updates)
@@ -464,6 +520,36 @@ final class Wham: NSObject, NSApplicationDelegate {
         return lengths
     }
 
+    // Monochrome and Compact, each on its own.
+    private func appearances() -> NSMenu {
+        let looks = NSMenu()
+        let monochrome = NSMenuItem(title: "Monochrome", action: #selector(toggleMonochrome), keyEquivalent: "")
+        monochrome.state = look.monochrome ? .on : .off
+        monochrome.toolTip = "In the menu bar's own color, like the icons around it."
+        let compact = NSMenuItem(title: "Compact", action: #selector(toggleCompact), keyEquivalent: "")
+        compact.state = look.compact ? .on : .off
+        compact.toolTip = "As wide as an icon: the switch turns instead of sliding."
+        for entry in [monochrome, compact] {
+            entry.target = self
+            looks.addItem(entry)
+        }
+        return looks
+    }
+
+    private var look: SwitchView.Look {
+        get { SwitchView.Look(monochrome: UserDefaults.standard.bool(forKey: "monochrome"), compact: UserDefaults.standard.bool(forKey: "compact")) }
+        set {
+            UserDefaults.standard.set(newValue.monochrome, forKey: "monochrome")
+            UserDefaults.standard.set(newValue.compact, forKey: "compact")
+            toggleView.setLook(newValue)
+            item.length = toggleView.itemLength
+        }
+    }
+
+    @objc private func toggleMonochrome() { look.monochrome.toggle() }
+    @objc private func toggleCompact() { look.compact.toggle() }
+    @objc private func toggleRestart() { Self.staysOnAfterRestart.toggle() }
+
     // On battery, the charge at which Wham lets the Mac sleep.
     private func batteryLimits() -> NSMenu {
         let limits = NSMenu()
@@ -482,10 +568,11 @@ final class Wham: NSObject, NSApplicationDelegate {
 
     // For the evals: once launched, presses menu items by title, one after the
     // other, as WHAM_PRESS lists them: "Turn On For/2 Hours,Turn Off". "Switch"
-    // is a click on the switch, "Terminate" a quit from outside (a logout),
-    // "Menu" opens the menu for real and says whether it showed whole, "Status"
-    // prints the menu's first line and its lengths, "Items" the menu's items,
-    // and "Pause" waits a step.
+    // is a click on the switch, "Terminate" a quit from outside (an upgrade),
+    // "Restart" the quit macOS sends before a restart, "Menu" opens the menu
+    // for real and says whether it showed whole, "Status" prints the menu's
+    // first line and its lengths, "Items" the menu's items, "Look" the
+    // appearance and the status item's width, and "Pause" waits a step.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -496,6 +583,12 @@ final class Wham: NSObject, NSApplicationDelegate {
             switch path {
             case ["Switch"]: toggle()
             case ["Terminate"]: NSApp.terminate(nil)
+            case ["Restart"]:
+                poweringOff = true
+                NSApp.terminate(nil)
+            case ["Look"]:
+                print("look", look.monochrome ? "monochrome" : "color", look.compact ? "compact" : "wide", Int(item.length))
+                fflush(stdout)
             case ["Pause"]: break
             case ["Items"]:
                 print("items", self.menu().items.map { $0.isSeparatorItem ? "-" : $0.title }.joined(separator: " | "))

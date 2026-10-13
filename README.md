@@ -62,16 +62,24 @@ Wham lives in your menu bar as a little switch.
   awake. Close the lid, unplug the screen: it keeps running.
 - **Click again**: the moon comes back and your Mac sleeps as usual.
 - **Right-click** (or control-click) for the menu: turn on for 1, 2, 4 or 8
-  hours (each says when it would end), sound, open at login, automatic
-  updates, the battery limit, what's new, check for updates, quit.
+  hours (each says when it would end), sound, appearance, open at login, stay
+  on after restart, automatic updates, the battery limit, what's new, check for
+  updates, quit.
 
 A timed session shows what is left: the menu says until when and how long, the
 switch's candy drains toward the knob, and a note drops down five minutes
 before the end. Stay Awake For gives it a new length, No Time Limit drops the
 end.
 
-The first time you turn it on, macOS asks for your password, once (see
-[how it works](#how-it-works)). Quitting Wham always gives sleep back.
+Appearance, in the menu, fits it in with the icons around it: **Monochrome**
+draws it in your menu bar's own ink, no color, and **Compact** keeps only the
+knob, as wide as an icon, turning where it is instead of sliding; a timed
+session runs out around it.
+
+The first time you turn it on, macOS asks for your password, once, and says
+why (see [how it works](#how-it-works)). Quitting Wham always gives sleep back,
+and so does a restart: with **Stay On After Restart**, in the menu, Wham turns
+back on when you log in again (a timed session keeps its end).
 
 Wham also lets go on its own, and the menu says why:
 
@@ -140,7 +148,7 @@ the watchdog to stand down. `wham run` keeps one too.
 
 ## Is it safe?
 
-- About 1,400 lines of Swift, no dependencies, no analytics.
+- About 1,800 lines of Swift, no dependencies, no analytics.
 - One network request, a few times a day: Wham asks GitHub which release is
   the latest, and the request carries nothing about you or your Mac. When there
   is a newer one, Wham downloads it, checks that it is signed by the same
@@ -251,6 +259,8 @@ for GitHub, checks that a copy signed by someone else is refused, that with
 Update Automatically off the menu offers the new version and installs it on a
 click, and what Check for Updates says when there is nothing new or no answer
 (it needs the Developer ID certificate).
+`scripts/sheet.sh` draws the switch in each of its looks, on a light and a dark
+menu bar, into `build/sheet.png` (`--film` for it turning on, frame by frame).
 
 ## Credits
 
