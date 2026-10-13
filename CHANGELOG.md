@@ -5,6 +5,12 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.5.0 - 2026-10-13
+
+- Every option in the menu answers with a little sound, from the same family as the switch's chime: up when it checks, down when it unchecks, a tick for a length or a limit, and a low note when Wham can't (too hot, the battery too low). Sound, in the menu, turns them all off.
+- Battery Limit has a Never: on battery, your Mac stays awake until the battery runs out, for when that is what you want. Save your work first. Critical heat still lets it sleep.
+- Wham keeps a journal, to tell afterwards what happened: when it turned on and off and why, the lid, sleep and wake, the battery, the heat, and while on, whether the network stayed up with the lid closed. It never leaves your Mac and names no one: no network name, no address. `wham log` prints it.
+
 ## 1.4.0 - 2026-10-13
 
 - Every option in the menu keeps it open now: Turn On, the lengths, Sound, Appearance, Battery Limit and the others change as you click, and the menu stays so you can pick another. A click outside closes it.
