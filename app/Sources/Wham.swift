@@ -150,7 +150,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 if set == false { LoginItem.askForApproval() }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.hello() }
             } else if updated {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.pop(Toast.note("UPDATED TO \(self.running)", "What's New is in the menu")) }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.pop(Toast.note(Words.say("UPDATED TO %@", self.running), Words.say("What's New is in the menu"))) }
             }
         }
     }
@@ -268,10 +268,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func offerToMove() -> Bool {
         let ask = NSAlert()
-        ask.messageText = "Move Wham to Applications?"
-        ask.informativeText = "Wham is running from the disk image. From Applications it can open at login and stay in your menu bar."
-        ask.addButton(withTitle: "Move to Applications")
-        ask.addButton(withTitle: "Not Now")
+        ask.messageText = Words.say("Move Wham to Applications?")
+        ask.informativeText = Words.say("Wham is running from the disk image. From Applications it can open at login and stay in your menu bar.")
+        ask.addButton(withTitle: Words.say("Move to Applications"))
+        ask.addButton(withTitle: Words.say("Not Now"))
         activate()
         guard ask.runModal() == .alertFirstButtonReturn else {
             Journal.note("move", ["answer": "not now"])
@@ -287,7 +287,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try files.copyItem(at: Bundle.main.bundleURL, to: destination)
         } catch {
             Journal.note("move", ["to": folder.path, "ok": false, "error": error.localizedDescription])
-            alert("Wham could not move itself: \(error.localizedDescription). Drag it into Applications instead.")
+            alert("Wham could not move itself: %@. Drag it into Applications instead.", error.localizedDescription)
             return false
         }
         Journal.note("move", ["to": folder.path, "ok": true])
@@ -348,25 +348,26 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func found(_ latest: String?, newer: String?, replaceable: Bool) {
         if latest != nil { available = newer }
         guard let newer else {
-            return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later", .said(Line.noAnswer), .refused)
-                                        : ("UP TO DATE", "Wham \(running) is the latest", .done(Line.latest(running)), .check(true)))
+            return settle(latest == nil ? (Words.say("CAN'T CHECK"), Words.say("GitHub did not answer, try again later"), .said(Line.noAnswer), .refused)
+                                        : (Words.say("UP TO DATE"), Words.say("Wham %@ is the latest", running), .done(Line.latest(running)), .check(true)))
         }
         guard asked || Update.isOn else { return settle(nil) }
         // Not in a folder its user may write to, or a build from source: the
         // download is on wham.sh.
-        guard replaceable else { return settle(("CAN'T UPDATE ITSELF", "Get Wham \(newer) at wham.sh", nil, .select), openSite: true) }
+        guard replaceable else { return settle((Words.say("CAN'T UPDATE ITSELF"), Words.say("Get Wham %@ at wham.sh", newer), nil, .select), openSite: true) }
         installing = newer
         if let updateRow {
             updateRow.state = updateState
         } else if asked {
-            pop(Toast.note("UPDATING", "To Wham \(newer), back in a moment"))
+            pop(Toast.note(Words.say("UPDATING"), Words.say("To Wham %@, back in a moment", newer)))
         }
         let app = Bundle.main.bundleURL
         DispatchQueue.global(qos: .utility).async {
             let failure = Update.install(newer, over: app)
             Journal.note("update-install", ["version": newer, "ok": failure == nil, "failure": failure])
             Self.onMain {
-                failure == nil ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later", .said(Line.failed(newer)), .refused))
+                failure == nil ? self.reopen()
+                    : self.settle((Words.say("CAN'T UPDATE"), Words.say("Wham %@ did not install, try again later", newer), .said(Line.failed(newer)), .refused))
             }
         }
     }
@@ -469,7 +470,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 MainActor.assumeIsolated {
                     self.setOffAt(until)
                     self.show(true)
-                    self.announce(true, caption: until.map { "Back on after the restart, until \(Session.clock($0))" } ?? "Back on after the restart")
+                    self.announce(true, caption: until.map { Words.say("Back on after the restart, until %@", Session.clock($0)) }
+                                  ?? Words.say("Back on after the restart"))
                     self.check()
                 }
             }
@@ -495,10 +497,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let tip: String
         switch state {
         case true? where offAt != nil:
-            tip = "Wham is on until \(Session.clock(offAt!)): your Mac stays awake, even with the lid closed. Click to turn off."
-        case true?: tip = "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off."
-        case false?: tip = "Wham is off: your Mac sleeps as usual. Click to turn on."
-        case nil: tip = "Wham can't read your Mac's sleep setting"
+            tip = Words.say("Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off.", Session.clock(offAt!))
+        case true?: tip = Words.say("Wham is on: your Mac stays awake, even with the lid closed. Click to turn off.")
+        case false?: tip = Words.say("Wham is off: your Mac sleeps as usual. Click to turn on.")
+        case nil: tip = Words.say("Wham can't read your Mac's sleep setting")
         }
         item.button?.setAccessibilityLabel(tip)
         item.button?.toolTip = tip
@@ -597,7 +599,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func warn() {
         guard let offAt, Sleep.isDisabled == true, !Sleep.lidClosed, offAt > Date() else { return }
         Journal.note("warning", ["end": offAt])
-        pop(Toast.soon.saying("Then back to normal sleep, at \(Session.clock(offAt))"))
+        pop(Toast.soon.saying(Words.say("Then back to normal sleep, at %@", Session.clock(offAt))))
     }
 
     // A few seconds after the lid closes, so a monitor plugged into a closed
@@ -640,13 +642,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusLine: String {
         if let said { return said }
         if isOn { return Self.awake(until: offAt) }
-        if let ended { return "\(ended.why), stopped at \(Session.clock(ended.at))" }
-        return "Mac sleeps as usual"
+        if let ended { return Words.say("%1$@, stopped at %2$@", ended.why, Session.clock(ended.at)) }
+        return Words.say("Mac sleeps as usual")
     }
 
     private static func awake(until end: Date?, now: Date = Date()) -> String {
-        guard let end else { return "Mac stays awake, even with the lid closed" }
-        return "Mac stays awake until \(Session.clock(end, now: now)) (\(Session.timeLeft(end.timeIntervalSince(now))) left)"
+        guard let end else { return Words.say("Mac stays awake, even with the lid closed") }
+        return Words.say("Mac stays awake until %1$@ (%2$@ left)", Session.clock(end, now: now), Session.timeLeft(end.timeIntervalSince(now)))
     }
 
     // Every option is a row that keeps the menu open when clicked, and the
@@ -661,48 +663,54 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         status.offStateImage = Self.blankState
         status.refresh = { [unowned self] in $0.title = statusLine }
         menu.addItem(status)
-        menu.addItem(row(["Turn On", "Turn Off"]) { [unowned self] in .init(title: isOn ? "Turn Off" : "Turn On") } click: { [unowned self] in flip("menu") })
+        let turnOn = Words.say("Turn On"), turnOff = Words.say("Turn Off")
+        menu.addItem(row([turnOn, turnOff]) { [unowned self] in .init(title: isOn ? turnOff : turnOn) } click: { [unowned self] in flip("menu") })
         let timed = LiveItem(title: "", action: nil, keyEquivalent: "")
-        timed.refresh = { [unowned self] in $0.title = isOn ? "Stay Awake For" : "Turn On For" }
+        let stayFor = Words.say("Stay Awake For"), onFor = Words.say("Turn On For")
+        timed.refresh = { [unowned self] in $0.title = isOn ? stayFor : onFor }
         timed.submenu = lengths()
         menu.addItem(timed)
         menu.addItem(.separator())
-        menu.addItem(row(["Sound"]) { [unowned self] in .init(title: "Sound", checked: !muted) } click: { [unowned self] in
+        let sound = Words.say("Sound")
+        menu.addItem(row([sound]) { [unowned self] in .init(title: sound, checked: !muted) } click: { [unowned self] in
             // Turned on, it says so; turned off, it is quiet already.
             muted.toggle()
             Journal.note("setting", ["sound": !muted])
             if !muted { play(.check(true)) }
         })
-        let appearance = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
+        let appearance = NSMenuItem(title: Words.say("Appearance"), action: nil, keyEquivalent: "")
         appearance.submenu = appearances()
         menu.addItem(appearance)
-        menu.addItem(row(["Open at Login"]) { .init(title: "Open at Login", checked: LoginItem.isOn) } click: { [unowned self] in toggleLogin() })
-        menu.addItem(row(["Stay On After Restart"], tip: "If Wham is on when your Mac restarts, it turns back on when you log in.") {
-            .init(title: "Stay On After Restart", checked: Self.staysOnAfterRestart)
+        let login = Words.say("Open at Login")
+        menu.addItem(row([login]) { .init(title: login, checked: LoginItem.isOn) } click: { [unowned self] in toggleLogin() })
+        let stayOn = Words.say("Stay On After Restart")
+        menu.addItem(row([stayOn], tip: Words.say("If Wham is on when your Mac restarts, it turns back on when you log in.")) {
+            .init(title: stayOn, checked: Self.staysOnAfterRestart)
         } click: { [unowned self] in
             Self.staysOnAfterRestart.toggle()
             Journal.note("setting", ["stay-on-after-restart": Self.staysOnAfterRestart])
             play(.check(Self.staysOnAfterRestart))
         })
-        menu.addItem(row(["Update Automatically"]) { .init(title: "Update Automatically", checked: Update.isOn) } click: { [unowned self] in toggleUpdates() })
-        let limit = NSMenuItem(title: "Battery Limit", action: nil, keyEquivalent: "")
+        let automatic = Words.say("Update Automatically")
+        menu.addItem(row([automatic]) { .init(title: automatic, checked: Update.isOn) } click: { [unowned self] in toggleUpdates() })
+        let limit = NSMenuItem(title: Words.say("Battery Limit"), action: nil, keyEquivalent: "")
         limit.submenu = batteryLimits()
         menu.addItem(limit)
         menu.addItem(.separator())
-        let links = [NSMenuItem(title: "About Wham \(CLI.version)", action: #selector(openSite), keyEquivalent: ""),
-                     NSMenuItem(title: "What's New", action: #selector(openChangelog), keyEquivalent: "")]
+        let links = [NSMenuItem(title: Words.say("About Wham %@", CLI.version), action: #selector(openSite), keyEquivalent: ""),
+                     NSMenuItem(title: Words.say("What's New"), action: #selector(openChangelog), keyEquivalent: "")]
         for entry in links { menu.addItem(entry) }
         menu.addItem(updateItem())
-        let author = NSMenuItem(title: "Made by Gwendall", action: #selector(openAuthor), keyEquivalent: "")
+        let author = NSMenuItem(title: Words.say("Made by Gwendall"), action: #selector(openAuthor), keyEquivalent: "")
         menu.addItem(author)
         menu.addItem(.separator())
-        let quit = NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q")
+        let quit = NSMenuItem(title: Words.say("Quit Wham (lets your Mac sleep)"), action: #selector(quit), keyEquivalent: "q")
         menu.addItem(quit)
         for entry in links + [author, quit] { entry.target = self }
         // As wide as any first line a click in it can bring: the menu does
         // not grow while open.
         let now = Date()
-        let lines = ["Mac sleeps as usual", Self.awake(until: nil)]
+        let lines = [Words.say("Mac sleeps as usual"), Self.awake(until: nil)]
             + [1, 2, 4, 8].map { Self.awake(until: now.addingTimeInterval(TimeInterval($0) * 3600), now: now.addingTimeInterval(60)) }
             + [Session.End.battery, .heat].map { Session.refusal($0, battery: 100) }
         menu.minimumWidth = MenuRow.width(for: lines)
@@ -772,13 +780,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // What the update row says, each line written once.
     private enum Line {
-        static let check = "Check for Updates"
-        static let checking = "Checking for Updates…"
-        static let noAnswer = "Can't check now, try later"
-        static func update(to version: String) -> String { "Update to Wham \(version)" }
-        static func updating(to version: String) -> String { "Updating to Wham \(version)…" }
-        static func latest(_ version: String) -> String { "Wham \(version) is up to date" }
-        static func failed(_ version: String) -> String { "Wham \(version) did not install" }
+        static var check: String { Words.say("Check for Updates") }
+        static var checking: String { Words.say("Checking for Updates…") }
+        static var noAnswer: String { Words.say("Can't check now, try later") }
+        static func update(to version: String) -> String { Words.say("Update to Wham %@", version) }
+        static func updating(to version: String) -> String { Words.say("Updating to Wham %@…", version) }
+        static func latest(_ version: String) -> String { Words.say("Wham %@ is up to date", version) }
+        static func failed(_ version: String) -> String { Words.say("Wham %@ did not install", version) }
         static func all(running: String, found: String) -> [String] {
             [check, checking, noAnswer, update(to: found), updating(to: found), latest(running), failed(found)]
         }
@@ -854,38 +862,42 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func lengths() -> NSMenu {
         let lengths = NSMenu()
         let hours = [1, 2, 4, 8]
-        func title(_ count: Int) -> String { count == 1 ? "1 Hour" : "\(count) Hours" }
+        func title(_ count: Int) -> String { count == 1 ? Words.say("1 Hour") : Words.say("%d Hours", count) }
         func end(_ count: Int, from now: Date = Date()) -> String {
             Session.clock(now.addingTimeInterval(TimeInterval(count) * 3600), now: now)
         }
         // The ends move on while the menu is open, to another day maybe: as
-        // wide as an end with its weekday too (a Wednesday at 12:58).
+        // wide as an end with its weekday too (any day of a week, at 12:58).
         let now = Date()
-        var wednesday = DateComponents(year: 2025, month: 1, day: 1, hour: 12, minute: 58)
-        wednesday.calendar = Calendar.current
-        let widest = wednesday.date.map { [Session.clock($0, now: $0.addingTimeInterval(-86400))] } ?? []
-        let titles = hours.map(title) + ["No Time Limit"], details = hours.map { end($0, from: now) } + widest
+        let week = (1...7).compactMap { day -> String? in
+            var noon = DateComponents(year: 2025, month: 1, day: day, hour: 12, minute: 58)
+            noon.calendar = Calendar.current
+            return noon.date.map { Session.clock($0, now: $0.addingTimeInterval(-86400)) }
+        }
+        let noLimit = Words.say("No Time Limit")
+        let titles = hours.map(title) + [noLimit], details = hours.map { end($0, from: now) } + week
         for count in hours {
             lengths.addItem(row(titles, details: details) { .init(title: title(count), detail: end(count)) } click: { [unowned self] in stayAwake(for: count) })
         }
         lengths.addItem(.separator())
-        lengths.addItem(row(titles, details: details) { [unowned self] in .init(title: "No Time Limit", checked: isOn && offAt == nil) } click: { [unowned self] in noTimeLimit() })
+        lengths.addItem(row(titles, details: details) { [unowned self] in .init(title: noLimit, checked: isOn && offAt == nil) } click: { [unowned self] in noTimeLimit() })
         return lengths
     }
 
     // Monochrome and Compact, each on its own.
     private func appearances() -> NSMenu {
         let looks = NSMenu()
-        let titles = ["Monochrome", "Compact"]
-        looks.addItem(row(titles, tip: "In the menu bar's own color, like the icons around it.") { [unowned self] in
-            .init(title: "Monochrome", checked: look.monochrome)
+        let monochrome = Words.say("Monochrome"), compact = Words.say("Compact")
+        let titles = [monochrome, compact]
+        looks.addItem(row(titles, tip: Words.say("In the menu bar's own color, like the icons around it.")) { [unowned self] in
+            .init(title: monochrome, checked: look.monochrome)
         } click: { [unowned self] in
             look.monochrome.toggle()
             Journal.note("setting", ["monochrome": look.monochrome])
             play(.check(look.monochrome))
         })
-        looks.addItem(row(titles, tip: "As wide as an icon: the switch turns instead of sliding.") { [unowned self] in
-            .init(title: "Compact", checked: look.compact)
+        looks.addItem(row(titles, tip: Words.say("As wide as an icon: the switch turns instead of sliding.")) { [unowned self] in
+            .init(title: compact, checked: look.compact)
         } click: { [unowned self] in
             look.compact.toggle()
             Journal.note("setting", ["compact": look.compact])
@@ -911,17 +923,18 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // On battery, the charge at which Wham lets the Mac sleep.
     private func batteryLimits() -> NSMenu {
         let limits = NSMenu()
-        let header = NSMenuItem(title: "Sleep on battery at", action: nil, keyEquivalent: "")
+        let header = NSMenuItem(title: Words.say("Sleep on battery at"), action: nil, keyEquivalent: "")
         header.isEnabled = false
         header.offStateImage = Self.blankState
         limits.addItem(header)
-        let titles = Session.batteryLimits.map { "\($0)%" } + ["Never"]
+        let never = Words.say("Never")
+        let titles = Session.batteryLimits.map(Words.percent) + [never]
         for percent in Session.batteryLimits {
-            limits.addItem(row(titles) { .init(title: "\(percent)%", checked: percent == Session.batteryLimit) } click: { [unowned self] in setBatteryLimit(percent) })
+            limits.addItem(row(titles) { .init(title: Words.percent(percent), checked: percent == Session.batteryLimit) } click: { [unowned self] in setBatteryLimit(percent) })
         }
         limits.addItem(.separator())
-        limits.addItem(row(titles, tip: "On battery, your Mac stays awake until the battery runs out. Save your work first.") {
-            .init(title: "Never", checked: Session.batteryLimit == Session.never)
+        limits.addItem(row(titles, tip: Words.say("On battery, your Mac stays awake until the battery runs out. Save your work first.")) {
+            .init(title: never, checked: Session.batteryLimit == Session.never)
         } click: { [unowned self] in setBatteryLimit(Session.never) })
         return limits
     }
@@ -936,7 +949,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // Wham's, "Status" prints the menu's first line and its lengths, "Items"
     // the menu's items, "Look" the appearance and the status item's width,
     // "Film/Compact" or "Film/Monochrome" changes the look and prints its
-    // frames, and "Pause" waits a step.
+    // frames, "Pictures" takes pictures of the menu and the notes, and
+    // "Pause" waits a step.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -987,6 +1001,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let menu = rowPairs()
                 perform(#selector(comparePairs(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
                 showMenu(menu)
+            case ["Pictures"]: takePictures()
             default:
                 var entry: NSMenuItem?, menu: NSMenu? = self.menu()
                 for title in path {
@@ -1041,6 +1056,51 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         print("menu", shown.map { $0.frame.height >= menu.size.height ? "whole" : "cut, \(Int($0.frame.height)) of \(Int(menu.size.height)) points" } ?? "missing")
         fflush(stdout)
         menu.cancelTracking()
+    }
+
+    // The menu, its submenus on their own and each kind of note, as drawn in
+    // the language the app speaks, saved in WHAM_SHOTS as "de-menu.png",
+    // "de-toast-on.png" and so on, for a person to look at: the words fit,
+    // the letters draw. Then "pictures de: 10 saved, menu lengths ...".
+    private func takePictures() {
+        let language = Words.language
+        guard Self.screenShows else {
+            print("pictures \(language): not drawn: the screen is locked or asleep")
+            fflush(stdout)
+            return
+        }
+        var saved: [String] = []
+        for (name, menu) in [("menu", self.menu()), ("lengths", lengths()), ("appearance", appearances()), ("battery-limit", batteryLimits())] {
+            Self.after(0.5) {
+                let shown = NSApp.windows.first { $0.isVisible && $0.className.contains("Menu") }
+                if let shown, Self.shoot(shown, "\(language)-\(name)") != nil { saved.append(name) }
+                menu.cancelTracking()
+            }
+            showMenu(menu)
+        }
+        let now = Date()
+        let notes: [(String, Toast.Style)] = [
+            ("on", Toast.on.saying(Words.say("Until %@", Session.clock(now.addingTimeInterval(7200), now: now)))),
+            ("off", Toast.off),
+            ("soon", Toast.soon.saying(Words.say("Then back to normal sleep, at %@", Session.clock(now.addingTimeInterval(300), now: now)))),
+            ("refused", Toast.off.saying(Session.refusal(.battery, battery: 9))),
+            ("hello", Toast.hello),
+            ("update", Toast.note(Words.say("CAN'T UPDATE ITSELF"), Words.say("Get Wham %@ at wham.sh", "10.10.10"))),
+        ]
+        func show(_ rest: ArraySlice<(String, Toast.Style)>) {
+            guard let (name, style) = rest.first else {
+                print("pictures \(language): \(saved.count) saved, \(saved.joined(separator: " "))")
+                fflush(stdout)
+                return
+            }
+            pop(style)
+            // Once its letters and its line are in.
+            Self.after(1.2) {
+                if Self.shoot(self.toast.window, "\(language)-toast-\(name)") != nil { saved.append("toast-\(name)") }
+                show(rest.dropFirst())
+            }
+        }
+        show(notes[...])
     }
 
     // Clicks Check for Updates in the open menu, follows its row until the
@@ -1449,7 +1509,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             play(.check(on))
             if !set { closeMenu { LoginItem.askForApproval() } }
         } catch {
-            alert("Wham could not change its login item: \(error.localizedDescription)")
+            alert("Wham could not change its login item: %@", error.localizedDescription)
         }
     }
 
@@ -1504,7 +1564,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let until = Date().addingTimeInterval(TimeInterval(hours) * 3600)
         ended = nil
         setOffAt(until)
-        let caption = "Until \(Session.clock(until))"
+        let caption = Words.say("Until %@", Session.clock(until))
         if current {
             show(true)
             announce(true, caption: caption, sound: .select)
@@ -1516,7 +1576,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // No end: the Mac stays awake until turned off. Off, it turns on.
     private func noTimeLimit() {
         guard !busy, let current = Sleep.isDisabled else { return }
-        let caption = "Until you turn it off"
+        let caption = Words.say("Until you turn it off")
         if current {
             // Already so: the click still says it.
             guard offAt != nil else { return play(.select) }
@@ -1580,7 +1640,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         case .failed(let message):
             Journal.note("rule", ["install": "failed", "error": message])
             revert(from: target)
-            alert("Permission not installed: \(message)")
+            alert("Permission not installed: %@", message)
         }
     }
 
@@ -1601,12 +1661,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         Self.after(wasOn && !muted ? playing?.duration ?? 0 : 0) { NSApp.terminate(nil) }
     }
 
-    private func alert(_ text: String) {
-        guard openMenu == nil else { return closeMenu { self.alert(text) } }
-        Journal.note("alert", ["text": text])
+    // `text` in the Mac's language, with `detail` for its %@ (said in that
+    // language too when Wham has the words); the journal keeps the English.
+    private func alert(_ text: String, _ detail: String? = nil) {
+        guard openMenu == nil else { return closeMenu { self.alert(text, detail) } }
+        Journal.note("alert", ["text": Words.say(text, arguments: detail.map { [$0] } ?? [], english: true)])
         let alert = NSAlert()
         alert.messageText = "Wham"
-        alert.informativeText = text
+        alert.informativeText = Words.say(text, arguments: detail.map { [Words.say($0)] } ?? [])
         activate()
         alert.runModal()
     }

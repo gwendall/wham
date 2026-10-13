@@ -12,7 +12,8 @@
 #   Battery Limit keep it open, the option checks or says how it went there
 #   and then, and only a click outside closes it; its rows look like the
 #   menu's own, titles, check marks and grays (with WHAM_SHOTS=dir, pictures
-#   of the menu go there)
+#   of the menu go there, and of the menu and every kind of note in German,
+#   Japanese and French: the words fit, the letters draw)
 # Where sudo sets the flag without a password (CI, or a Mac with Wham's rule),
 # on the kernel's real SleepDisabled flag:
 # - `wham on/off/toggle`, the switch and every menu item, and the app follows
@@ -97,15 +98,17 @@ fake="$work/power"
 echo "ac 100" >"$fake"
 pid=
 guards=
+lang=
 
 # Opens the app, out of sight and silent, pressing the WHAM_PRESS steps $1 if
 # given, with the arguments after it, its battery and heat read from $fake
 # while $guards is set. It would look for an update after a minute: not
-# before tomorrow here.
+# before tomorrow here. It speaks English, which the checks read, or $lang.
 launch() {
   steps=${1:-}
   [ $# = 0 ] || shift
-  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} "$bin" -muted YES -updateDelay 86400 "$@" >>"$work/out" 2>&1 &
+  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} "$bin" -muted YES -updateDelay 86400 \
+    -AppleLanguages "(${lang:-en})" "$@" >>"$work/out" 2>&1 &
   pid=$!
   sleep 1
 }
@@ -230,6 +233,25 @@ else
 fi
 stop
 : >"$work/out"
+# The menu, its submenus and every kind of note in German, Japanese and
+# French, pictured in WHAM_SHOTS for a person to look at (where the screen shows).
+if [ -n "${WHAM_SHOTS:-}" ]; then
+  for locale in de_DE ja_JP fr_FR; do
+    lang=${locale%_*}
+    launch Pictures -AppleLocale "$locale"
+    until_ "grep -q '^pictures ' \"$work/out\"" 30
+    pictured=$(grep '^pictures ' "$work/out" | tail -1)
+    if echo "$pictured" | grep -q 'not drawn'; then
+      echo "skip the pictures in $lang (${pictured})"
+    else
+      check "$(is "echo \"$pictured\" | grep -q '^pictures $lang: 10 saved' && [ -s \"$WHAM_SHOTS/$lang-toast-update.png\" ]")" \
+        "the menu and the notes in $lang, pictured (${pictured:-no answer})"
+    fi
+    stop
+    : >"$work/out"
+  done
+  lang=
+fi
 
 launch Menu
 idle

@@ -22,6 +22,7 @@ enum CLI {
 
     static func run(_ args: [String]) -> Int32 {
         Journal.source = "cli"
+        Words.english = true
         switch args.first ?? "help" {
         case "on":
             guard args.count <= 2 else { return usage() }

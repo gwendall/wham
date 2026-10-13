@@ -99,13 +99,14 @@ launch() {
   rm -rf "$app"
   ditto "$work/old.app" "$app"
   : >"$work/requests"
-  open -n "$app" --args -updateBase "$base" -updateDelay 1
+  open -n "$app" --args -updateBase "$base" -updateDelay 1 -AppleLanguages "(en)"
   for _ in $(seq 50); do [ -n "$(running)" ] && break; sleep 0.1; done
   old=$(running)
 }
 downloaded() { grep -q "^/releases/download/v9.9.9/Wham.zip" "$work/requests"; }
 # Runs a fresh 1.0.99 copy from its binary, so its output lands in $work/out,
-# pressing the WHAM_PRESS steps $1, with the defaults that follow.
+# pressing the WHAM_PRESS steps $1, with the defaults that follow. In English,
+# which the checks read.
 run() {
   steps=$1
   shift
@@ -113,7 +114,7 @@ run() {
   ditto "$work/old.app" "$app"
   : >"$work/requests"
   : >"$work/out"
-  WHAM_PRESS=$steps "$app/Contents/MacOS/Wham" -muted YES "$@" >>"$work/out" 2>&1 &
+  WHAM_PRESS=$steps "$app/Contents/MacOS/Wham" -muted YES -AppleLanguages "(en)" "$@" >>"$work/out" 2>&1 &
   old=$!
 }
 said() { grep -q "$1" "$work/out"; }

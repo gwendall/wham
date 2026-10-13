@@ -1,3 +1,4 @@
+import CoreText
 import Foundation
 import Security
 
@@ -23,6 +24,8 @@ if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--arm-and-di
 // writes; the run above inherits it).
 let journalDir = NSTemporaryDirectory() + "wham-journal-\(getpid())"
 setenv("WHAM_LOG_DIR", journalDir, 1)
+// The checks read Wham's words in English, whatever this Mac speaks.
+Words.english = true
 
 var failures = 0
 func check(_ condition: Bool, _ message: String, line: Int = #line) {
@@ -379,6 +382,86 @@ let unclean = Journal.markRunning()
 check(unclean.map { abs($0.timeIntervalSinceNow) < 5 } == true, "after one that did not quit: says when that one started")
 Journal.markStopped()
 try? FileManager.default.removeItem(atPath: journalDir)
+
+// The words in each language: every app/Resources/<language>.lproj says what
+// the English one does, with the same blanks (%@ and %d, in order or numbered),
+// and nothing the password prompt or the house style refuses.
+func strings(_ language: String) -> [String: String] {
+    guard let data = try? Data(contentsOf: URL(fileURLWithPath: "app/Resources/\(language).lproj/Localizable.strings")) else { return [:] }
+    return (try? PropertyListSerialization.propertyList(from: data, format: nil)) as? [String: String] ?? [:]
+}
+func blanks(_ text: String) -> [String] {
+    let blank = try! NSRegularExpression(pattern: #"%(?:(\d+)\$)?[-+ #0]*\d*(?:\.\d+)?(?:hh|h|ll|l|q|z|t|j)?([@dDiuUxXoOfFeEgGcCsSp%])"#)
+    var next = 0
+    return blank.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { match in
+        let kind = (text as NSString).substring(with: match.range(at: 2))
+        guard kind != "%" else { return nil }
+        next += 1
+        let number = match.range(at: 1).location == NSNotFound ? next : Int((text as NSString).substring(with: match.range(at: 1))) ?? 0
+        return "\(number)\(kind)"
+    }.sorted()
+}
+let languages = ((try? FileManager.default.contentsOfDirectory(atPath: "app/Resources")) ?? [])
+    .filter { $0.hasSuffix(".lproj") }.map { String($0.dropLast(".lproj".count)) }.sorted()
+let english = strings("en")
+let listed = NSDictionary(contentsOfFile: "app/Info.plist")?["CFBundleLocalizations"] as? [String] ?? []
+check(languages.count == 9 && Set(listed) == Set(languages), "Info.plist lists the languages Wham speaks (\(languages.joined(separator: " ")))")
+check(!english.isEmpty && english.allSatisfy { $0.key == $0.value }, "English says its keys (\(english.count) lines)")
+for language in languages {
+    let table = strings(language)
+    let missing = Set(english.keys).subtracting(table.keys), extra = Set(table.keys).subtracting(english.keys)
+    check(missing.isEmpty && extra.isEmpty, "\(language) says what English does, no more: missing \(missing.sorted()), extra \(extra.sorted())")
+    let blanked = table.filter { blanks($0.key) != blanks($0.value) }.keys.sorted()
+    check(blanked.isEmpty, "\(language) keeps the blanks: \(blanked)")
+    let refused = table.values.filter { $0.contains { "\"\\\u{2014}\u{2013}".contains($0) } }.sorted()
+    check(refused.isEmpty, "\(language) has no straight double quote, backslash or long dash: \(refused)")
+    let prompt = table[Sleep.prompt] ?? ""
+    let script = Sleep.installScript.replacingOccurrences(of: Sleep.prompt, with: prompt)
+    check(!prompt.isEmpty && NSAppleScript(source: script)?.compileAndReturnError(nil) == true, "\(language): the password prompt compiles")
+}
+
+// Every line the app says through Words is in the English table, and the
+// table holds nothing it no longer says.
+let sources = ((try? FileManager.default.contentsOfDirectory(atPath: "app/Sources")) ?? []).filter { $0.hasSuffix(".swift") }
+    .map { (try? String(contentsOfFile: "app/Sources/" + $0, encoding: .utf8)) ?? "" }.joined()
+    .replacingOccurrences(of: #""\s*\+\s*""#, with: "", options: .regularExpression)
+let literal = #""((?:[^"\\]|\\.)*)""#
+let said = try! NSRegularExpression(pattern: #"\b(?:say|alert|failed)\((?:\w+ \? )?"# + literal + "(?: : " + literal + ")?")
+var sayings = Set<String>()
+for match in said.matches(in: sources, range: NSRange(sources.startIndex..., in: sources)) {
+    for group in 1...2 where match.range(at: group).location != NSNotFound {
+        sayings.insert((sources as NSString).substring(with: match.range(at: group)))
+    }
+}
+let unsaid = Set(english.keys).subtracting(sayings), untranslated = sayings.subtracting(english.keys)
+check(unsaid.isEmpty && untranslated.isEmpty, "the sources and the English table say the same: untranslated \(untranslated.sorted()), unsaid \(unsaid.sorted())")
+
+// The notes' titles in every language: Silkscreen's capitals in the Latin
+// ones (it has no ẞ, so German titles write SS), the language's face for the rest.
+TitleFont.url = URL(fileURLWithPath: "app/Resources/Silkscreen-Regular.ttf")
+check((CTFontCopyPostScriptName(TitleFont.silkscreen) as String).contains("Silkscreen"), "the pixel font loads")
+let titles = english.keys.filter { $0 == $0.uppercased() && $0.contains(where: \.isLetter) }.sorted()
+for language in languages {
+    let table = strings(language)
+    let unfit = titles.map { (table[$0] ?? $0).replacingOccurrences(of: "%@", with: "1.6.0") }.filter { title in
+        title != title.uppercased() || TitleFont.letters(title, language: language).contains { letter in
+            !letter.text.allSatisfy(\.isWhitespace)
+                && (TitleFont.faces[language] == nil ? !letter.silkscreen : !TitleFont.has(letter.font, letter.text))
+        }
+    }
+    check(unfit.isEmpty, "\(language): the \(titles.count) note titles have their letters \(unfit)")
+}
+let installed = Set(CTFontManagerCopyAvailablePostScriptNames() as? [String] ?? [])
+for (language, face) in TitleFont.faces.sorted(by: { $0.key < $1.key }) {
+    check(installed.contains(face), "\(language): the title face \(face) is on the Mac")
+}
+// A letter stands where Core Text puts its glyph: after a capital, one pixel
+// less than the capital's width, as the line's kerning says.
+var capital: UniChar = 77, glyph: CGGlyph = 0 // M
+_ = CTFontGetGlyphsForCharacters(TitleFont.silkscreen, &capital, &glyph, 1)
+let width = CTFontGetAdvancesForGlyphs(TitleFont.silkscreen, .horizontal, &glyph, nil, 1)
+let at = TitleFont.positions(TitleFont.line(TitleFont.letters("MAC", language: "en")))
+check(at[0] == 0 && at[1] == CGFloat(width) - TitleFont.pixel, "MAC: A stands at \(at[1] ?? -1), M is \(width) wide")
 
 print(failures == 0 ? "\nall checks passed" : "\n\(failures) check(s) failed")
 exit(failures == 0 ? 0 : 1)

@@ -25,12 +25,15 @@ jobs:
       - name: Build (universal, signed ad hoc)
         run: SIGN=- scripts/build.sh
       - name: Check the bundle
-        run: lipo -archs build/Wham.app/Contents/MacOS/Wham | grep -q "x86_64 arm64"
+        run: |
+          lipo -archs build/Wham.app/Contents/MacOS/Wham | grep -q "x86_64 arm64"
+          test "$(find build/Wham.app/Contents/Resources -name Localizable.strings | wc -l)" -eq 9
       - name: Eval (the real app, its budgets, the real flag)
         run: scripts/eval.sh
         env:
           WHAM_SHOTS: ${{ runner.temp }}/menu
-      # The open menu at each step of Check for Updates, as this macOS draws it.
+      # The open menu at each step of Check for Updates, as this macOS draws it,
+      # and the menu and the notes in German, Japanese and French.
       - name: Keep the menu's pictures
         if: always()
         uses: actions/upload-artifact@v4

@@ -50,18 +50,18 @@ enum Session {
     // Why it ended, in a few words.
     static func why(_ end: End, battery: Int?) -> String {
         switch end {
-        case .time: return "Time is up"
-        case .battery: return "Battery at \(battery ?? batteryLimit)%"
-        case .heat: return "Your Mac got too hot"
+        case .time: return Words.say("Time is up")
+        case .battery: return Words.say("Battery at %@", Words.percent(battery ?? batteryLimit))
+        case .heat: return Words.say("Your Mac got too hot")
         }
     }
 
     // Why it will not start.
     static func refusal(_ end: End, battery: Int?) -> String {
         switch end {
-        case .time: return "Time is up"
-        case .battery: return "Battery at \(battery ?? batteryLimit)%, plug in first"
-        case .heat: return "Your Mac is too hot right now"
+        case .time: return Words.say("Time is up")
+        case .battery: return Words.say("Battery at %@, plug in first", Words.percent(battery ?? batteryLimit))
+        case .heat: return Words.say("Your Mac is too hot right now")
         }
     }
 
@@ -88,6 +88,7 @@ enum Session {
     // "16:40" today, "Tue 16:40" on another day, in the Mac's own format.
     static func clock(_ date: Date, now: Date = Date()) -> String {
         let format = DateFormatter()
+        format.locale = Words.locale
         format.setLocalizedDateFormatFromTemplate(Calendar.current.isDate(date, inSameDayAs: now) ? "jmm" : "EEE jmm")
         return format.string(from: date)
     }
@@ -97,8 +98,8 @@ enum Session {
     static func timeLeft(_ seconds: TimeInterval) -> String {
         let minutes = max(1, Int((seconds / 60).rounded(.up)))
         let hours = minutes / 60, rest = minutes % 60
-        if hours == 0 { return "\(rest) min" }
-        return rest == 0 ? "\(hours) hr" : "\(hours) hr \(rest) min"
+        if hours == 0 { return Words.say("%d min", rest) }
+        return rest == 0 ? Words.say("%d hr", hours) : Words.say("%1$d hr %2$d min", hours, rest)
     }
 
     // The share of a timed session still to run, from 1 at its start to 0 at
