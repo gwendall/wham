@@ -235,12 +235,12 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if latest != nil { available = newer }
         guard let newer else {
             return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later", .said(Line.noAnswer), .refused)
-                                        : ("UP TO DATE", "Wham \(running) is the latest", .done(Line.latest(running)), .done))
+                                        : ("UP TO DATE", "Wham \(running) is the latest", .done(Line.latest(running)), .check(true)))
         }
         guard asked || Update.isOn else { return settle(nil) }
         // Not in a folder its user may write to, or a build from source: the
         // download is on wham.sh.
-        guard replaceable else { return settle(("CAN'T UPDATE ITSELF", "Get Wham \(newer) at wham.sh", nil, .link), openSite: true) }
+        guard replaceable else { return settle(("CAN'T UPDATE ITSELF", "Get Wham \(newer) at wham.sh", nil, .select), openSite: true) }
         installing = newer
         if let updateRow {
             updateRow.state = updateState
@@ -597,7 +597,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let row = UpdateRow(updateState, width: MenuRow.width(for: Line.all(running: running, found: available ?? "10.10.10"), accessory: true))
         row.onClick = { [weak self, weak row] in
             guard let self else { return }
-            self.play(.tap)
+            self.play(.select)
             self.checkForUpdate(asked: true)
             row?.state = self.updateState
         }
@@ -606,7 +606,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         row.onChange = { [weak self] state in
             print("row \(state)")
             fflush(stdout)
-            if case .done = state { self?.play(.done) }
+            if case .done = state { self?.play(.check(true)) }
             if case .said = state { self?.play(.refused) }
         }
         let entry = NSMenuItem(title: row.title, action: #selector(press(_:)), keyEquivalent: "")
@@ -729,13 +729,13 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .init(title: "Monochrome", checked: look.monochrome)
         } click: { [unowned self] in
             look.monochrome.toggle()
-            play(.monochrome(look.monochrome))
+            play(.check(look.monochrome))
         })
         looks.addItem(row(titles, tip: "As wide as an icon: the switch turns instead of sliding.") { [unowned self] in
             .init(title: "Compact", checked: look.compact)
         } click: { [unowned self] in
             look.compact.toggle()
-            play(.compact(look.compact))
+            play(.check(look.compact))
         })
         return looks
     }
@@ -982,6 +982,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             @MainActor func step() {
                 // A pointer the menu did not follow (macOS 14 now and then):
                 // the whole path once more from the top, said on its own line.
+                // Its submenus closed first, the pointer on the first line, which
+                // opens none: a submenu left open does not open again.
                 @MainActor func again(_ why: String) -> Bool {
                     guard !retried else { return false }
                     retried = true
@@ -989,7 +991,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     fflush(stdout)
                     titles = path[...]
                     current = menu
-                    step()
+                    guard let first = Self.frame(of: menu.items.first?.title ?? "", in: root) else { step(); return true }
+                    Self.pointer(onto: first, of: root)
+                    Self.waitFor(3, { self.shownMenus.count <= 1 }, poke: Self.nudge(first, of: root)) { step() }
                     return true
                 }
                 let title = titles.removeFirst()
@@ -1003,7 +1007,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     let selected = { current.highlightedItem === entry && row.highlighted }
                     Self.waitFor(5, { selected() || !self.shownMenus.contains(ObjectIdentifier(current)) }, poke: Self.nudge(frame, of: window)) {
                         guard current.highlightedItem === entry else {
-                            if !again("\(title) did not highlight") { fail("\(title) did not highlight") }
+                            // What the menu showed instead, to tell a pointer it
+                            // missed from a submenu that was not there.
+                            let seen = "\(title) did not highlight (\(self.shownMenus.count) menus shown, \(self.shownMenus.contains(ObjectIdentifier(current)) ? "this one" : "not this one"), selected \(current.highlightedItem?.title ?? "none"), its window \(window.isVisible ? "visible" : "hidden") \(window.windowNumber == root.windowNumber ? "the menu's own" : "its own"))"
+                            if !again(seen) { fail(seen) }
                             return
                         }
                         self.heard = nil
@@ -1230,7 +1237,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // The menu's links, in the browser.
     private func visit(_ page: URL) {
-        play(.link)
+        play(.select)
         NSWorkspace.shared.open(page)
     }
 
@@ -1274,7 +1281,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let caption = "Until \(Session.clock(until))"
         if current {
             show(true)
-            announce(true, caption: caption, sound: .length(hours: hours))
+            announce(true, caption: caption, sound: .select)
         } else {
             change(to: true, mayInstall: true, caption: caption)
         }
@@ -1286,10 +1293,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let caption = "Until you turn it off"
         if current {
             // Already so: the click still says it.
-            guard offAt != nil else { return play(.length(hours: nil)) }
+            guard offAt != nil else { return play(.select) }
             setOffAt(nil)
             show(true)
-            announce(true, caption: caption, sound: .length(hours: nil))
+            announce(true, caption: caption, sound: .select)
         } else {
             if refuses() { return }
             ended = nil
@@ -1302,7 +1309,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // and its chime cuts the limit's sound.
     private func setBatteryLimit(_ percent: Int) {
         Session.batteryLimit = percent
-        play(.batteryLimit(percent))
+        play(.select)
         check()
     }
 
@@ -1355,9 +1362,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             return alert("Your Mac refused to allow sleep again, so Wham stays open.")
         }
         sleepGivenBack = true
-        // Its sound first, to the end: sleep given back, or only goodbye.
-        play(wasOn ? .off : .bye)
-        Self.after(muted ? 0 : playing?.duration ?? 0) { NSApp.terminate(nil) }
+        // Sleep given back, it says so first, to the end.
+        if wasOn { play(.off) }
+        Self.after(wasOn && !muted ? playing?.duration ?? 0 : 0) { NSApp.terminate(nil) }
     }
 
     private func alert(_ text: String) {

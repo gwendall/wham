@@ -34,7 +34,7 @@ func check(_ condition: Bool, _ message: String, line: Int = #line) {
 func pitch(_ samples: [Float], from start: Double, length: Double) -> Double {
     let a = Int(start * Chime.rate), n = Int(length * Chime.rate)
     let window = Array(samples[a..<min(a + n, samples.count)])
-    let scores = (20...80).map { lag -> (lag: Int, score: Float) in
+    let scores = (20...100).map { lag -> (lag: Int, score: Float) in
         var score: Float = 0
         for i in 0..<(window.count - lag) { score += window[i] * window[i + lag] }
         return (lag, score / Float(window.count - lag))
@@ -69,47 +69,14 @@ for (sound, samples) in sounds where sound != .on && sound != .off {
           "\(sound.name): under the switch's chime (peak \(String(format: "%.3f", peak))), in silence at both ends")
 }
 
-// How bright a stretch of a note at `freq` is: its 2nd and 3rd harmonics'
-// power against its first's. A 25% pulse's is about 0.6, a plain tone's 0.
-func brightness(_ samples: [Float], from start: Double, length: Double, freq: Double) -> Double {
-    let a = Int(start * Chime.rate), n = Int(length * Chime.rate)
-    func power(_ f: Double) -> Double {
-        var re = 0.0, im = 0.0
-        for i in 0..<n where a + i < samples.count {
-            let hann = 0.5 - 0.5 * cos(2 * .pi * Double(i) / Double(n - 1))
-            let x = Double(samples[a + i]) * hann, w = 2 * .pi * f * Double(i) / Chime.rate
-            re += x * cos(w)
-            im -= x * sin(w)
-        }
-        return re * re + im * im
-    }
-    return (power(2 * freq) + power(3 * freq)) / max(power(freq), .leastNonzeroMagnitude)
-}
-
-// The longer the session, the longer the run and the higher its last note;
-// No Time Limit, the longest.
-let runs = [1, 2, 4, 8].map { Chime.samples(.length(hours: $0)) }
-let tops = runs.enumerated().map { pitch($1, from: Double($0 + 1) * 0.03 + 0.005, length: 0.03) }
-check(zip(tops, tops.dropFirst()).allSatisfy { $1 > $0 * 1.1 } && zip(runs, runs.dropFirst()).allSatisfy { $1.count > $0.count }
-      && Chime.samples(.length(hours: nil)).count > runs[3].count,
-      "1, 2, 4 and 8 hours climb longer and higher (last notes \(tops.map { Int($0) }) Hz), No Time Limit the most")
-// A battery limit: two blips, higher for a higher limit.
-let limits = [5, 10, 20, 30].map { pitch(Chime.samples(.batteryLimit($0)), from: 0.005, length: 0.04) }
-check(zip(limits, limits.dropFirst()).allSatisfy { $1 > $0 * 1.1 }, "5%, 10%, 20% and 30% blip higher and higher (\(limits.map { Int($0) }) Hz)")
-// Compact slides down a fifth as the switch shrinks, up as it grows back.
-for on in [true, false] {
-    let samples = Chime.samples(.compact(on))
-    let start = pitch(samples, from: 0.003, length: 0.03), end = pitch(samples, from: 0.15, length: 0.04)
-    check(on ? start > end * 1.3 : end > start * 1.3, "compact \(on ? "on" : "off") slides \(on ? "down" : "up") (\(Int(start)) to \(Int(end)) Hz)")
-}
-// Monochrome loses its harmonics as the switch loses its colors, gains them back with them.
-for on in [true, false] {
-    let samples = Chime.samples(.monochrome(on))
-    let b5 = Chime.root * pow(2, 7 / 12)
-    let start = brightness(samples, from: 0.002, length: 0.025, freq: b5), end = brightness(samples, from: 0.19, length: 0.04, freq: b5)
-    check(on ? start > 0.3 && end < 0.05 : end > 0.3 && start < 0.05,
-          "monochrome \(on ? "on" : "off") turns \(on ? "plain" : "bright") (\(String(format: "%.2f to %.2f", start, end)))")
-}
+// Checked goes up, unchecked down, as the switch does; a refusal sits under
+// the key's E5.
+let checked = Chime.samples(.check(true)), unchecked = Chime.samples(.check(false))
+let ups = [pitch(checked, from: 0.005, length: 0.03), pitch(checked, from: 0.045, length: 0.03)]
+let downs = [pitch(unchecked, from: 0.005, length: 0.03), pitch(unchecked, from: 0.045, length: 0.03)]
+check(ups[1] > ups[0] * 1.3 && downs[0] > downs[1] * 1.3, "check climbs (\(ups.map { Int($0) }) Hz), uncheck falls (\(downs.map { Int($0) }) Hz)")
+let no = pitch(Chime.samples(.refused), from: 0.005, length: 0.04)
+check(no < Chime.root * 0.95, "refused sounds under E5 (\(Int(no)) Hz)")
 
 let wav = Chime.wav([0, 0.5, -0.5])
 check(wav.count == 44 + 6 && String(decoding: wav.prefix(4), as: UTF8.self) == "RIFF", "WAV header and size")
