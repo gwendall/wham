@@ -973,7 +973,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
             let path = paths.removeFirst()
-            var titles = path[...], current = menu, retried = false, gentle = false
+            var titles = path[...], current = menu, retried = false
             // Where the pointer, the menus and the selection were at each
             // move, said with a failure: what a menu that would not follow saw.
             var trail: [String] = []
@@ -993,12 +993,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 // the whole path once more from the top, said on its own line.
                 // Its submenus closed first, the pointer on the first line, which
                 // opens none: a submenu left open does not open again.
-                // This time the pointer goes as a hand would: along the
-                // submenu's title to its edge, then into the submenu.
                 @MainActor func again(_ why: String) -> Bool {
                     guard !retried else { return false }
                     retried = true
-                    gentle = true
                     print("retry \(path.joined(separator: "/")): \(why) [\(trail.joined(separator: "; "))]")
                     fflush(stdout)
                     trail = []
@@ -1059,16 +1056,23 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         }
                         current = submenu
                         mark("\(title) open")
-                        guard gentle, let inside = Self.window(of: submenu) else { return step() }
-                        // Once the submenu stands still: to the end of its
-                        // title, then just inside the submenu, level with it.
+                        guard let inside = Self.window(of: submenu) else { return step() }
+                        // As a hand goes, not in one jump (which macOS 14 now
+                        // and then takes for the pointer leaving both menus,
+                        // and closes the submenu): once the submenu stands
+                        // still, along its title to the side it opened on,
+                        // then just inside it, level with the title.
                         Self.after(0.3) {
                             mark("\(title) still open")
-                            let edge = NSRect(x: frame.maxX - 6, y: frame.minY, width: 1, height: frame.height)
+                            let left = inside.frame.midX < window.frame.midX
+                            let edge = NSRect(x: left ? frame.minX + 6 : frame.maxX - 6, y: frame.minY, width: 1, height: frame.height)
                             Self.pointer(onto: edge, of: window)
                             Self.after(0.15) {
-                                let level = window.convertToScreen(edge)
-                                let door = inside.convertFromScreen(NSRect(x: inside.frame.minX + 8, y: level.minY, width: 1, height: level.height))
+                                // Level with the title, unless the submenu had to
+                                // move up or down to fit the screen.
+                                let level = window.convertToScreen(edge), box = inside.frame
+                                let y = min(max(level.minY, box.minY + 4), box.maxY - level.height - 4)
+                                let door = inside.convertFromScreen(NSRect(x: left ? box.maxX - 8 : box.minX + 8, y: y, width: 1, height: level.height))
                                 Self.pointer(onto: door, of: inside)
                                 Self.after(0.15) {
                                     mark("inside \(title)")
