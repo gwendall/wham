@@ -19,13 +19,14 @@ jobs:
           fetch-depth: 0 # build.sh numbers the build from the commit count
 
       # The version's section of CHANGELOG.md, written for the people who use
-      # Wham (site/messages/en.json), with a link to every version.
+      # Wham (the English of wham.sh/changelog), with a link to the version's
+      # own page there.
       - name: Release notes
         run: |
           version=${GITHUB_REF_NAME#v}
           awk -v version="$version" '/^## / { on = ($2 == version); next } on' CHANGELOG.md | sed '/./,$!d' > "$RUNNER_TEMP/notes.md"
           grep -q . "$RUNNER_TEMP/notes.md" || { echo "CHANGELOG.md has nothing for $version"; exit 1; }
-          printf '\nEvery version of Wham: https://wham.sh/changelog\n' >> "$RUNNER_TEMP/notes.md"
+          printf '\nIn nine languages: https://wham.sh/changelog/%s\n' "$version" >> "$RUNNER_TEMP/notes.md"
           cat "$RUNNER_TEMP/notes.md"
 
       - name: Developer ID certificate

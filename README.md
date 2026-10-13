@@ -225,13 +225,16 @@ open build/Wham.app
 | `scripts/release.sh` | Tags a release; GitHub Actions (`release.yml`) runs `scripts/package.sh`, publishes it and updates the cask |
 | `packaging/wham.rb` | The Homebrew cask template |
 | `npm` | The `wham.sh` npm package |
-| `site` | [wham.sh](https://wham.sh), Next.js |
-| `CHANGELOG.md` | What changed for the people who use Wham, made from the site's changelog (`site/messages`) |
+| `CHANGELOG.md` | What changed for the people who use Wham, made from the changelog on [wham.sh](https://wham.sh/changelog) |
 | `docs/brand.md` | Name, voice, colors, type, sprites, sound |
 
-To release, write what changed in `changelog` in `site/messages/en.json`, then
-in every other language, run `node site/scripts/changelog.mjs` to remake
-CHANGELOG.md, merge, and `scripts/release.sh 1.2.0` from a clean main: it
+The website, [wham.sh](https://wham.sh), is built from its own repo. It serves
+`install.sh`, `uninstall.sh` and the Silkscreen font from this one, and is
+rebuilt when one of them changes on main (`.github/workflows/site.yml`).
+
+To release, write what changed on the website's changelog, in every language:
+it makes CHANGELOG.md here. Merge that, then run `scripts/release.sh 1.2.0`
+from a clean main: it
 checks the changelog has the version, tags and pushes, and the release workflow
 builds, signs, notarizes, publishes with that version's notes and updates the
 Homebrew cask. The npm package only wraps the installer, which always fetches
