@@ -93,13 +93,17 @@ with the switch as it was.
 
 | Case | What Wham does | Checked by |
 | --- | --- | --- |
-| Turn On For 1, 2, 4 or 8 hours; Stay Awake For, while on | Ends then; the menu and the tooltip say until when | Eval: both menu items |
+| Turn On For 1, 2, 4 or 8 hours; Stay Awake For, while on | Ends then. Each length says when it would end; once on, the menu says until when and what is left, the tooltip until when | Eval: both menu items, the menu's lines |
+| A timed session runs | The switch's candy drains from the far end toward the knob, whole at the start, a ring around the knob at the end. In quarter points, so the tick redraws only when there is something to see | Test: `Session.remaining` |
+| Five minutes before the end, lid open | A note drops down, without a sound ("5 minutes left", and when it ends). Not for a session under ten minutes, nor under a closed lid | Test: `Session.warnAt`; eval |
+| No Time Limit, during a timed session | Drops the end, stays on. Shown only then | Eval |
 | `wham on 2h` (also `45m`, `1h30m`, `1d`, `90s`) | The same. Anything else exits 64 and changes nothing | Test: the parser; eval: `wham on 3s` ends 3 to 7 s later, `wham on 2x` is refused |
 | `wham on` or `wham off` during a timed session | Drops the end | Eval |
 | The end passes while Wham is closed | Ends as soon as Wham opens; one still to come carries on | Eval |
 | `wham on 2h` while Wham is closed | Opens Wham out of sight, since Wham is what ends the session | Eval (on CI) |
 | The clock jumps, or macOS naps the app | The end is a timer in the run loop's common modes, and every look compares it with the clock | Code: `Session.end`, the 2 s tick |
 | On battery, at 10% or less | Turns off ("Battery at 10%") and will not turn on until plugged in, saying so | Test: `Session.end`; eval: the switch, the menu and `wham on` |
+| Battery Limit at 5, 20 or 30% | The same at that charge. The app and `wham` share it (`defaults write sh.wham.app batteryLimit -int 20`); any other value counts as 10%. Raised over the charge on battery, it ends the session at once | Test; eval: 20% at 15% ends it and `wham on` refuses, 5% stays awake at 8% |
 | Plugged in at any charge, or no battery | The charge never stops it | Test |
 | Plugged back in after the battery stopped it | Stays off until asked | Eval |
 | Critically hot (`thermalState` critical, or macOS's thermal pressure at trapping) | Turns off ("Your Mac got too hot") and will not turn on until it cools. Below critical it carries on, so a busy server is left alone | Test; eval, also with macOS's own thermal signal raised as root on CI |

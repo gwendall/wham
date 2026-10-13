@@ -165,7 +165,7 @@
       },
       {
         "q": "Puis-je l'activer pour un moment ?",
-        "a": "Oui. Faites un clic droit sur l'interrupteur et choisissez « Turn On For » 1, 2, 4 ou 8 heures : le menu indique jusqu'à quand, après quoi votre Mac dort comme d'habitude. Depuis un terminal, <code>wham on 2h</code>, ou <code>wham run</code> avant une commande pour rester éveillé seulement pendant son exécution."
+        "a": "Oui. Faites un clic droit sur l'interrupteur et choisissez « Turn On For » 1, 2, 4 ou 8 heures : chaque durée indique l'heure de fin. Pendant la session, le menu dit combien de temps il reste, les couleurs de l'interrupteur s'estompent peu à peu, et une note descend cinq minutes avant la fin. « No Time Limit » le garde allumé. Depuis un terminal, <code>wham on 2h</code>, ou <code>wham run</code> avant une commande pour rester éveillé seulement pendant son exécution."
       },
       {
         "q": "Mon Mac va-t-il surchauffer dans un sac ?",
@@ -173,7 +173,7 @@
       },
       {
         "q": "Et la batterie ?",
-        "a": "Wham lui-même ne coûte presque rien. Mais un Mac éveillé consomme la batterie comme un Mac éveillé, capot fermé ou non, alors sur batterie, Wham lâche prise à 10 % : votre Mac dort avec votre travail sauvegardé plutôt que de tomber à plat. Pour les tâches longues, branchez-le."
+        "a": "Wham lui-même ne coûte presque rien. Mais un Mac éveillé consomme la batterie comme un Mac éveillé, capot fermé ou non, alors sur batterie, Wham lâche prise à 10 %, ou à 5, 20 ou 30 % si vous changez sa « Battery Limit » : votre Mac dort avec votre travail sauvegardé plutôt que de tomber à plat. Pour les tâches longues, branchez-le."
       },
       {
         "q": "Mon Mac est-il verrouillé capot fermé ?",

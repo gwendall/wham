@@ -165,7 +165,7 @@
       },
       {
         "q": "Kann ich es nur für eine Weile einschalten?",
-        "a": "Ja. Rechtsklick auf den Schalter und „Turn On For“ für 1, 2, 4 oder 8 Stunden wählen: Das Menü zeigt an, bis wann, danach schläft dein Mac wie gewohnt. Im Terminal geht das mit <code>wham on 2h</code>, oder <code>wham run</code> vor einem Befehl, um nur während dessen Laufzeit wach zu bleiben."
+        "a": "Ja. Rechtsklick auf den Schalter und „Turn On For“ für 1, 2, 4 oder 8 Stunden wählen: Jede Dauer zeigt, wann sie endet. Währenddessen sagt das Menü, wie viel Zeit bleibt, die Farben des Schalters verblassen nach und nach, und fünf Minuten vor dem Ende erscheint ein Hinweis. „No Time Limit“ lässt ihn an. Im Terminal geht das mit <code>wham on 2h</code>, oder <code>wham run</code> vor einem Befehl, um nur während dessen Laufzeit wach zu bleiben."
       },
       {
         "q": "Überhitzt mein Mac in einer Tasche?",
@@ -173,7 +173,7 @@
       },
       {
         "q": "Und der Akku?",
-        "a": "Wham selbst kostet fast nichts. Aber ein wacher Mac verbraucht Akku wie ein wacher Mac, Deckel zu oder nicht, deshalb gibt Wham im Akkubetrieb bei 10 % nach: Dein Mac schläft mit gespeicherter Arbeit, statt leerzulaufen. Für lange Aufgaben: ans Netzteil anschließen."
+        "a": "Wham selbst kostet fast nichts. Aber ein wacher Mac verbraucht Akku wie ein wacher Mac, Deckel zu oder nicht, deshalb gibt Wham im Akkubetrieb bei 10 % nach, oder bei 5, 20 oder 30 %, wenn du sein „Battery Limit“ änderst: Dein Mac schläft mit gespeicherter Arbeit, statt leerzulaufen. Für lange Aufgaben: ans Netzteil anschließen."
       },
       {
         "q": "Ist mein Mac bei geschlossenem Deckel gesperrt?",

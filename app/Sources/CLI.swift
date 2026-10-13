@@ -96,7 +96,7 @@ enum CLI {
     // Tells the menu bar app when the session ends, and that the switch moved:
     // it shows it at once rather than on its next look.
     private static func share(_ until: Date?) {
-        if Session.offAt != until { Session.offAt = until }
+        if Session.offAt != until { Session.setEnd(until) }
         DistributedNotificationCenter.default().postNotificationName(Session.changed, object: nil, userInfo: nil, deliverImmediately: true)
     }
 
@@ -183,7 +183,7 @@ enum CLI {
         return 1
     }
 
-    static let help = """
+    static var help: String { """
     wham - keeps your Mac awake, even with the lid closed
 
     usage:
@@ -195,11 +195,11 @@ enum CLI {
       wham status        say which one it is
       wham version
 
-    On battery at 10% or less, or when your Mac gets critically hot, Wham lets
-    it sleep.
+    On battery at \(Session.batteryLimit)% or less (Battery Limit, in the menu), or when your
+    Mac gets critically hot, Wham lets it sleep.
 
     The menu bar app does the same with one click. https://wham.sh
-    """
+    """ }
 }
 
 // The command `wham run` waits on, for the signal handlers (which cannot capture).

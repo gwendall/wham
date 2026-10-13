@@ -165,7 +165,7 @@
       },
       {
         "q": "Can I turn it on for a while?",
-        "a": "Yes. Right-click the switch and pick Turn On For 1, 2, 4 or 8 hours: the menu says until when, then your Mac sleeps as usual. From a terminal, <code>wham on 2h</code>, or <code>wham run</code> before a command to stay awake just while it runs."
+        "a": "Yes. Right-click the switch and pick Turn On For 1, 2, 4 or 8 hours: each says when it would end. While it runs, the menu says how long is left, the switch's colors drain away, and a note drops down five minutes before the end. No Time Limit keeps it on. From a terminal, <code>wham on 2h</code>, or <code>wham run</code> before a command to stay awake just while it runs."
       },
       {
         "q": "Will my Mac overheat in a bag?",
@@ -173,7 +173,7 @@
       },
       {
         "q": "What about the battery?",
-        "a": "Wham itself costs next to nothing. But an awake Mac drains its battery like an awake Mac, lid closed or not, so on battery Wham lets go at 10%: your Mac sleeps with your work saved instead of running flat. For long jobs, plug it in."
+        "a": "Wham itself costs next to nothing. But an awake Mac drains its battery like an awake Mac, lid closed or not, so on battery Wham lets go at 10%, or at 5, 20 or 30% if you change its Battery Limit: your Mac sleeps with your work saved instead of running flat. For long jobs, plug it in."
       },
       {
         "q": "Is my Mac locked with the lid closed?",

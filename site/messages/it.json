@@ -165,7 +165,7 @@
       },
       {
         "q": "Posso attivarlo solo per un po'?",
-        "a": "Sì. Fai clic con il tasto destro sull'interruttore e scegli «Turn On For» per 1, 2, 4 o 8 ore: il menu indica fino a quando, poi il tuo Mac si sospende come sempre. Da terminale, <code>wham on 2h</code>, oppure <code>wham run</code> prima di un comando per restare sveglio solo mentre è in esecuzione."
+        "a": "Sì. Fai clic con il tasto destro sull'interruttore e scegli «Turn On For» per 1, 2, 4 o 8 ore: ogni durata indica a che ora finirebbe. Nel frattempo il menu dice quanto tempo resta, i colori dell'interruttore sbiadiscono poco a poco e cinque minuti prima della fine compare un avviso. «No Time Limit» lo lascia acceso. Da terminale, <code>wham on 2h</code>, oppure <code>wham run</code> prima di un comando per restare sveglio solo mentre è in esecuzione."
       },
       {
         "q": "Il mio Mac si surriscalda in una borsa?",
@@ -173,7 +173,7 @@
       },
       {
         "q": "E la batteria?",
-        "a": "Wham in sé costa quasi nulla. Ma un Mac sveglio consuma batteria come un Mac sveglio, coperchio chiuso o no, quindi a batteria Wham si arrende al 10%: il tuo Mac si sospende con il lavoro salvato, invece di scaricarsi del tutto. Per i lavori lunghi, collegalo alla corrente."
+        "a": "Wham in sé costa quasi nulla. Ma un Mac sveglio consuma batteria come un Mac sveglio, coperchio chiuso o no, quindi a batteria Wham si arrende al 10%, o al 5, 20 o 30% se cambi il suo «Battery Limit»: il tuo Mac si sospende con il lavoro salvato, invece di scaricarsi del tutto. Per i lavori lunghi, collegalo alla corrente."
       },
       {
         "q": "Il mio Mac resta bloccato a coperchio chiuso?",
