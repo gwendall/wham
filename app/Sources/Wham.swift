@@ -1065,24 +1065,31 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                         Self.after(0.3) {
                             mark("\(title) still open")
                             let left = inside.frame.midX < window.frame.midX
-                            let edge = NSRect(x: left ? frame.minX + 6 : frame.maxX - 6, y: frame.minY, width: 1, height: frame.height)
+                            let edge = NSRect(x: left ? frame.minX + 16 : frame.maxX - 16, y: frame.minY, width: 1, height: frame.height)
                             Self.pointer(onto: edge, of: window)
                             Self.after(0.15) {
                                 // Level with the title, unless the submenu had to
                                 // move up or down to fit the screen.
                                 let level = window.convertToScreen(edge), box = inside.frame
                                 let y = min(max(level.minY, box.minY + 4), box.maxY - level.height - 4)
-                                let door = inside.convertFromScreen(NSRect(x: left ? box.maxX - 8 : box.minX + 8, y: y, width: 1, height: level.height))
+                                let door = inside.convertFromScreen(NSRect(x: left ? box.maxX - 16 : box.minX + 16, y: y, width: 1, height: level.height))
                                 Self.pointer(onto: door, of: inside)
                                 Self.after(0.15) {
                                     mark("inside \(title)")
+                                    guard shown() else {
+                                        let seen = "\(title) closed on the way in"
+                                        if !again(seen) { fail("\(seen) [\(trail.joined(separator: "; "))]") }
+                                        return
+                                    }
                                     step()
                                 }
                             }
                         }
                     }
                 } else {
-                    fail("\(title) not shown")
+                    // A row whose submenu closed after the pointer went in.
+                    let seen = "\(title) not shown"
+                    if current === menu || !again(seen) { fail("\(seen) [\(trail.joined(separator: "; "))]") }
                 }
             }
             step()
