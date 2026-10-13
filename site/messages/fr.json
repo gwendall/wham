@@ -18,7 +18,8 @@
     "download": "Télécharger",
     "github": "Wham sur GitHub",
     "language": "Langue",
-    "footer": "Pied de page"
+    "footer": "Pied de page",
+    "changelog": "Nouveautés"
   },
   "sound": {
     "label": "Son",
@@ -188,6 +189,10 @@
         "a": "La veille revient. Quitter désactive le réglage en sortant, que vous quittiez depuis son menu (clic droit sur l'interrupteur), depuis un script, ou en vous déconnectant. Et si Wham disparaît sans quitter proprement, sur un plantage ou un arrêt forcé, son chien de garde redonne la veille en moins d'une seconde."
       },
       {
+        "q": "Wham se met-il à jour tout seul ?",
+        "a": "Oui. Quelques fois par jour, il demande à GitHub la dernière version, vérifie qu'elle est bien signée par son développeur, et l'installe à la place de l'ancienne, en laissant l'interrupteur tel qu'il était. « Check for Updates », dans son menu, le fait tout de suite. Désactivez « Update Automatically » et Wham se contente de vous dire, dans son menu, quand une nouvelle version est sortie. Ce qui a changé dans chacune : <changelog>Nouveautés</changelog>."
+      },
+      {
         "q": "Comment le désinstaller ?",
         "a": "Quittez Wham depuis son menu, ce qui redonne la veille, puis glissez Wham depuis Applications vers la Corbeille. Pour un nettoyage complet, y compris la règle de mot de passe, utilisez le désinstalleur en une ligne sous <dev>Pour les développeurs</dev>."
       },
@@ -221,6 +226,74 @@
     "madeWith": "Fait avec <heart></heart> par",
     "madeLabel": "Fait par Gwendall, gwendall.com",
     "license": "Wham est gratuit et open source, sous licence <mit>MIT</mit>."
+  },
+  "changelog": {
+    "title": "Les nouveautés de Wham",
+    "description": "Chaque version de Wham, de la plus récente à la plus ancienne, et ce qui a changé pour vous dans chacune.",
+    "eyebrow": "Historique des versions",
+    "heading": "Nouveautés",
+    "lead": "Chaque version de Wham, la plus récente en premier. Wham se met à jour tout seul, alors la vôtre est sans doute déjà la plus récente : faites un clic droit sur l'interrupteur, son numéro est à côté de « About Wham ».",
+    "latest": "Dernière version",
+    "releases": [
+      {
+        "version": "1.2.3",
+        "date": "2026-10-13",
+        "items": [
+          "« Check for Updates », dans le menu, cherche tout de suite une nouvelle version : il l'installe, ou vous dit que vous avez déjà la dernière.",
+          "Avec « Update Automatically » désactivé, Wham n'installe rien de lui-même, mais son menu vous dit quand même quand une nouvelle version est sortie, à un clic.",
+          "Après une mise à jour, une note sous l'interrupteur indique la version que vous avez maintenant, et « What's New » dans le menu montre ce qui a changé dans chaque version."
+        ]
+      },
+      {
+        "version": "1.2.2",
+        "date": "2026-10-13",
+        "items": [
+          "Chaque durée de « Turn On For » indique l'heure à laquelle elle se terminerait.",
+          "Une fois allumé, le menu dit jusqu'à quand votre Mac reste éveillé, et combien de temps il reste.",
+          "« No Time Limit », sous les durées, prolonge une session minutée jusqu'à ce que vous l'éteigniez.",
+          "Les couleurs de l'interrupteur s'estompent au fil d'une session minutée.",
+          "Une note descend cinq minutes avant la fin d'une session minutée.",
+          "« Battery Limit », dans le menu : sur batterie, laissez votre Mac dormir à 5, 10, 20 ou 30 %."
+        ]
+      },
+      {
+        "version": "1.2.1",
+        "date": "2026-10-12",
+        "items": [
+          "Le menu s'ouvre en entier, juste sous l'interrupteur, avec ou sans encoche."
+        ]
+      },
+      {
+        "version": "1.2.0",
+        "date": "2026-10-12",
+        "items": [
+          "« Turn On For » 1, 2, 4 ou 8 heures, depuis le menu.",
+          "Sur batterie à 10 %, ou quand votre Mac atteint une chaleur critique, Wham le laisse dormir et dit pourquoi.",
+          "Si Wham disparaît sans quitter proprement, sur un plantage ou un arrêt forcé, votre Mac retrouve sa veille en moins d'une seconde.",
+          "Capot fermé et sans autre écran, l'écran intégré s'éteint.",
+          "Depuis un terminal : <code>wham on 2h</code>, et <code>wham run</code> avant une commande pour rester éveillé seulement pendant son exécution."
+        ]
+      },
+      {
+        "version": "1.1.0",
+        "date": "2026-10-12",
+        "items": [
+          "Wham se met à jour tout seul, quelques fois par jour. « Update Automatically », dans le menu, le désactive.",
+          "Un seul interrupteur dans la barre des menus, avec le soleil ou la lune dans son bouton, qui roule en glissant.",
+          "Une nouvelle icône : le soleil en pixels, désormais souriant."
+        ]
+      },
+      {
+        "version": "1.0.0",
+        "date": "2026-10-12",
+        "items": [
+          "La première version : un interrupteur dans la barre des menus qui garde votre Mac éveillé, même capot fermé. Cliquez à nouveau et votre Mac dort comme d'habitude.",
+          "Une note sous l'interrupteur dit ce que votre Mac va faire maintenant, avec un petit son que vous pouvez couper.",
+          "Wham se lance à l'ouverture de session, et propose de se ranger dans Applications quand vous l'ouvrez depuis le téléchargement.",
+          "Signé par son développeur et notarié par Apple. Depuis un terminal, <code>wham on</code> et <code>wham off</code>."
+        ]
+      }
+    ]
   },
   "errors": {
     "notFound": {

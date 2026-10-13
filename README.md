@@ -63,7 +63,7 @@ Wham lives in your menu bar as a little switch.
 - **Click again**: the moon comes back and your Mac sleeps as usual.
 - **Right-click** (or control-click) for the menu: turn on for 1, 2, 4 or 8
   hours (each says when it would end), sound, open at login, automatic
-  updates, the battery limit, quit.
+  updates, the battery limit, what's new, check for updates, quit.
 
 A timed session shows what is left: the menu says until when and how long, the
 switch's candy drains toward the knob, and a note drops down five minutes
@@ -145,7 +145,10 @@ the watchdog to stand down. `wham run` keeps one too.
   the latest, and the request carries nothing about you or your Mac. When there
   is a newer one, Wham downloads it, checks that it is signed by the same
   developer and that it runs, and swaps it in; on stays on through the update.
-  **Update Automatically** in the menu turns this off.
+  **Check for Updates** in the menu asks right away. **Update Automatically**
+  turns the swap off: Wham then only offers the new version in its menu.
+  What changed in each one is in [CHANGELOG.md](CHANGELOG.md) and on
+  [wham.sh/changelog](https://wham.sh/changelog).
 - Every release is built from this repo, signed with Developer ID
   (`NQCA86NEA3`) and notarized by Apple. The `curl` installer and the updater
   both refuse an app signed by anyone else.
@@ -223,10 +226,14 @@ open build/Wham.app
 | `packaging/wham.rb` | The Homebrew cask template |
 | `npm` | The `wham.sh` npm package |
 | `site` | [wham.sh](https://wham.sh), Next.js |
+| `CHANGELOG.md` | What changed for the people who use Wham, made from the site's changelog (`site/messages`) |
 | `docs/brand.md` | Name, voice, colors, type, sprites, sound |
 
-To release, `scripts/release.sh 1.2.0` from a clean main: it tags and pushes,
-and the release workflow builds, signs, notarizes, publishes and updates the
+To release, write what changed in `changelog` in `site/messages/en.json`, then
+in every other language, run `node site/scripts/changelog.mjs` to remake
+CHANGELOG.md, merge, and `scripts/release.sh 1.2.0` from a clean main: it
+checks the changelog has the version, tags and pushes, and the release workflow
+builds, signs, notarizes, publishes with that version's notes and updates the
 Homebrew cask. The npm package only wraps the installer, which always fetches
 the latest release, so it is published by hand (`cd npm && npm publish`) only
 when the wrapper or the scripts change.
@@ -237,8 +244,10 @@ when the wrapper or the scripts change.
 minutes, open it, and it tells you whether the Mac slept, whether the screen
 went dark and whether it locked.
 `scripts/update-test.sh` updates a 1.0.99 copy to 9.9.9 from a local stand-in
-for GitHub, and checks that a copy signed by someone else is refused (it needs
-the Developer ID certificate).
+for GitHub, checks that a copy signed by someone else is refused, that with
+Update Automatically off the menu offers the new version and installs it on a
+click, and what Check for Updates says when there is nothing new or no answer
+(it needs the Developer ID certificate).
 
 ## Credits
 

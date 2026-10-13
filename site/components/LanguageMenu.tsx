@@ -25,9 +25,10 @@ function remember(code: Locale) {
 }
 
 // The header's language switch: a pixel globe and the current code, opening a
-// list of the languages, each named in itself. Picking one remembers it in a
-// cookie, so wham.sh opens in it next time.
-export function LanguageMenu({ current, label }: { current: Locale; label: string }) {
+// list of the languages, each named in itself, leading to the same page in it
+// (`page`, "" for the home page). Picking one remembers it in a cookie, so
+// wham.sh opens in it next time.
+export function LanguageMenu({ current, page = "", label }: { current: Locale; page?: string; label: string }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -76,7 +77,7 @@ export function LanguageMenu({ current, label }: { current: Locale; label: strin
         {LOCALES.map((code) => (
           <li key={code}>
             <a
-              href={pathFor(code)}
+              href={pathFor(code, page)}
               hrefLang={LANGUAGES[code].tag}
               lang={LANGUAGES[code].tag}
               aria-current={code === current ? "page" : undefined}

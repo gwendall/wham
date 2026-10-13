@@ -18,7 +18,8 @@
     "download": "Download",
     "github": "Wham auf GitHub",
     "language": "Sprache",
-    "footer": "Fußzeile"
+    "footer": "Fußzeile",
+    "changelog": "Neuigkeiten"
   },
   "sound": {
     "label": "Ton",
@@ -188,6 +189,10 @@
         "a": "Der Ruhezustand kommt zurück. Beim Beenden wird die Einstellung automatisch zurückgesetzt, egal ob du es über das Menü beendest (Rechtsklick auf den Schalter), per Skript oder durch Abmelden. Und falls Wham je ohne ordentliches Beenden verschwindet, bei einem Absturz oder einem erzwungenen Beenden, gibt sein Watchdog den Ruhezustand innerhalb einer Sekunde zurück."
       },
       {
+        "q": "Aktualisiert sich Wham selbst?",
+        "a": "Ja. Ein paar Mal am Tag fragt es GitHub nach der neuesten Version, prüft, ob sie von seinem Entwickler signiert ist, und tauscht sie aus, wobei der Schalter bleibt, wie er war. „Check for Updates“ im Menü erledigt das sofort. Schaltest du „Update Automatically“ aus, sagt dir Wham nur noch im Menü, wenn eine neue Version da ist. Was sich in jeder geändert hat: <changelog>Neuigkeiten</changelog>."
+      },
+      {
         "q": "Wie deinstalliere ich es?",
         "a": "Beende Wham über sein Menü, das gibt den Ruhezustand zurück, und zieh Wham dann vom Ordner „Programme“ in den Papierkorb. Für eine vollständige Entfernung, inklusive der Passwortregel, nutze den Einzeiler unter <dev>Für Entwickler</dev>."
       },
@@ -221,6 +226,74 @@
     "madeWith": "Gemacht mit <heart></heart> von",
     "madeLabel": "Gemacht von Gwendall, gwendall.com",
     "license": "Wham ist kostenlos und Open Source, unter der <mit>MIT</mit>-Lizenz."
+  },
+  "changelog": {
+    "title": "Neu in Wham",
+    "description": "Jede Version von Wham, die neueste zuerst, und was sich jeweils für dich geändert hat.",
+    "eyebrow": "Versionsverlauf",
+    "heading": "Neuigkeiten",
+    "lead": "Jede Version von Wham, die neueste zuerst. Wham aktualisiert sich selbst, deine ist also wahrscheinlich schon die neueste: Rechtsklick auf den Schalter, und ihre Nummer steht neben „About Wham“.",
+    "latest": "Neueste",
+    "releases": [
+      {
+        "version": "1.2.3",
+        "date": "2026-10-13",
+        "items": [
+          "„Check for Updates“ im Menü sucht sofort nach einer neuen Version: Es installiert sie oder sagt dir, dass du schon die neueste hast.",
+          "Ist „Update Automatically“ aus, installiert Wham nichts von selbst, aber das Menü sagt dir trotzdem, wenn eine neue Version da ist, nur einen Klick entfernt.",
+          "Nach einem Update zeigt ein Hinweis unter dem Schalter, welche Version du jetzt hast, und „What's New“ im Menü zeigt, was sich in jeder Version geändert hat."
+        ]
+      },
+      {
+        "version": "1.2.2",
+        "date": "2026-10-13",
+        "items": [
+          "Jede Dauer in „Turn On For“ zeigt, wann sie enden würde.",
+          "Ist es an, sagt das Menü, bis wann dein Mac wach bleibt und wie viel Zeit noch bleibt.",
+          "„No Time Limit“ unter den Zeitangaben lässt eine Sitzung mit Timer weiterlaufen, bis du sie ausschaltest.",
+          "Die Farben des Schalters verblassen, während eine Sitzung mit Timer läuft.",
+          "Fünf Minuten vor dem Ende einer Sitzung mit Timer erscheint ein Hinweis.",
+          "„Battery Limit“ im Menü: Im Akkubetrieb darf dein Mac bei 5, 10, 20 oder 30 % schlafen."
+        ]
+      },
+      {
+        "version": "1.2.1",
+        "date": "2026-10-12",
+        "items": [
+          "Das Menü öffnet sich vollständig, direkt unter dem Schalter, mit oder ohne Notch."
+        ]
+      },
+      {
+        "version": "1.2.0",
+        "date": "2026-10-12",
+        "items": [
+          "„Turn On For“ für 1, 2, 4 oder 8 Stunden, direkt im Menü.",
+          "Im Akkubetrieb bei 10 % oder wenn dein Mac kritisch heiß wird, lässt Wham ihn schlafen und sagt, warum.",
+          "Falls Wham je ohne ordentliches Beenden verschwindet, bei einem Absturz oder einem erzwungenen Beenden, bekommt dein Mac seinen Ruhezustand innerhalb einer Sekunde zurück.",
+          "Mit zugeklapptem Deckel und ohne weiteren Bildschirm schaltet sich das eingebaute Display aus.",
+          "Im Terminal: <code>wham on 2h</code>, und <code>wham run</code> vor einem Befehl, um nur während dessen Laufzeit wach zu bleiben."
+        ]
+      },
+      {
+        "version": "1.1.0",
+        "date": "2026-10-12",
+        "items": [
+          "Wham aktualisiert sich selbst, ein paar Mal am Tag. „Update Automatically“ im Menü schaltet das aus.",
+          "Ein einziger Schalter in der Menüleiste, mit der Sonne oder dem Mond im Knopf, der beim Gleiten rollt.",
+          "Ein neues Icon: die Pixelsonne, jetzt mit einem Lächeln."
+        ]
+      },
+      {
+        "version": "1.0.0",
+        "date": "2026-10-12",
+        "items": [
+          "Die erste Version: ein Schalter in der Menüleiste, der deinen Mac wach hält, auch mit zugeklapptem Deckel. Klick ihn erneut, und dein Mac schläft wie gewohnt.",
+          "Ein Hinweis unter dem Schalter sagt, was dein Mac jetzt tut, mit einem kleinen Ton, den du abschalten kannst.",
+          "Wham startet beim Anmelden und bietet an, sich in den Ordner „Programme“ zu verschieben, wenn du es aus dem Download öffnest.",
+          "Von seinem Entwickler signiert und von Apple notarisiert. Im Terminal: <code>wham on</code> und <code>wham off</code>."
+        ]
+      }
+    ]
   },
   "errors": {
     "notFound": {

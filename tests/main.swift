@@ -138,6 +138,14 @@ var requirement: SecRequirement?
 check(SecRequirementCreateWithString(Update.requirement as CFString, [], &requirement) == errSecSuccess, "the signature requirement compiles")
 check(!Update.isGenuine(URL(fileURLWithPath: CommandLine.arguments[0])) && !Update.isGenuine(URL(fileURLWithPath: "/System/Applications/Calculator.app")),
       "an app not signed by Wham's developer is refused")
+check(Update.isUpdate(to: "1.2.3", from: "1.2.2", ranBefore: true) && Update.isUpdate(to: "1.10.0", from: "1.9.9", ranBefore: true),
+      "the first launch of a newer version says so")
+check(Update.isUpdate(to: "1.2.3", from: nil, ranBefore: true), "after 1.2.2 or older, which kept no version, too")
+check(!Update.isUpdate(to: "1.2.3", from: nil, ranBefore: false), "not on the first launch ever: that one says hello")
+check(!Update.isUpdate(to: "1.2.3", from: "1.2.3", ranBefore: true) && !Update.isUpdate(to: "1.2.2", from: "1.2.3", ranBefore: true),
+      "not on the same version again, nor an older one")
+check(!Update.isUpdate(to: "dev", from: "1.2.3", ranBefore: true) && !Update.isUpdate(to: "dev", from: nil, ranBefore: true),
+      "nor a build from source")
 
 // Sessions end on their own: the heat first, then a low battery (on battery
 // only), then the time.

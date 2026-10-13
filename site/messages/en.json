@@ -18,7 +18,8 @@
     "download": "Download",
     "github": "Wham on GitHub",
     "language": "Language",
-    "footer": "Footer"
+    "footer": "Footer",
+    "changelog": "What's new"
   },
   "sound": {
     "label": "Sound",
@@ -188,6 +189,10 @@
         "a": "Sleep comes back. Quitting turns the setting off on the way out, whether you quit from its menu (right-click the switch), from a script, or by logging out. And if Wham ever goes away without quitting, a crash or a force quit, its watchdog gives sleep back within a second."
       },
       {
+        "q": "Does Wham update itself?",
+        "a": "Yes. A few times a day it asks GitHub for the latest version, checks that its developer signed it, and swaps it in, with the switch left as it was. Check for Updates in its menu does it right away. Turn off Update Automatically and Wham only tells you, in its menu, when a new version is out. What changed in each one: <changelog>What's new</changelog>."
+      },
+      {
         "q": "How do I uninstall it?",
         "a": "Quit Wham from its menu, which gives sleep back, then drag Wham from Applications to the Trash. For a full cleanup, including the password rule, use the one-line uninstaller under <dev>For developers</dev>."
       },
@@ -221,6 +226,74 @@
     "madeWith": "Made with <heart></heart> by",
     "madeLabel": "Made by Gwendall, gwendall.com",
     "license": "Wham is free and open source, under the <mit>MIT</mit> license."
+  },
+  "changelog": {
+    "title": "What's new in Wham",
+    "description": "Every version of Wham, newest first, and what changed for you in each one.",
+    "eyebrow": "Changelog",
+    "heading": "What's new",
+    "lead": "Every version of Wham, newest first. Wham updates itself, so yours is likely the newest already: right-click the switch and its number is next to About Wham.",
+    "latest": "Latest",
+    "releases": [
+      {
+        "version": "1.2.3",
+        "date": "2026-10-13",
+        "items": [
+          "Check for Updates, in the menu, looks for a new version right away: it installs it, or tells you that you already have the latest.",
+          "With Update Automatically off, Wham installs nothing on its own, but its menu still tells you when a new version is out, one click away.",
+          "After an update, a note under the switch says which version you now have, and What's New in the menu shows what changed in each one."
+        ]
+      },
+      {
+        "version": "1.2.2",
+        "date": "2026-10-13",
+        "items": [
+          "Each length in Turn On For says when it would end.",
+          "Once on, the menu says until when your Mac stays awake, and how long is left.",
+          "No Time Limit, under the lengths, keeps a timed session going until you turn it off.",
+          "The switch's colors drain away as a timed session runs.",
+          "A note drops down five minutes before a timed session ends.",
+          "Battery Limit, in the menu: on battery, let your Mac sleep at 5, 10, 20 or 30%."
+        ]
+      },
+      {
+        "version": "1.2.1",
+        "date": "2026-10-12",
+        "items": [
+          "The menu opens whole, right under the switch, notch or not."
+        ]
+      },
+      {
+        "version": "1.2.0",
+        "date": "2026-10-12",
+        "items": [
+          "Turn On For 1, 2, 4 or 8 hours, from the menu.",
+          "On battery at 10%, or when your Mac gets critically hot, Wham lets it sleep and says why.",
+          "If Wham ever goes away without quitting, a crash or a force quit, your Mac gets its sleep back within a second.",
+          "With the lid closed and no other screen, the built-in screen turns off.",
+          "From a terminal: <code>wham on 2h</code>, and <code>wham run</code> before a command to stay awake just while it runs."
+        ]
+      },
+      {
+        "version": "1.1.0",
+        "date": "2026-10-12",
+        "items": [
+          "Wham updates itself, a few times a day. Update Automatically, in the menu, turns that off.",
+          "One switch in the menu bar, with the sun or the moon in its knob, rolling as it slides.",
+          "A new icon: the pixel sun, now smiling."
+        ]
+      },
+      {
+        "version": "1.0.0",
+        "date": "2026-10-12",
+        "items": [
+          "The first version: a switch in the menu bar that keeps your Mac awake, even with the lid closed. Click it again and your Mac sleeps as usual.",
+          "A note under the switch says what your Mac will do now, with a little sound you can turn off.",
+          "Wham opens at login, and offers to move itself to Applications when opened from the download.",
+          "Signed by its developer and notarized by Apple. From a terminal, <code>wham on</code> and <code>wham off</code>."
+        ]
+      }
+    ]
   },
   "errors": {
     "notFound": {

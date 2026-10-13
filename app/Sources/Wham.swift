@@ -18,6 +18,14 @@ final class Wham: NSObject, NSApplicationDelegate {
     private var busy = false
     private var sleepGivenBack = false
     private var updating = false
+    // A newer version found and not installed (Update Automatically is off, or
+    // it could not install): the menu offers it. The one being installed, and
+    // whether someone asked from the menu, who then hears how it went.
+    private var available: String?
+    private var installing: String?
+    private var asked = false
+    // Read at launch: once a new copy is in place, the files say its version.
+    private let running = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
     private var timer: Timer?
     private var updateTimer: Timer?
     private let watchdog = Watchdog()
@@ -69,11 +77,19 @@ final class Wham: NSObject, NSApplicationDelegate {
         scheduleUpdates()
         pressForEvals()
         // A menu bar switch is only useful if it is there: open at login from the
-        // first launch on (the menu can turn this off), and say hello once.
-        if !UserDefaults.standard.bool(forKey: "loginItemSet") && !Self.runsFromTemporaryCopy {
-            UserDefaults.standard.set(true, forKey: "loginItemSet")
-            try? LoginItem.set(true)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.hello() }
+        // first launch on (the menu can turn this off), and say hello once. The
+        // first launch of a newer version says which one it is.
+        if !Self.runsFromTemporaryCopy {
+            let defaults = UserDefaults.standard
+            let updated = Update.isUpdate(to: running, from: defaults.string(forKey: "lastVersion"), ranBefore: defaults.bool(forKey: "loginItemSet"))
+            defaults.set(running, forKey: "lastVersion")
+            if !defaults.bool(forKey: "loginItemSet") {
+                defaults.set(true, forKey: "loginItemSet")
+                try? LoginItem.set(true)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.hello() }
+            } else if updated {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.pop(Toast.note("UPDATED TO \(self.running)", "What's New is in the menu")) }
+            }
         }
     }
 
@@ -148,19 +164,54 @@ final class Wham: NSObject, NSApplicationDelegate {
         updateTimer?.tolerance = 1800
     }
 
-    private func checkForUpdate() {
-        guard Update.isOn && !updating else { return }
+    // Asks GitHub for the latest version. A newer one is installed when Wham
+    // updates automatically or someone asked from the menu, and otherwise
+    // offered in the menu.
+    private func checkForUpdate(asked: Bool = false) {
+        if asked { self.asked = true }
+        guard !updating else { return }
         updating = true
-        let app = Bundle.main.bundleURL
-        // Read at launch: once the new copy is in place, the files say its version.
-        let running = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? ""
+        let app = Bundle.main.bundleURL, running = running
         DispatchQueue.global(qos: .utility).async {
-            let installed = Update.canReplace(app)
-                && Update.latest().map { Update.isNewer($0, than: running) && Update.install($0, over: app) } == true
+            let latest = Update.latest()
+            let newer = latest.flatMap { Update.isNewer($0, than: running) ? $0 : nil }
+            let replaceable = newer != nil && Update.canReplace(app)
             DispatchQueue.main.async {
-                MainActor.assumeIsolated { installed ? self.reopen() : (self.updating = false) }
+                MainActor.assumeIsolated { self.found(latest, newer: newer, replaceable: replaceable) }
             }
         }
+    }
+
+    private func found(_ latest: String?, newer: String?, replaceable: Bool) {
+        if latest != nil { available = newer }
+        guard let newer else {
+            return settle(latest == nil ? ("CAN'T CHECK", "GitHub did not answer, try again later") : ("UP TO DATE", "Wham \(running) is the latest"))
+        }
+        guard asked || Update.isOn else { return settle(nil) }
+        // Not in a folder its user may write to, or a build from source: the
+        // download is on wham.sh.
+        guard replaceable else { return settle(("CAN'T UPDATE ITSELF", "Get Wham \(newer) at wham.sh"), openSite: true) }
+        if asked { pop(Toast.note("UPDATING", "To Wham \(newer), back in a moment")) }
+        installing = newer
+        let app = Bundle.main.bundleURL
+        DispatchQueue.global(qos: .utility).async {
+            let installed = Update.install(newer, over: app)
+            DispatchQueue.main.async {
+                MainActor.assumeIsolated {
+                    installed ? self.reopen() : self.settle(("CAN'T UPDATE", "Wham \(newer) did not install, try again later"))
+                }
+            }
+        }
+    }
+
+    // The check is over: tells whoever asked from the menu how it went.
+    private func settle(_ note: (title: String, caption: String)?, openSite: Bool = false) {
+        updating = false
+        installing = nil
+        guard asked else { return }
+        asked = false
+        if let note { pop(Toast.note(note.title, note.caption)) }
+        if openSite { self.openSite() }
     }
 
     // The new copy opens once this one is gone. Leaving without the quit
@@ -360,11 +411,26 @@ final class Wham: NSObject, NSApplicationDelegate {
         menu.addItem(limit)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "About Wham \(CLI.version)", action: #selector(openSite), keyEquivalent: ""))
+        menu.addItem(NSMenuItem(title: "What's New", action: #selector(openChangelog), keyEquivalent: ""))
+        menu.addItem(updateItem())
         menu.addItem(NSMenuItem(title: "Made by Gwendall", action: #selector(openAuthor), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q"))
         for entry in menu.items { entry.target = self }
         return menu
+    }
+
+    // Check for Updates, or the new version Wham found and did not install.
+    private func updateItem() -> NSMenuItem {
+        let title: String
+        if let installing {
+            title = "Updating to Wham \(installing)…"
+        } else if updating {
+            title = "Checking for Updates…"
+        } else {
+            return NSMenuItem(title: available.map { "Update to Wham \($0)" } ?? "Check for Updates", action: #selector(checkNow), keyEquivalent: "")
+        }
+        return NSMenuItem(title: title, action: nil, keyEquivalent: "")
     }
 
     // 1, 2, 4 or 8 hours from now, each with the time it would end on the
@@ -418,7 +484,8 @@ final class Wham: NSObject, NSApplicationDelegate {
     // other, as WHAM_PRESS lists them: "Turn On For/2 Hours,Turn Off". "Switch"
     // is a click on the switch, "Terminate" a quit from outside (a logout),
     // "Menu" opens the menu for real and says whether it showed whole, "Status"
-    // prints the menu's first line and its lengths.
+    // prints the menu's first line and its lengths, "Items" the menu's items,
+    // and "Pause" waits a step.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -429,6 +496,10 @@ final class Wham: NSObject, NSApplicationDelegate {
             switch path {
             case ["Switch"]: toggle()
             case ["Terminate"]: NSApp.terminate(nil)
+            case ["Pause"]: break
+            case ["Items"]:
+                print("items", self.menu().items.map { $0.isSeparatorItem ? "-" : $0.title }.joined(separator: " | "))
+                fflush(stdout)
             case ["Status"]:
                 let menu = self.menu()
                 let lengths = menu.items.first { $0.submenu != nil }?.submenu?.items ?? []
@@ -465,8 +536,10 @@ final class Wham: NSObject, NSApplicationDelegate {
 
     @objc private func toggleUpdates() {
         Update.isOn.toggle()
-        checkForUpdate()
+        if Update.isOn { checkForUpdate() }
     }
+
+    @objc private func checkNow() { checkForUpdate(asked: true) }
 
     @objc private func toggleLogin() {
         do {
@@ -477,6 +550,7 @@ final class Wham: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSite() { NSWorkspace.shared.open(URL(string: "https://wham.sh")!) }
+    @objc private func openChangelog() { NSWorkspace.shared.open(URL(string: "https://wham.sh/changelog")!) }
     @objc private func openAuthor() { NSWorkspace.shared.open(URL(string: "https://gwendall.com")!) }
 
     // The pill under the switch says the new state in words, with its sound

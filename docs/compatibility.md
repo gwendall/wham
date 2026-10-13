@@ -61,17 +61,22 @@ APIs from after macOS 11 are behind `#available`, or replaced:
 ## Updates
 
 A minute after launch, then every 6 hours, Wham asks GitHub for the latest
-release. A newer one is downloaded next to the app, checked with `codesign`
-(Wham's identifier, signed by team `NQCA86NEA3`), run once (`wham version` must
-name the new version), and swapped in; Wham then reopens from the new copy,
-with the switch as it was.
+release; Check for Updates, in the menu, asks right away. A newer one is
+downloaded next to the app, checked with `codesign` (Wham's identifier, signed
+by team `NQCA86NEA3`), run once (`wham version` must name the new version), and
+swapped in; Wham then reopens from the new copy, with the switch as it was, and
+says which version it now is. With Update Automatically off, Wham still asks,
+downloads nothing, and offers the new version in its menu (Update to Wham X).
 
 | Case | What Wham does | Checked by |
 | --- | --- | --- |
 | A release signed by anyone else, or that does not run | Refused, the running copy stays | `scripts/update-test.sh` |
-| The app's folder is not writable (an admin installed it, a standard user runs it; managed Macs) | Never tries; the next install or `brew upgrade` updates it | `Update.canReplace` |
+| The app's folder is not writable (an admin installed it, a standard user runs it; managed Macs) | Never tries; the next install or `brew upgrade` updates it. Check for Updates says so and opens wham.sh | `Update.canReplace` |
 | A build from source (ad hoc signed) | Never updates itself | `Update.canReplace`, test |
-| Offline, GitHub down, a proxy that blocks it | Tries again in 6 hours, quietly | `curl --max-time` |
+| Offline, GitHub down, a proxy that blocks it | Tries again in 6 hours, quietly; Check for Updates says it could not check | `curl --max-time`, `scripts/update-test.sh` |
+| Update Automatically off | Asks, downloads nothing, offers Update to Wham X in the menu; a click installs it | `scripts/update-test.sh` |
+| Check for Updates on the latest version | Says it is up to date | `scripts/update-test.sh` |
+| First launch of a new version | A note says which version it now is; not on a first install, nor for a build from source | `Update.isUpdate`, tests |
 | The switch is on, or a password prompt is open | On stays on through the update; it waits for the prompt to close | `reopen`, `scripts/update-test.sh` |
 | Opened from the disk image | No updates until it is in Applications | `runsFromTemporaryCopy` |
 | Pre-release tags | Ignored | Test |
@@ -189,5 +194,6 @@ Where the little it does goes:
 - The sounds are made on the first click, so CoreAudio is not loaded until
   there is something to play.
 - The toast window is created on first use (`defer: true`) and ordered out when it leaves.
-- One request to GitHub a few times a day for updates (off with Update
-  Automatically). No analytics, no background daemon.
+- One request to GitHub a few times a day for updates (with Update
+  Automatically off, Wham still asks but installs nothing). No analytics, no
+  background daemon.

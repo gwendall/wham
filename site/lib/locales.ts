@@ -1,5 +1,6 @@
 // The site's languages. English lives at /, every other one under its code:
-// /fr, /ja. Safe for the browser: the messages themselves load in lib/i18n.ts.
+// /fr, /ja, /fr/changelog. Safe for the browser: the messages themselves load
+// in lib/i18n.ts.
 export const LOCALES = ["en", "fr", "es", "de", "it", "pt", "ja", "ko", "zh"] as const;
 export type Locale = (typeof LOCALES)[number];
 
@@ -22,7 +23,9 @@ export const LANG_COOKIE = "wham-lang";
 
 export const isLocale = (value: string): value is Locale => (LOCALES as readonly string[]).includes(value);
 
-export const pathFor = (locale: Locale) => (locale === "en" ? "/" : `/${locale}`);
+// A page in a language: pathFor("fr", "/changelog") is /fr/changelog, the
+// home page is pathFor("fr").
+export const pathFor = (locale: Locale, page = "") => (locale === "en" ? page || "/" : `/${locale}${page}`);
 
 // "Copy: {command}" with { command: "npx wham.sh" }.
 export const fill = (text: string, values: Record<string, string>) =>

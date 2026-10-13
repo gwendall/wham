@@ -2,7 +2,8 @@
 // lengths, and in each string the same tags (<code>, <github>...) and
 // placeholders ({command}), so no language loses a link or a command. Also
 // refuses empty strings, the em and en dashes, and a wordmark the pixel font
-// cannot draw. Runs before `lint` and `build`.
+// cannot draw, and keeps each release's version and date as English has them.
+// Runs before `lint` and `build`.
 import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -25,6 +26,7 @@ function compare(code, path, base, other) {
     if (base !== "" && other.trim() === "") problems.push(`${where} is empty`);
     if (/[\u2013\u2014]/.test(other)) problems.push(`${where} has an em or en dash`);
     if (path.endsWith(".wordmark") && !/^[A-Za-z0-9 ]+$/.test(other)) problems.push(`${where} is drawn in Silkscreen: Latin letters only`);
+    if (/\.(version|date)$/.test(path) && other !== base) problems.push(`${where} is "${other}", English has "${base}"`);
     if (marks(base) !== marks(other)) problems.push(`${where} has "${marks(other)}", English has "${marks(base)}"`);
     return;
   }

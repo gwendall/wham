@@ -8,7 +8,9 @@ const CLI_AGENT = "(?:(?:curl|[Ww]get|HTTPie|xh|aria2)/.*|fetch libfetch/.*)";
 
 // English is the page at /, every other language under its code (lib/locales.ts).
 // A first visit to / goes to the browser's first language, when the site has
-// it; after that, to the one picked in the header (the wham-lang cookie).
+// it; after that, to the one picked in the header (the wham-lang cookie). The
+// same goes for every other page: /changelog is /fr/changelog in French.
+const PAGES = ["/changelog"];
 const OTHER = "fr|es|de|it|pt|ja|ko|zh";
 // The first language of Accept-Language: "fr-FR,fr;q=0.9,en;q=0.8" is French.
 // Chinese only in its Simplified forms: zh-TW and zh-HK readers get English.
@@ -40,6 +42,7 @@ const nextConfig: NextConfig = {
       beforeFiles: [
         { source: "/", has: [{ type: "header", key: "user-agent", value: CLI_AGENT }], destination: "/install" },
         { source: "/", destination: "/en" },
+        ...PAGES.map((page) => ({ source: page, destination: `/en${page}` })),
         { source: "/install.sh", destination: "/install" },
         { source: "/uninstall.sh", destination: "/uninstall" },
       ],
@@ -50,11 +53,14 @@ const nextConfig: NextConfig = {
   async redirects() {
     const cli = { type: "header", key: "user-agent", value: CLI_AGENT } as const;
     const chosen = { type: "cookie", key: "wham-lang" } as const;
+    const languages = (page: string) => [
+      { source: `/en${page}`, destination: page || "/", permanent: true },
+      { source: page || "/", has: [{ ...chosen, value: `(?<lang>${OTHER})` }], missing: [cli], destination: `/:lang${page}`, permanent: false },
+      { source: page || "/", has: [{ type: "header", key: "accept-language", value: FIRST } as const], missing: [chosen, cli], destination: `/:lang${page}`, permanent: false },
+      { source: page || "/", has: [{ type: "header", key: "accept-language", value: FIRST_ZH } as const], missing: [chosen, cli], destination: `/zh${page}`, permanent: false },
+    ];
     return [
-      { source: "/en", destination: "/", permanent: true },
-      { source: "/", has: [{ ...chosen, value: `(?<lang>${OTHER})` }], missing: [cli], destination: "/:lang", permanent: false },
-      { source: "/", has: [{ type: "header", key: "accept-language", value: FIRST }], missing: [chosen, cli], destination: "/:lang", permanent: false },
-      { source: "/", has: [{ type: "header", key: "accept-language", value: FIRST_ZH }], missing: [chosen, cli], destination: "/zh", permanent: false },
+      ...["", ...PAGES].flatMap(languages),
       {
         source: "/download",
         destination: "https://github.com/gwendall/wham/releases/latest/download/Wham.dmg",

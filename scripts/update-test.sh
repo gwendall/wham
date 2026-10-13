@@ -7,6 +7,10 @@
 #   9.9.9, with the kernel's sleep flag left as it was: when on, the old copy's
 #   watchdog stands down and the new copy puts out its own
 # - a 9.9.9 not signed by Wham's developer is downloaded and refused
+# - with Update Automatically off, 1.0.99 downloads nothing and its menu offers
+#   Update to Wham 9.9.9, which installs it
+# - Check for Updates says when the copy is the latest, and when GitHub does
+#   not answer
 #
 # Needs this Mac's Developer ID certificate (the updater only takes Wham signed
 # by its developer). A second switch shows in the menu bar for about a minute,
@@ -29,6 +33,8 @@ served="$work/github/releases/download/v9.9.9"
 mkdir -p "$work/Applications" "$served"
 server=
 start=$(flag)
+# Each copy records its version, which the user's own Wham reads: put back after.
+last=$(defaults read sh.wham.app lastVersion 2>/dev/null || true)
 # Killing a copy while on sets off its watchdog: the flag is put back after.
 restore() {
   sleep 1
@@ -39,6 +45,7 @@ cleanup() {
   for pid in $(running); do kill "$pid" 2>/dev/null || true; done
   [ -n "$server" ] && kill "$server" 2>/dev/null || true
   restore
+  if [ -n "$last" ]; then defaults write sh.wham.app lastVersion "$last"; else defaults delete sh.wham.app lastVersion >/dev/null 2>&1 || true; fi
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -57,17 +64,22 @@ ditto build/Wham.app "$work/stranger/Wham.app"
 codesign --force --sign - "$work/stranger/Wham.app" 2>/dev/null
 ditto -c -k --keepParent "$work/stranger/Wham.app" "$work/stranger.zip"
 
-# GitHub answers /releases/latest with a redirect to the latest tag.
+# GitHub answers /releases/latest with a redirect to the latest tag, here the
+# one in github/latest. Each request is appended to $work/requests, so emptying
+# it starts the list over.
+echo v9.9.9 >"$work/github/latest"
 python3 -I -c '
-import http.server, sys
+import http.server, os, sys
 class GitHub(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=sys.argv[1], **kwargs)
     def do_GET(self):
         print(self.path, file=sys.stderr, flush=True)
         if self.path == "/releases/latest":
+            with open(os.path.join(sys.argv[1], "latest")) as latest:
+                tag = latest.read().strip()
             self.send_response(302)
-            self.send_header("Location", "/releases/tag/v9.9.9")
+            self.send_header("Location", "/releases/tag/" + tag)
             self.end_headers()
         else:
             super().do_GET()
@@ -76,7 +88,7 @@ class GitHub(http.server.SimpleHTTPRequestHandler):
 server = http.server.HTTPServer(("127.0.0.1", 0), GitHub)
 print(server.server_port, flush=True)
 server.serve_forever()
-' "$work/github" >"$work/port" 2>"$work/requests" &
+' "$work/github" >"$work/port" 2>>"$work/requests" &
 server=$!
 for _ in $(seq 50); do [ -s "$work/port" ] && break; sleep 0.1; done
 base="http://127.0.0.1:$(cat "$work/port")"
@@ -91,6 +103,25 @@ launch() {
   old=$(running)
 }
 downloaded() { grep -q "^/releases/download/v9.9.9/Wham.zip" "$work/requests"; }
+# Runs a fresh 1.0.99 copy from its binary, so its output lands in $work/out,
+# pressing the WHAM_PRESS steps $1, with the defaults that follow.
+run() {
+  steps=$1
+  shift
+  rm -rf "$app"
+  ditto "$work/old.app" "$app"
+  : >"$work/requests"
+  : >"$work/out"
+  WHAM_PRESS=$steps "$app/Contents/MacOS/Wham" -muted YES "$@" >>"$work/out" 2>&1 &
+  old=$!
+}
+said() { grep -q "$1" "$work/out"; }
+# Stops whatever this test opened, and waits for it to be gone.
+quit() {
+  for pid in $(running); do kill "$pid" 2>/dev/null || true; done
+  for _ in $(seq 50); do [ -z "$(running)" ] && break; sleep 0.1; done
+  restore
+}
 
 cp "$work/stranger.zip" "$served/Wham.zip"
 launch
@@ -122,6 +153,36 @@ check "$(is "[ \"\$(flag)\" = $before ]")" "and stays so"
 if [ "$before" = 1 ]; then
   check "$(is "pgrep -P \"\$(running | head -1)\" -f stand-down >/dev/null")" "the new copy has its watchdog out"
 fi
+
+quit
+
+# Update Automatically off: it still asks, downloads nothing, and offers the
+# new version in its menu; a click on it installs it anyway.
+run "Pause,Pause,Items,Update to Wham 9.9.9" -updateBase "$base" -updateDelay 1 -noAutoUpdate YES
+for _ in $(seq 100); do said "^items" && break; sleep 0.1; done
+check "$(is "grep -q '^/releases/latest' \"$work/requests\" && ! downloaded")" "Update Automatically off: 1.0.99 asks for the latest, downloads nothing"
+check "$(is "said '| Update to Wham 9.9.9 |'")" "and its menu offers it ($(sed -n 's/^items //p' "$work/out" | tr '|' '\n' | grep -i -E 'update|new' | tr '\n' '|'))"
+for _ in $(seq 600); do
+  now=$(running)
+  [ "$(version)" = 9.9.9 ] && [ -n "$now" ] && [ "$now" != "$old" ] && break
+  sleep 0.1
+done
+check "$(is "said 'toast UPDATING: To Wham 9.9.9, back in a moment'")" "a click on it says it is updating"
+check "$(is "[ \"\$(version)\" = 9.9.9 ] && [ -n \"\$(running)\" ] && ! kill -0 $old 2>/dev/null")" "and installs 9.9.9, which opens in its place"
+for _ in $(seq 50); do [ "$(defaults read sh.wham.app lastVersion 2>/dev/null)" = 9.9.9 ] && break; sleep 0.1; done
+check "$(is "[ \"\$(defaults read sh.wham.app lastVersion 2>/dev/null)\" = 9.9.9 ]")" "9.9.9 knows it was just updated, and says so"
+quit
+
+# Check for Updates on the latest version, then with GitHub out of reach.
+echo v1.0.99 >"$work/github/latest"
+run "Check for Updates" -updateBase "$base" -updateDelay 3600
+for _ in $(seq 100); do said "^toast UP" && break; sleep 0.1; done
+check "$(is "said 'toast UP TO DATE: Wham 1.0.99 is the latest' && ! downloaded")" "Check for Updates on the latest: says so"
+quit
+run "Check for Updates" -updateBase "http://127.0.0.1:9" -updateDelay 3600
+for _ in $(seq 100); do said "^toast CAN" && break; sleep 0.1; done
+check "$(is "said \"toast CAN'T CHECK: GitHub did not answer, try again later\"")" "Check for Updates with GitHub out of reach: says so"
+quit
 
 if [ "$failures" != 0 ]; then echo "$failures failed"; exit 1; fi
 echo "all checks passed"
