@@ -87,19 +87,25 @@ command and the journal stay in English.
 
 The first time you turn it on, macOS asks for your password, once, and says
 why (see [how it works](#how-it-works)). Quitting Wham always gives sleep back,
-and so does a restart: with **Stay On After Restart**, in the menu, Wham turns
-back on when you log in again (a timed session keeps its end).
+and so does a restart, even one Wham never got to quit (a battery run flat):
+with **Stay On After Restart**, in the menu, Wham turns back on when you log in
+again (a timed session keeps its end).
 
 Wham also lets go on its own, and the menu says why:
 
 - **Time is up**, when you turned it on for a while.
-- **On battery, at 10%**, or at 5, 20 or 30% (Battery Limit, in the menu). Your
+- **On battery, at 10%**, or at 5, 20 or 30% (Battery Limit, in the menu), and
+  the same on a charger too weak to keep up. Your
   Mac sleeps with your work saved instead of running flat, and Wham will not
   turn back on until you plug in. Battery Limit: **Never** keeps it awake until
   the battery runs out: save your work first.
 - **Your Mac gets critically hot.** Wham is for desks, docks and shelves, where
   air moves; in a closed bag an awake Mac has nowhere to put its heat. Turn it
   off before you pack up.
+
+When Wham lets go under a closed lid, your Mac goes to sleep, as closing the
+lid would have made it: macOS only weighs the lid when it moves. With a
+monitor driving the closed Mac, it stays awake, as macOS has it.
 
 With the lid closed and no other display, Wham turns the built-in screen off,
 which also locks your Mac as your Lock Screen settings say. And if Wham ever
@@ -158,16 +164,18 @@ It allows exactly those two commands, for your user (named by its ID, here
 The switch always shows what the kernel says, read from the IORegistry every
 two seconds, never a cached guess. If something else flips the flag (`wham on`
 in a terminal, `pmset`, a reboot), the switch follows. The battery, the heat
-and the lid come from macOS as events, when they change.
+and the lid come from macOS as events, when they change, and while on, macOS
+keeps Wham out of App Nap, so they come on time.
 
 While on, Wham keeps a watchdog: a tiny shell, waiting on a pipe that only Wham
 writes to. However Wham ends, macOS closes the pipe, and the shell runs the
-rule's own `pmset -a disablesleep 0`. When Wham turns off or quits, it tells
+rule's own `pmset -a disablesleep 0`, then puts a Mac under a closed lid to
+sleep. When Wham turns off or quits, it tells
 the watchdog to stand down. `wham run` keeps one too.
 
 ## Is it safe?
 
-- About 3,100 lines of Swift, no dependencies, no analytics.
+- About 3,400 lines of Swift, no dependencies, no analytics.
 - One network request, a few times a day: Wham asks GitHub which release is
   the latest, and the request carries nothing about you or your Mac. When there
   is a newer one, Wham downloads it, checks that it is signed by the same

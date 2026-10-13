@@ -13,8 +13,49 @@ enum Sleep {
     // nil when the kernel does not answer.
     static var isDisabled: Bool? { root("SleepDisabled") }
 
-    // The lid sensor.
-    static var lidClosed: Bool { root("AppleClamshellState") ?? false }
+    // The lid sensor. The evals stand in for the lid with a file named in
+    // WHAM_FAKE_LID, read each time: "closed", "closed monitor" (a monitor
+    // drives the closed Mac), anything else for open.
+    static var lidClosed: Bool { fakeLid.map { $0.contains("closed") } ?? root("AppleClamshellState") ?? false }
+
+    // Closed, and the kernel's word that a closed lid puts the Mac to sleep:
+    // not when a monitor drives it.
+    static var lidSleeps: Bool {
+        lidClosed && (fakeLid.map { !$0.contains("monitor") } ?? root("AppleClamshellCausesSleep") ?? false)
+    }
+
+    private static var fakeLid: String? {
+        ProcessInfo.processInfo.environment["WHAM_FAKE_LID"].map { (try? String(contentsOfFile: $0, encoding: .utf8)) ?? "" }
+    }
+
+    // The kernel weighs the lid when it moves or the power source changes,
+    // never when the flag clears: a Mac given sleep back under a closed lid
+    // stays awake, draining and heating as if Wham were still on, until
+    // something else happens. This does what closing the lid would have done.
+    // Not under the evals' stand-in lid: the journal line is the proof.
+    static func sleepNow() {
+        guard fakeLid == nil else { return }
+        run(pmset, ["sleepnow"])
+    }
+
+    // The same for the watchdog's shell, once it gave sleep back: the lid
+    // closed, closing it sleeps, and the flag off, all three or nothing.
+    static let sleepUnderLidShell = "[ \"$(/usr/sbin/ioreg -rd1 -c IOPMrootDomain | /usr/bin/grep -cE "
+        + "'\"(AppleClamshellState|AppleClamshellCausesSleep)\" = Yes|\"SleepDisabled\" = No')\" = 3 ] && \(pmset) sleepnow"
+
+    // For a Wham on its way out, which cannot wait itself: a shell that
+    // outlives it waits, then does the same. Long enough for `brew upgrade`,
+    // whose new copy turns back on: the flag is on again, the Mac stays up.
+    static func sleepUnderLidAfterExit(in seconds: Int = 30) {
+        guard fakeLid == nil else { return }
+        let shell = Process()
+        shell.executableURL = URL(fileURLWithPath: "/bin/sh")
+        shell.arguments = ["-c", "trap '' INT QUIT HUP; sleep \(seconds); \(sleepUnderLidShell)"]
+        shell.standardInput = FileHandle.nullDevice
+        shell.standardOutput = FileHandle.nullDevice
+        shell.standardError = FileHandle.nullDevice
+        try? shell.run()
+    }
 
     // Looked up once: the tick reads it every two seconds.
     private static let rootDomain = IOServiceGetMatchingService(0, IOServiceMatching("IOPMrootDomain"))
@@ -151,8 +192,9 @@ final class Watchdog {
     private var input: FileHandle?
     var isArmed: Bool { input != nil }
 
-    // `command` is for the tests. Once it ran, the shell says so in the journal.
-    func arm(command: String = "/usr/bin/sudo -n \(Sleep.pmset) -a disablesleep 0") {
+    // `command` and `then` are for the tests. Once the command ran, the shell
+    // says so in the journal, then puts a Mac under a closed lid to sleep.
+    func arm(command: String = "/usr/bin/sudo -n \(Sleep.pmset) -a disablesleep 0", then: String = Sleep.sleepUnderLidShell) {
         guard input == nil else { return }
         Journal.prepare()
         let pipe = Pipe(), shell = Process()
@@ -162,7 +204,7 @@ final class Watchdog {
         _ = fcntl(pipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
         shell.executableURL = URL(fileURLWithPath: "/bin/sh")
         // A Ctrl-C or a hangup meant for a terminal does not reach it.
-        shell.arguments = ["-c", "trap '' INT QUIT HUP; read -r word; [ \"$word\" = stand-down ] && exit 0; \(command); status=$?; \(Journal.watchdogLine)"]
+        shell.arguments = ["-c", "trap '' INT QUIT HUP; read -r word; [ \"$word\" = stand-down ] && exit 0; \(command); status=$?; \(Journal.watchdogLine); \(then)"]
         shell.standardInput = pipe
         shell.standardOutput = FileHandle.nullDevice
         shell.standardError = FileHandle.nullDevice

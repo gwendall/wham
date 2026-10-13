@@ -89,8 +89,9 @@ enum CLI {
     private static func refusal() -> String? {
         let reading = Session.read(offAt: nil)
         guard let end = Session.end(reading) else { return nil }
-        Journal.note("refused", ["reason": "\(end)", "battery": reading.battery, "limit": reading.batteryLimit])
-        let text = Session.refusal(end, battery: reading.battery)
+        Journal.note("refused", ["reason": "\(end)", "battery": reading.battery, "limit": reading.batteryLimit,
+                                 "draining": reading.draining ? true : nil])
+        let text = Session.refusal(end, battery: reading.battery, pluggedIn: reading.draining)
         return text.prefix(1).lowercased() + text.dropFirst()
     }
 

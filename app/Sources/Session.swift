@@ -4,8 +4,9 @@ import IOKit.ps
 import notify
 
 // While Wham is on, three things end it on their own, and Wham says which:
-// the time it was given runs out, the battery runs low, or the Mac gets
-// critically hot. Nothing to set up. A Mac that sleeps keeps its work; one that
+// the time it was given runs out, the battery runs low (on battery, or
+// plugged into a charger too weak to keep up), or the Mac gets critically
+// hot. Nothing to set up. A Mac that sleeps keeps its work; one that
 // runs flat, or has to shut itself down to cool off, does not.
 enum Session {
     enum End: Equatable { case time, battery, heat }
@@ -21,6 +22,9 @@ enum Session {
         var now = Date()
         var offAt: Date?
         var onBattery = false
+        // Plugged in, and the battery runs down all the same: a charger or a
+        // hub too weak for what the Mac is doing.
+        var draining = false
         var battery: Int?
         var critical = false
         var batteryLimit = Session.defaultBatteryLimit
@@ -28,22 +32,22 @@ enum Session {
 
     static func end(_ reading: Reading) -> End? {
         if reading.critical { return .heat }
-        if reading.onBattery, reading.batteryLimit != never, let level = reading.battery, level <= reading.batteryLimit { return .battery }
+        if reading.onBattery || reading.draining, reading.batteryLimit != never, let level = reading.battery, level <= reading.batteryLimit { return .battery }
         if let offAt = reading.offAt, reading.now >= offAt { return .time }
         return nil
     }
 
     // What the battery and the heat say. The evals stand in for both with a
     // file named in WHAM_FAKE_POWER, read each time: "battery 9", "ac 80",
-    // "ac 80 critical".
+    // "ac 80 critical", "ac 9 draining".
     static func read(offAt: Date?) -> Reading {
         if let path = ProcessInfo.processInfo.environment["WHAM_FAKE_POWER"] {
             let words = ((try? String(contentsOfFile: path, encoding: .utf8)) ?? "").split(whereSeparator: \.isWhitespace)
-            return Reading(offAt: offAt, onBattery: words.first == "battery", battery: words.dropFirst().first.flatMap { Int($0) },
-                           critical: words.contains("critical"), batteryLimit: batteryLimit)
+            return Reading(offAt: offAt, onBattery: words.first == "battery", draining: words.contains("draining"),
+                           battery: words.dropFirst().first.flatMap { Int($0) }, critical: words.contains("critical"), batteryLimit: batteryLimit)
         }
         let power = Power.read()
-        return Reading(offAt: offAt, onBattery: power.onBattery, battery: power.level,
+        return Reading(offAt: offAt, onBattery: power.onBattery, draining: power.draining, battery: power.level,
                        critical: Heat.critical, batteryLimit: batteryLimit)
     }
 
@@ -56,16 +60,20 @@ enum Session {
         }
     }
 
-    // Why it will not start.
-    static func refusal(_ end: End, battery: Int?) -> String {
+    // Why it will not start. Plugged in already, the charge alone says it.
+    static func refusal(_ end: End, battery: Int?, pluggedIn: Bool = false) -> String {
         switch end {
         case .time: return Words.say("Time is up")
+        case .battery where pluggedIn: return why(.battery, battery: battery)
         case .battery: return Words.say("Battery at %@, plug in first", Words.percent(battery ?? batteryLimit))
         case .heat: return Words.say("Your Mac is too hot right now")
         }
     }
 
-    // How long `wham on` lasts: "45m", "2h", "1h30m", "1d", "90s".
+    // How long `wham on` lasts: "45m", "2h", "1h30m", "1d", "90s", a year at
+    // most.
+    static let longest: TimeInterval = 365 * 86400
+
     static func duration(_ text: String) -> TimeInterval? {
         let units: [Character: TimeInterval] = ["d": 86400, "h": 3600, "m": 60, "s": 1]
         let order: [Character] = ["d", "h", "m", "s"]
@@ -82,7 +90,7 @@ enum Session {
             digits = ""
             last = index
         }
-        return digits.isEmpty && total > 0 ? total : nil
+        return digits.isEmpty && total > 0 && total <= longest ? total : nil
     }
 
     // "16:40" today, "Tue 16:40" on another day, in the Mac's own format.
@@ -94,9 +102,11 @@ enum Session {
     }
 
     // What is left of a timed session, in words: "1 hr 58 min", "2 hr",
-    // "45 min". Rounded up, so the last minute says 1 min, never 0.
+    // "45 min". Rounded up, so the last minute says 1 min, never 0. An end
+    // further than a session can last (another tool's) counts as that far.
     static func timeLeft(_ seconds: TimeInterval) -> String {
-        let minutes = max(1, Int((seconds / 60).rounded(.up)))
+        let bounded = seconds.isNaN ? 0 : min(max(seconds, 0), longest)
+        let minutes = max(1, Int((bounded / 60).rounded(.up)))
         let hours = minutes / 60, rest = minutes % 60
         if hours == 0 { return Words.say("%d min", rest) }
         return rest == 0 ? Words.say("%d hr", hours) : Words.say("%1$d hr %2$d min", hours, rest)
@@ -183,10 +193,11 @@ enum Heat {
 }
 
 enum Power {
-    // Whether the Mac runs on its battery, and the battery's charge in percent
-    // (nil on a Mac without one).
-    static func read() -> (onBattery: Bool, level: Int?) {
-        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return (false, nil) }
+    // Whether the Mac runs on its battery, whether it is plugged in with its
+    // battery running down all the same (not charging, its current flowing
+    // out), and the battery's charge in percent (nil on a Mac without one).
+    static func read() -> (onBattery: Bool, draining: Bool, level: Int?) {
+        guard let info = IOPSCopyPowerSourcesInfo()?.takeRetainedValue() else { return (false, false, nil) }
         let source = IOPSGetProvidingPowerSourceType(info)?.takeUnretainedValue() as String?
         let onBattery = source == kIOPSBatteryPowerValue
         let list = IOPSCopyPowerSourcesList(info)?.takeRetainedValue() as? [CFTypeRef] ?? []
@@ -195,9 +206,10 @@ enum Power {
                   description[kIOPSTypeKey] as? String == kIOPSInternalBatteryType,
                   let now = description[kIOPSCurrentCapacityKey] as? Int,
                   let max = description[kIOPSMaxCapacityKey] as? Int, max > 0 else { continue }
-            return (onBattery, now * 100 / max)
+            let draining = !onBattery && description[kIOPSIsChargingKey] as? Bool == false && (description[kIOPSCurrentKey] as? Int ?? 0) < 0
+            return (onBattery, draining, now * 100 / max)
         }
-        return (onBattery, nil)
+        return (onBattery, false, nil)
     }
 }
 
