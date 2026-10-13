@@ -64,12 +64,13 @@ Wham lives in your menu bar as a little switch.
 - **Right-click** (or control-click) for the menu: turn on for 1, 2, 4 or 8
   hours (each says when it would end), sound, appearance, open at login, stay
   on after restart, automatic updates, the battery limit, what's new, check for
-  updates, quit.
+  updates, quit. The menu stays open while you pick options: a click outside
+  closes it.
 
 A timed session shows what is left: the menu says until when and how long, the
 switch's candy drains toward the knob, and a note drops down five minutes
 before the end. Stay Awake For gives it a new length, No Time Limit drops the
-end.
+end (off, it turns Wham on with no end; checked while there is none).
 
 Appearance, in the menu, fits it in with the icons around it: **Monochrome**
 draws it in your menu bar's own ink, no color, and **Compact** keeps only the
@@ -259,9 +260,11 @@ went dark and whether it locked.
 for GitHub, checks that a copy signed by someone else is refused, that with
 Update Automatically off the menu offers the new version and installs it on a
 click, and what Check for Updates says when there is nothing new or no answer
-(it needs the Developer ID certificate). `scripts/eval.sh` clicks Check for
-Updates in the open menu and, with `WHAM_SHOTS=dir`, saves a picture of the
-menu at each step; CI keeps them for each macOS it runs.
+(it needs the Developer ID certificate). `scripts/eval.sh` clicks the menu's
+options as a mouse would and checks that it stays open, that only a click
+outside closes it, and that its rows look like the menu's own; with
+`WHAM_SHOTS=dir`, it saves a picture of the menu at each step, which CI keeps
+for each macOS it runs.
 `scripts/sheet.sh` draws the switch in each of its looks, on a light and a dark
 menu bar, into `build/sheet.png` (`--film` for it turning on, frame by frame).
 

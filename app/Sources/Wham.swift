@@ -24,6 +24,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var available: String?
     private var installing: String?
     private var asked = false
+    // The menu while it is open: a click on one of its options changes it
+    // and the menu stays, showing the new state, so it is kept in step with
+    // Wham until it closes. What waits for it to close (a password prompt,
+    // an alert), and a refusal it says in its first line meanwhile, since
+    // the pills hide behind an open menu.
+    private weak var openMenu: NSMenu?
+    private var afterMenu: [@MainActor () -> Void] = []
+    private var said: String?
     // Check for Updates while the menu is open: a check asked for there says
     // how it went right there, rather than in a pill.
     private weak var updateRow: UpdateRow?
@@ -70,10 +78,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         // Catches anything else flipping the flag (`wham on` in a terminal, pmset,
         // a reboot). The tolerance lets macOS batch these wakeups with others.
-        timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.check() }
+        // In the menu's mode too: an open menu follows the time left.
+        let tick = Timer(timeInterval: 2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.check()
+                self?.refreshMenu()
+            }
         }
-        timer?.tolerance = 1
+        tick.tolerance = 1
+        RunLoop.main.add(tick, forMode: .common)
+        timer = tick
         watch = Watch { [weak self] in self?.check() }
         // `wham on 2h` in a terminal.
         DistributedNotificationCenter.default().addObserver(forName: Session.changed, object: nil, queue: .main) { [weak self] _ in
@@ -96,7 +110,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             defaults.set(running, forKey: "lastVersion")
             if !defaults.bool(forKey: "loginItemSet") {
                 defaults.set(true, forKey: "loginItemSet")
-                try? LoginItem.set(true)
+                if (try? LoginItem.set(true)) == false { LoginItem.askForApproval() }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.hello() }
             } else if updated {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { self.pop(Toast.note("UPDATED TO \(self.running)", "What's New is in the menu")) }
@@ -119,10 +133,11 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         pop(Toast.hello)
     }
 
-    // Shows a pill under the switch. The evals read what it said.
+    // Shows a pill under the switch, unless the menu is open: the menu hides
+    // it, and shows what changed itself. The evals read what it said.
     private func pop(_ style: Toast.Style) {
         guard let button = item.button, let window = button.window else { return }
-        toast.show(style, under: window.convertToScreen(button.convert(button.bounds, to: nil)))
+        if openMenu == nil { toast.show(style, under: window.convertToScreen(button.convert(button.bounds, to: nil))) }
         print("toast \(style.title): \(style.caption)")
         fflush(stdout)
     }
@@ -245,9 +260,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             updateRow.state = row
             return
         }
-        updateRow?.enclosingMenuItem?.menu?.cancelTracking()
-        pop(Toast.note(note.title, note.caption))
-        if openSite { self.openSite() }
+        closeMenu {
+            self.pop(Toast.note(note.title, note.caption))
+            if openSite { self.openSite() }
+        }
     }
 
     // The new copy opens once this one is gone. Leaving without the quit
@@ -342,6 +358,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
         item.button?.setAccessibilityLabel(tip)
         item.button?.toolTip = tip
+        refreshMenu()
     }
 
     // On every change: the tick, the power source, the heat, the lid, the
@@ -381,7 +398,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func refuses() -> Bool {
         let reading = Session.read(offAt: nil)
         guard let end = Session.end(reading) else { return false }
-        announce(false, caption: Session.refusal(end, battery: reading.battery))
+        let refusal = Session.refusal(end, battery: reading.battery)
+        if openMenu != nil { said = refusal }
+        announce(false, caption: refusal)
+        refreshMenu()
         return true
     }
 
@@ -453,71 +473,116 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         (menu ?? self.menu()).popUp(positioning: nil, at: NSPoint(x: frame.minX, y: bar - 6), in: nil)
     }
 
+    // What the switch shows: on from the click, while pmset runs.
+    private var isOn: Bool { toggleView.state == true }
+
+    // The menu's first line: what the Mac does now, or what Wham just refused.
+    private var statusLine: String {
+        if let said { return said }
+        if isOn { return Self.awake(until: offAt) }
+        if let ended { return "\(ended.why), stopped at \(Session.clock(ended.at))" }
+        return "Mac sleeps as usual"
+    }
+
+    private static func awake(until end: Date?, now: Date = Date()) -> String {
+        guard let end else { return "Mac stays awake, even with the lid closed" }
+        return "Mac stays awake until \(Session.clock(end, now: now)) (\(Session.timeLeft(end.timeIntervalSince(now))) left)"
+    }
+
+    // Every option is a row that keeps the menu open when clicked, and the
+    // menu follows what changed while it is open. The links and Quit close it.
     private func menu() -> NSMenu {
-        let on = Sleep.isDisabled == true
         let menu = NSMenu()
-        let line: String
-        if on, let offAt {
-            line = "Mac stays awake until \(Session.clock(offAt)) (\(Session.timeLeft(offAt.timeIntervalSinceNow)) left)"
-        } else if on {
-            line = "Mac stays awake, even with the lid closed"
-        } else if let ended {
-            line = "\(ended.why), stopped at \(Session.clock(ended.at))"
-        } else {
-            line = "Mac sleeps as usual"
-        }
-        let status = NSMenuItem(title: line, action: nil, keyEquivalent: "")
+        // The first line, gray. Its blank state image keeps the menu's check
+        // column when no option is checked: the titles stay put when one gets
+        // checked or unchecked while the menu is open.
+        let status = LiveItem(title: "", action: nil, keyEquivalent: "")
         status.isEnabled = false
+        status.offStateImage = Self.blankState
+        status.refresh = { [unowned self] in $0.title = statusLine }
         menu.addItem(status)
-        menu.addItem(NSMenuItem(title: on ? "Turn Off" : "Turn On", action: #selector(toggle), keyEquivalent: ""))
-        let timed = NSMenuItem(title: on ? "Stay Awake For" : "Turn On For", action: nil, keyEquivalent: "")
-        timed.submenu = lengths(on: on)
+        menu.addItem(row(["Turn On", "Turn Off"]) { [unowned self] in .init(title: isOn ? "Turn Off" : "Turn On") } click: { [unowned self] in toggle() })
+        let timed = LiveItem(title: "", action: nil, keyEquivalent: "")
+        timed.refresh = { [unowned self] in $0.title = isOn ? "Stay Awake For" : "Turn On For" }
+        timed.submenu = lengths()
         menu.addItem(timed)
         menu.addItem(.separator())
-        let sound = NSMenuItem(title: "Sound", action: #selector(toggleSound), keyEquivalent: "")
-        sound.state = muted ? .off : .on
-        menu.addItem(sound)
+        menu.addItem(row(["Sound"]) { [unowned self] in .init(title: "Sound", checked: !muted) } click: { [unowned self] in muted.toggle() })
         let appearance = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
         appearance.submenu = appearances()
         menu.addItem(appearance)
-        let login = NSMenuItem(title: "Open at Login", action: #selector(toggleLogin), keyEquivalent: "")
-        login.state = LoginItem.isOn ? .on : .off
-        menu.addItem(login)
-        let restart = NSMenuItem(title: "Stay On After Restart", action: #selector(toggleRestart), keyEquivalent: "")
-        restart.state = Self.staysOnAfterRestart ? .on : .off
-        restart.toolTip = "If Wham is on when your Mac restarts, it turns back on when you log in."
-        menu.addItem(restart)
-        let updates = NSMenuItem(title: "Update Automatically", action: #selector(toggleUpdates), keyEquivalent: "")
-        updates.state = Update.isOn ? .on : .off
-        menu.addItem(updates)
+        menu.addItem(row(["Open at Login"]) { .init(title: "Open at Login", checked: LoginItem.isOn) } click: { [unowned self] in toggleLogin() })
+        menu.addItem(row(["Stay On After Restart"], tip: "If Wham is on when your Mac restarts, it turns back on when you log in.") {
+            .init(title: "Stay On After Restart", checked: Self.staysOnAfterRestart)
+        } click: { Self.staysOnAfterRestart.toggle() })
+        menu.addItem(row(["Update Automatically"]) { .init(title: "Update Automatically", checked: Update.isOn) } click: { [unowned self] in toggleUpdates() })
         let limit = NSMenuItem(title: "Battery Limit", action: nil, keyEquivalent: "")
         limit.submenu = batteryLimits()
         menu.addItem(limit)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "About Wham \(CLI.version)", action: #selector(openSite), keyEquivalent: ""))
-        menu.addItem(NSMenuItem(title: "What's New", action: #selector(openChangelog), keyEquivalent: ""))
+        let links = [NSMenuItem(title: "About Wham \(CLI.version)", action: #selector(openSite), keyEquivalent: ""),
+                     NSMenuItem(title: "What's New", action: #selector(openChangelog), keyEquivalent: "")]
+        for entry in links { menu.addItem(entry) }
         menu.addItem(updateItem())
-        menu.addItem(NSMenuItem(title: "Made by Gwendall", action: #selector(openAuthor), keyEquivalent: ""))
+        let author = NSMenuItem(title: "Made by Gwendall", action: #selector(openAuthor), keyEquivalent: "")
+        menu.addItem(author)
         menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q"))
-        for entry in menu.items { entry.target = self }
-        menu.delegate = self
+        let quit = NSMenuItem(title: "Quit Wham (lets your Mac sleep)", action: #selector(quit), keyEquivalent: "q")
+        menu.addItem(quit)
+        for entry in links + [author, quit] { entry.target = self }
+        // As wide as any first line a click in it can bring: the menu does
+        // not grow while open.
+        let now = Date()
+        let lines = ["Mac sleeps as usual", Self.awake(until: nil)]
+            + [1, 2, 4, 8].map { Self.awake(until: now.addingTimeInterval(TimeInterval($0) * 3600), now: now.addingTimeInterval(60)) }
+            + [Session.End.battery, .heat].map { Session.refusal($0, battery: 100) }
+        menu.minimumWidth = MenuRow.width(for: lines)
+        adopt(menu)
+        refresh(menu)
         return menu
     }
 
+    // A blank image as wide as the menu's check mark.
+    private static let blankState = NSImage(size: NSSize(width: 13, height: 11))
+
+    // An option as a row that keeps the menu open when clicked, as wide as
+    // any of its `titles` with any of its `details`, read again from
+    // `content` after each change while the menu is open. Its action is for
+    // the keyboard: Return does the same, and closes the menu.
+    private func row(_ titles: [String], details: [String] = [], tip: String? = nil,
+                     _ content: @escaping @MainActor () -> MenuRow.Content, click: @escaping @MainActor () -> Void) -> LiveItem {
+        let row = MenuRow(content(), width: MenuRow.width(for: titles, details: details))
+        row.source = content
+        row.onClick = { [weak self] in
+            click()
+            self?.refreshMenu()
+        }
+        row.toolTip = tip
+        let entry = LiveItem(title: row.title, action: #selector(press(_:)), keyEquivalent: "")
+        entry.target = self
+        entry.view = row
+        entry.state = row.content.checked ? .on : .off
+        entry.toolTip = tip
+        return entry
+    }
+
+    @objc private func press(_ sender: NSMenuItem) {
+        (sender.view as? MenuRow)?.onClick?()
+    }
+
     // Check for Updates, or the new version Wham found and did not install,
-    // as a row that keeps the menu open when clicked. Its action is for the
-    // keyboard: Return closes the menu, and a pill says how it went.
+    // as a row that keeps the menu open when clicked.
     private func updateItem() -> NSMenuItem {
         // As wide as its widest line, with any version found while the menu is open.
-        let row = UpdateRow(updateState, width: UpdateRow.width(for: Line.all(running: running, found: available ?? "10.10.10")))
+        let row = UpdateRow(updateState, width: MenuRow.width(for: Line.all(running: running, found: available ?? "10.10.10"), accessory: true))
         row.onClick = { [weak self, weak row] in
             guard let self else { return }
             self.checkForUpdate(asked: true)
             row?.state = self.updateState
         }
         row.onChange = { print("row \($0)"); fflush(stdout) }
-        let entry = NSMenuItem(title: row.title, action: #selector(checkNow), keyEquivalent: "")
+        let entry = NSMenuItem(title: row.title, action: #selector(press(_:)), keyEquivalent: "")
+        entry.target = self
         entry.view = row
         return entry
     }
@@ -542,63 +607,100 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
+    // The menu and its submenus tell Wham when they open, close and move
+    // their selection.
+    private func adopt(_ menu: NSMenu) {
+        menu.delegate = self
+        for entry in menu.items { if let submenu = entry.submenu { adopt(submenu) } }
+    }
+
     func menuWillOpen(_ menu: NSMenu) {
+        guard menu.supermenu == nil else { return }
+        openMenu = menu
         updateRow = menu.items.lazy.compactMap { $0.view as? UpdateRow }.first
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        // A submenu's rows lose their selection with it.
+        for entry in menu.items { (entry.view as? MenuRow)?.highlighted = false }
+        guard menu.supermenu == nil else { return }
+        openMenu = nil
         updateRow = nil
+        said = nil
+        let waiting = afterMenu
+        afterMenu = []
+        if !waiting.isEmpty { Self.after(0.1) { for work in waiting { work() } } }
     }
 
-    // The row draws the menu's selection itself.
+    // The rows draw the menu's selection themselves. A click on one leaves
+    // the menu without a selection until the pointer moves again: the row
+    // still under the pointer keeps its own.
     func menu(_ menu: NSMenu, willHighlight item: NSMenuItem?) {
-        updateRow?.highlighted = item?.view === updateRow
+        for entry in menu.items {
+            guard let row = entry.view as? MenuRow else { continue }
+            row.highlighted = item.map { $0 === entry } ?? row.underPointer
+        }
+    }
+
+    // Closes the menu, then does `work` once it is gone (at once if no menu
+    // is open): a password prompt, an alert or another app over an open menu
+    // would leave it hanging there.
+    private func closeMenu(then work: @escaping @MainActor () -> Void = {}) {
+        guard let openMenu else { return work() }
+        afterMenu.append(work)
+        openMenu.cancelTracking()
+    }
+
+    // Brings the open menu in step with Wham: its titles, its checks, the
+    // time left.
+    private func refreshMenu() {
+        if let openMenu { refresh(openMenu) }
+    }
+
+    private func refresh(_ menu: NSMenu) {
+        for entry in menu.items {
+            if let live = entry as? LiveItem { live.refresh?(live) }
+            (entry.view as? MenuRow)?.reload()
+            if let submenu = entry.submenu { refresh(submenu) }
+        }
     }
 
     // 1, 2, 4 or 8 hours from now, each with the time it would end on the
-    // right, in gray; and, in a timed session, a way back to no end at all.
-    private func lengths(on: Bool) -> NSMenu {
+    // right, in gray; and No Time Limit, checked while the Mac stays awake
+    // with no end. Always there: a row shown or hidden while the menu is
+    // open would resize it under the pointer.
+    private func lengths() -> NSMenu {
         let lengths = NSMenu()
+        let hours = [1, 2, 4, 8]
+        func title(_ count: Int) -> String { count == 1 ? "1 Hour" : "\(count) Hours" }
+        func end(_ count: Int, from now: Date = Date()) -> String {
+            Session.clock(now.addingTimeInterval(TimeInterval(count) * 3600), now: now)
+        }
+        // The ends move on while the menu is open, to another day maybe: as
+        // wide as an end with its weekday too (a Wednesday at 12:58).
         let now = Date()
-        let entries = [1, 2, 4, 8].map { hours in
-            (hours, hours == 1 ? "1 Hour" : "\(hours) Hours", Session.clock(now.addingTimeInterval(TimeInterval(hours) * 3600), now: now))
+        var wednesday = DateComponents(year: 2025, month: 1, day: 1, hour: 12, minute: 58)
+        wednesday.calendar = Calendar.current
+        let widest = wednesday.date.map { [Session.clock($0, now: $0.addingTimeInterval(-86400))] } ?? []
+        let titles = hours.map(title) + ["No Time Limit"], details = hours.map { end($0, from: now) } + widest
+        for count in hours {
+            lengths.addItem(row(titles, details: details) { .init(title: title(count), detail: end(count)) } click: { [unowned self] in stayAwake(for: count) })
         }
-        let font = NSFont.menuFont(ofSize: 0)
-        func width(_ text: String) -> CGFloat { (text as NSString).size(withAttributes: [.font: font]).width }
-        let stop = (entries.map { width($0.1) }.max() ?? 0) + 24 + (entries.map { width($0.2) }.max() ?? 0)
-        let style = NSMutableParagraphStyle()
-        style.tabStops = [NSTextTab(textAlignment: .right, location: stop)]
-        for (hours, title, end) in entries {
-            let entry = NSMenuItem(title: title, action: #selector(stayAwake(_:)), keyEquivalent: "")
-            let text = NSMutableAttributedString(string: "\(title)\t", attributes: [.font: font, .paragraphStyle: style])
-            text.append(NSAttributedString(string: end, attributes: [.font: font, .paragraphStyle: style, .foregroundColor: NSColor.secondaryLabelColor]))
-            entry.attributedTitle = text
-            entry.tag = hours
-            entry.target = self
-            lengths.addItem(entry)
-        }
-        if on && offAt != nil {
-            lengths.addItem(.separator())
-            let forever = NSMenuItem(title: "No Time Limit", action: #selector(noTimeLimit), keyEquivalent: "")
-            forever.target = self
-            lengths.addItem(forever)
-        }
+        lengths.addItem(.separator())
+        lengths.addItem(row(titles, details: details) { [unowned self] in .init(title: "No Time Limit", checked: isOn && offAt == nil) } click: { [unowned self] in noTimeLimit() })
         return lengths
     }
 
     // Monochrome and Compact, each on its own.
     private func appearances() -> NSMenu {
         let looks = NSMenu()
-        let monochrome = NSMenuItem(title: "Monochrome", action: #selector(toggleMonochrome), keyEquivalent: "")
-        monochrome.state = look.monochrome ? .on : .off
-        monochrome.toolTip = "In the menu bar's own color, like the icons around it."
-        let compact = NSMenuItem(title: "Compact", action: #selector(toggleCompact), keyEquivalent: "")
-        compact.state = look.compact ? .on : .off
-        compact.toolTip = "As wide as an icon: the switch turns instead of sliding."
-        for entry in [monochrome, compact] {
-            entry.target = self
-            looks.addItem(entry)
-        }
+        let titles = ["Monochrome", "Compact"]
+        looks.addItem(row(titles, tip: "In the menu bar's own color, like the icons around it.") { [unowned self] in
+            .init(title: "Monochrome", checked: look.monochrome)
+        } click: { [unowned self] in look.monochrome.toggle() })
+        looks.addItem(row(titles, tip: "As wide as an icon: the switch turns instead of sliding.") { [unowned self] in
+            .init(title: "Compact", checked: look.compact)
+        } click: { [unowned self] in look.compact.toggle() })
         return looks
     }
 
@@ -612,22 +714,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    @objc private func toggleMonochrome() { look.monochrome.toggle() }
-    @objc private func toggleCompact() { look.compact.toggle() }
-    @objc private func toggleRestart() { Self.staysOnAfterRestart.toggle() }
-
     // On battery, the charge at which Wham lets the Mac sleep.
     private func batteryLimits() -> NSMenu {
         let limits = NSMenu()
         let header = NSMenuItem(title: "Sleep on battery at", action: nil, keyEquivalent: "")
         header.isEnabled = false
+        header.offStateImage = Self.blankState
         limits.addItem(header)
+        let titles = Session.batteryLimits.map { "\($0)%" }
         for percent in Session.batteryLimits {
-            let entry = NSMenuItem(title: "\(percent)%", action: #selector(setBatteryLimit(_:)), keyEquivalent: "")
-            entry.tag = percent
-            entry.state = percent == Session.batteryLimit ? .on : .off
-            entry.target = self
-            limits.addItem(entry)
+            limits.addItem(row(titles) { .init(title: "\(percent)%", checked: percent == Session.batteryLimit) } click: { [unowned self] in setBatteryLimit(percent) })
         }
         return limits
     }
@@ -637,9 +733,11 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // is a click on the switch, "Terminate" a quit from outside (an upgrade),
     // "Restart" the quit macOS sends before a restart, "Menu" opens the menu
     // for real and says whether it showed whole, "Click Updates" opens it and
-    // clicks Check for Updates as a mouse would, "Status" prints the menu's
-    // first line and its lengths, "Items" the menu's items, "Look" the
-    // appearance and the status item's width, and "Pause" waits a step.
+    // clicks Check for Updates as a mouse would, "Click Rows" the options
+    // WHAM_CLICKS lists, "Rows" draws the menu's own rows next to rows of
+    // Wham's, "Status" prints the menu's first line and its lengths, "Items"
+    // the menu's items, "Look" the appearance and the status item's width,
+    // and "Pause" waits a step.
     private func pressForEvals() {
         guard let list = ProcessInfo.processInfo.environment["WHAM_PRESS"] else { return }
         var steps = list.split(separator: ",").map { $0.split(separator: "/").map(String.init) }
@@ -654,17 +752,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 poweringOff = true
                 NSApp.terminate(nil)
             case ["Look"]:
-                print("look", look.monochrome ? "monochrome" : "color", look.compact ? "compact" : "wide", Int(item.length))
+                print("look", lookLine)
                 fflush(stdout)
             case ["Pause"]: break
             case ["Items"]:
-                print("items", self.menu().items.map { $0.isSeparatorItem ? "-" : $0.title }.joined(separator: " | "))
+                print("items", Self.describe(self.menu()))
                 fflush(stdout)
             case ["Status"]:
                 let menu = self.menu()
-                let lengths = menu.items.first { $0.submenu != nil }?.submenu?.items ?? []
                 print("status", menu.items.first?.title ?? "")
-                print("lengths", lengths.map { $0.isSeparatorItem ? "-" : $0.attributedTitle?.string ?? $0.title }.joined(separator: " | "))
+                print("lengths", Self.describe(menu.items.first { $0.submenu != nil }?.submenu ?? NSMenu()))
                 fflush(stdout)
             case ["Menu"]:
                 let menu = self.menu()
@@ -674,11 +771,18 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 let menu = self.menu()
                 perform(#selector(clickUpdates(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
                 showMenu(menu)
+            case ["Click Rows"]:
+                let menu = self.menu()
+                perform(#selector(clickRows(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
+                showMenu(menu)
+            case ["Rows"]:
+                let menu = rowPairs()
+                perform(#selector(comparePairs(_:)), with: menu, afterDelay: 0.5, inModes: [.common])
+                showMenu(menu)
             default:
                 var entry: NSMenuItem?, menu: NSMenu? = self.menu()
-                // A length's title also carries its end time, after a tab.
                 for title in path {
-                    entry = menu?.items.first { $0.title == title || $0.title.hasPrefix(title + "\t") }
+                    entry = menu?.items.first { $0.title == title && !$0.isHidden }
                     menu = entry?.submenu
                 }
                 if let entry, let action = entry.action { NSApp.sendAction(action, to: entry.target, from: entry) }
@@ -686,6 +790,21 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { next() }
+    }
+
+    // "monochrome compact 23": the switch's look and the status item's width.
+    private var lookLine: String {
+        "\(look.monochrome ? "monochrome" : "color") \(look.compact ? "compact" : "wide") \(Int(item.length))"
+    }
+
+    // A menu's items as shown, a row's detail after a tab.
+    private static func describe(_ menu: NSMenu) -> String {
+        menu.items.filter { !$0.isHidden }.map { entry in
+            if entry.isSeparatorItem { return "-" }
+            guard let row = entry.view as? MenuRow else { return entry.title }
+            let title = row.content.checked ? "\(row.title) checked" : row.title
+            return row.content.detail.map { "\(title)\t\($0)" } ?? title
+        }.joined(separator: " | ")
     }
 
     // The open menu's window against the menu's own height, then closes it.
@@ -708,14 +827,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             fflush(stdout)
             return menu.cancelTracking()
         }
-        let shots = ProcessInfo.processInfo.environment["WHAM_SHOTS"]
-        func shoot(_ name: String) -> CGImage? {
-            let image = Self.picture(of: window)
-            if let shots, let image {
-                try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(shots)/\(name).png"))
-            }
-            return image
-        }
+        func shoot(_ name: String) -> CGImage? { Self.shoot(window, name) }
         let frame = row.convert(row.bounds, to: nil)
         let measures = row.measures
         print("row title at x \(measures.x), \(measures.height) points tall; the menu's at x \(measures.menuX.map { "\($0)" } ?? "-"), \(measures.menuHeight.map { "\($0)" } ?? "-") tall")
@@ -730,49 +842,209 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
         }
         fflush(stdout)
-        let center = NSPoint(x: frame.midX, y: frame.midY)
         let home = CGEvent(source: nil)?.location
-        let onScreen = window.convertPoint(toScreen: center)
-        CGWarpMouseCursorPosition(CGPoint(x: onScreen.x, y: (NSScreen.screens.first?.frame.height ?? 0) - onScreen.y))
-        func post(_ type: NSEvent.EventType) {
-            guard let event = NSEvent.mouseEvent(with: type, location: center, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
-                                                 windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
-                                                 pressure: type == .leftMouseDown ? 1 : 0) else { return }
-            NSApp.postEvent(event, atStart: false)
-        }
-        post(.mouseMoved)
+        Self.pointer(onto: frame, of: window)
         // A busy Mac takes a while to highlight the row: the click waits for it.
-        var waited = 0.0
-        @MainActor func hovered() {
-            if !row.highlighted, waited < 5 {
-                waited += 0.1
-                return Self.after(0.1) { hovered() }
-            }
+        Self.waitFor(5, { row.highlighted }) {
             print("row highlighted", row.highlighted)
             _ = shoot("2-highlighted")
-            post(.leftMouseDown)
-            post(.leftMouseUp)
-            waited = 0
+            Self.click(frame, of: window)
             Self.after(0.4) {
                 _ = shoot("3-busy")
-                over()
+                Self.waitFor(15, { !row.state.busy }) {
+                    // The picture once the menu has drawn the answer.
+                    Self.after(0.3) {
+                        _ = shoot("4-told")
+                        print("menu", window.isVisible ? "still open" : "closed")
+                        fflush(stdout)
+                        menu.cancelTracking()
+                        if let home { CGWarpMouseCursorPosition(home) }
+                    }
+                }
             }
         }
-        @MainActor func over() {
-            if case .busy = row.state, waited < 15 {
-                waited += 0.2
-                return Self.after(0.2) { over() }
-            }
-            // The picture once the menu has drawn the answer.
-            Self.after(0.3) {
-                _ = shoot("4-told")
-                print("menu", window.isVisible ? "still open" : "closed")
+    }
+
+    // Clicks options of the open menu as a mouse would, one after the other,
+    // as WHAM_CLICKS lists them ("Appearance/Monochrome,Turn On"): the pointer
+    // rests on a submenu's title until the submenu opens, then clicks the row
+    // in it. After each click, whether the menu is still open, what the row
+    // says now, the switch's look and the menu's first line; with
+    // WHAM_SHOTS, a picture of the menu. Then a click outside it, which closes
+    // it, and the pointer goes back.
+    @objc private func clickRows(_ menu: NSMenu) {
+        var paths = (ProcessInfo.processInfo.environment["WHAM_CLICKS"] ?? "").split(separator: ",").map { $0.split(separator: "/").map(String.init) }
+        let home = CGEvent(source: nil)?.location
+        guard let root = Self.window(of: menu) else {
+            print("menu missing")
+            fflush(stdout)
+            return menu.cancelTracking()
+        }
+        _ = Self.shoot(root, "click-0")
+        var clicks = 0
+        @MainActor func next() {
+            guard !paths.isEmpty else {
+                print("menu", root.isVisible && openMenu != nil ? "still open" : "closed")
                 fflush(stdout)
-                menu.cancelTracking()
-                if let home { CGWarpMouseCursorPosition(home) }
+                guard openMenu != nil else {
+                    if let home { CGWarpMouseCursorPosition(home) }
+                    return
+                }
+                // Left of the menu, halfway down.
+                let outside = NSRect(x: -60, y: root.frame.height / 2, width: 1, height: 1)
+                Self.pointer(onto: outside, of: root)
+                Self.click(outside, of: root)
+                Self.waitFor(2, { self.openMenu == nil }) {
+                    print("outside: menu", self.openMenu == nil ? "closed" : "still open")
+                    fflush(stdout)
+                    menu.cancelTracking()
+                    if let home { CGWarpMouseCursorPosition(home) }
+                }
+                return
             }
+            let path = paths.removeFirst()
+            var titles = path[...], current = menu
+            @MainActor func fail(_ why: String) {
+                print("click \(path.joined(separator: "/")): \(why)")
+                next()
+            }
+            @MainActor func step() {
+                let title = titles.removeFirst()
+                guard let entry = current.items.first(where: { $0.title == title && !$0.isHidden }) else { return fail("no \(title)") }
+                if let row = entry.view as? MenuRow, titles.isEmpty, let window = row.window {
+                    let frame = row.convert(row.bounds, to: nil)
+                    Self.pointer(onto: frame, of: window)
+                    // Only a row the menu itself has selected: a click on any
+                    // other would be the menu's.
+                    Self.waitFor(5, { current.highlightedItem === entry && row.highlighted }, poke: Self.nudge(frame, of: window)) {
+                        guard current.highlightedItem === entry else { return fail("\(title) did not highlight") }
+                        Self.click(frame, of: window)
+                        Self.after(0.6) {
+                            clicks += 1
+                            _ = Self.shoot(window, "click-\(clicks)")
+                            let open = root.isVisible && self.openMenu != nil
+                            print("click \(path.joined(separator: "/")): menu \(open ? "open" : "closed"), \(row.title)\(row.content.checked ? " checked" : ""), look \(self.lookLine), status \(menu.items.first?.title ?? "")")
+                            fflush(stdout)
+                            next()
+                        }
+                    }
+                } else if let submenu = entry.submenu, let window = Self.window(of: current), let frame = Self.frame(of: title, in: window) {
+                    Self.pointer(onto: frame, of: window)
+                    Self.waitFor(5, { Self.window(of: submenu)?.isVisible == true }, poke: Self.nudge(frame, of: window)) {
+                        guard Self.window(of: submenu)?.isVisible == true else { return fail("\(title) did not open") }
+                        current = submenu
+                        step()
+                    }
+                } else {
+                    fail("\(title) not shown")
+                }
+            }
+            step()
         }
-        Self.after(0.2) { hovered() }
+        next()
+    }
+
+    // The menu's own rows over rows of Wham's that say the same: plain,
+    // checked and gray, for "Rows".
+    private func rowPairs() -> NSMenu {
+        let menu = NSMenu()
+        for content in [MenuRow.Content(title: "Plain"), .init(title: "Checked", checked: true), .init(title: "Gray", enabled: false)] {
+            let native = NSMenuItem(title: content.title, action: content.enabled ? #selector(press(_:)) : nil, keyEquivalent: "")
+            native.target = self
+            native.state = content.checked ? .on : .off
+            menu.addItem(native)
+            menu.addItem(row([content.title]) { content } click: {})
+        }
+        adopt(menu)
+        return menu
+    }
+
+    // Each of the menu's own rows against Wham's under it, in a picture of
+    // the menu: the share of their pixels that differ, and where their ink
+    // starts.
+    @objc private func comparePairs(_ menu: NSMenu) {
+        defer {
+            fflush(stdout)
+            menu.cancelTracking()
+        }
+        guard let window = Self.window(of: menu), let image = Self.shoot(window, "rows") else { return print("pairs missing") }
+        guard Self.screenShows else { return print("pairs not drawn: the screen is locked or asleep") }
+        for entry in menu.items {
+            guard let row = entry.view as? MenuRow else { continue }
+            let mine = row.convert(row.bounds, to: nil), theirs = mine.offsetBy(dx: 0, dy: mine.height)
+            let differ = Self.differ(in: image, of: window, between: theirs, and: mine)
+            let a = Self.ink(in: image, of: window, at: theirs), b = Self.ink(in: image, of: window, at: mine)
+            print("pair \(row.title): \(differ.map { String(format: "%.4f", $0) } ?? "-") differ, ink at x \(a.map { "\($0.x)" } ?? "-") in the menu's, \(b.map { "\($0.x)" } ?? "-") in Wham's")
+        }
+    }
+
+    // The window a menu shows in, found through one of its rows.
+    private static func window(of menu: NSMenu) -> NSWindow? {
+        menu.items.lazy.compactMap { $0.view?.window }.first
+    }
+
+    // The row of one of the menu's own titles, in its window.
+    private static func frame(of title: String, in window: NSWindow) -> NSRect? {
+        func find(_ view: NSView) -> NSTextField? {
+            if view is MenuRow { return nil }
+            if let field = view as? NSTextField, field.stringValue == title { return field }
+            for sub in view.subviews { if let field = find(sub) { return field } }
+            return nil
+        }
+        guard let root = window.contentView, let holder = find(root)?.superview else { return nil }
+        return holder.convert(holder.bounds, to: nil)
+    }
+
+    // The pointer onto the middle of `frame` in `window`, for real: the menu
+    // goes by where it really is.
+    private static func pointer(onto frame: NSRect, of window: NSWindow) {
+        let center = NSPoint(x: frame.midX, y: frame.midY)
+        let onScreen = window.convertPoint(toScreen: center)
+        CGWarpMouseCursorPosition(CGPoint(x: onScreen.x, y: (NSScreen.screens.first?.frame.height ?? 0) - onScreen.y))
+        post(.mouseMoved, at: center, in: window)
+    }
+
+    private static func click(_ frame: NSRect, of window: NSWindow) {
+        post(.leftMouseDown, at: NSPoint(x: frame.midX, y: frame.midY), in: window)
+        post(.leftMouseUp, at: NSPoint(x: frame.midX, y: frame.midY), in: window)
+    }
+
+    private static func post(_ type: NSEvent.EventType, at point: NSPoint, in window: NSWindow) {
+        guard let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: ProcessInfo.processInfo.systemUptime,
+                                             windowNumber: window.windowNumber, context: nil, eventNumber: 0, clickCount: 1,
+                                             pressure: type == .leftMouseDown ? 1 : 0) else { return }
+        NSApp.postEvent(event, atStart: false)
+    }
+
+    // The pointer a point to one side of the middle of `frame`, then to the
+    // other: a menu that missed one move (macOS 14 leaving a submenu for
+    // another) sees the next.
+    private static func nudge(_ frame: NSRect, of window: NSWindow) -> @MainActor () -> Void {
+        var side: CGFloat = 1
+        return {
+            side = -side
+            pointer(onto: frame.offsetBy(dx: side, dy: 0), of: window)
+        }
+    }
+
+    // Goes on once `ready`, or after `seconds` anyway, menu open or not,
+    // with `poke` between tries.
+    private static func waitFor(_ seconds: Double, _ ready: @escaping @MainActor () -> Bool, poke: (@MainActor () -> Void)? = nil,
+                                then work: @escaping @MainActor () -> Void) {
+        if ready() || seconds <= 0 { return work() }
+        after(0.1) {
+            poke?()
+            waitFor(seconds - 0.1, ready, poke: poke, then: work)
+        }
+    }
+
+    // A picture of `window`, saved as `name` in WHAM_SHOTS when set.
+    private static func shoot(_ window: NSWindow, _ name: String) -> CGImage? {
+        let image = picture(of: window)
+        if let shots = ProcessInfo.processInfo.environment["WHAM_SHOTS"], let image {
+            try? NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(shots)/\(name).png"))
+        }
+        return image
     }
 
     // A window of this app as drawn, which needs no permission. Called by
@@ -817,18 +1089,37 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return first.map { ($0, Double(contrast) / 765) }
     }
 
-    @objc private func toggleSound() { muted.toggle() }
+    // The share of the pixels of two rows of a picture of the window that
+    // differ by more than a trace, where ink() reads them: clear of the
+    // window's rounded edges.
+    private static func differ(in image: CGImage, of window: NSWindow, between a: NSRect, and b: NSRect) -> Double? {
+        guard let data = image.dataProvider?.data, let bytes = CFDataGetBytePtr(data) else { return nil }
+        let scale = CGFloat(image.width) / window.frame.width
+        let height = Int(a.height * scale), left = Int(8 * scale), width = Int(a.width * 0.75 * scale) - left
+        let topA = Int((window.frame.height - a.maxY) * scale), topB = Int((window.frame.height - b.maxY) * scale)
+        guard topA >= 0, topB >= 0, max(topA, topB) + height <= image.height, width > 0, height > 0 else { return nil }
+        var differing = 0
+        for y in 0..<height {
+            for x in left..<left + width {
+                let at = x * image.bitsPerPixel / 8
+                let p = (topA + y) * image.bytesPerRow + at, q = (topB + y) * image.bytesPerRow + at
+                let distance = (0..<3).reduce(0) { $0 + abs(Int(bytes[p + $1]) - Int(bytes[q + $1])) }
+                if distance > 30 { differing += 1 }
+            }
+        }
+        return Double(differing) / Double(width * height)
+    }
 
-    @objc private func toggleUpdates() {
+    private func toggleUpdates() {
         Update.isOn.toggle()
         if Update.isOn { checkForUpdate() }
     }
 
-    @objc private func checkNow() { checkForUpdate(asked: true) }
-
-    @objc private func toggleLogin() {
+    // Held by macOS for approval, the login item is given in System Settings,
+    // which opens once the menu is gone.
+    private func toggleLogin() {
         do {
-            try LoginItem.set(!LoginItem.isOn)
+            if try !LoginItem.set(!LoginItem.isOn) { closeMenu { LoginItem.askForApproval() } }
         } catch {
             alert("Wham could not change its login item: \(error.localizedDescription)")
         }
@@ -860,10 +1151,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     // "Turn On For" and "Stay Awake For": from now, for that many hours.
-    @objc private func stayAwake(_ sender: NSMenuItem) {
+    private func stayAwake(for hours: Int) {
         guard !busy, let current = Sleep.isDisabled else { return }
         if !current && refuses() { return }
-        let until = Date().addingTimeInterval(TimeInterval(sender.tag) * 3600)
+        let until = Date().addingTimeInterval(TimeInterval(hours) * 3600)
         ended = nil
         setOffAt(until)
         let caption = "Until \(Session.clock(until))"
@@ -875,23 +1166,33 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         }
     }
 
-    // In a timed session: no end, the Mac stays awake until turned off.
-    @objc private func noTimeLimit() {
-        guard !busy, Sleep.isDisabled == true else { return }
-        setOffAt(nil)
-        show(true)
-        announce(true, caption: "Until you turn it off")
+    // No end: the Mac stays awake until turned off. Off, it turns on.
+    private func noTimeLimit() {
+        guard !busy, let current = Sleep.isDisabled else { return }
+        let caption = "Until you turn it off"
+        if current {
+            guard offAt != nil else { return }
+            setOffAt(nil)
+            show(true)
+            announce(true, caption: caption)
+        } else {
+            if refuses() { return }
+            ended = nil
+            setOffAt(nil)
+            change(to: true, mayInstall: true, caption: caption)
+        }
     }
 
     // A new limit counts at once: on battery under it, the session ends.
-    @objc private func setBatteryLimit(_ sender: NSMenuItem) {
-        Session.batteryLimit = sender.tag
+    private func setBatteryLimit(_ percent: Int) {
+        Session.batteryLimit = percent
         check()
     }
 
     // The switch moves on the click, then pmset runs off the main thread. If the
     // Mac refuses, the switch slides back to the kernel's state.
     private func change(to target: Bool, mayInstall: Bool, caption: String? = nil) {
+        said = nil
         show(target)
         announce(target, caption: caption)
         apply(target, mayInstall: mayInstall)
@@ -901,13 +1202,15 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         busy = true
         DispatchQueue.global(qos: .userInitiated).async {
             let ok = Sleep.set(target)
-            DispatchQueue.main.async {
-                MainActor.assumeIsolated { self.finish(target, ok: ok, mayInstall: mayInstall) }
-            }
+            Self.onMain { self.finish(target, ok: ok, mayInstall: mayInstall) }
         }
     }
 
     private func finish(_ target: Bool, ok: Bool, mayInstall: Bool) {
+        // The password prompt comes once the menu is gone.
+        if !ok && mayInstall && !Sleep.hasRule && openMenu != nil {
+            return closeMenu { self.finish(target, ok: ok, mayInstall: mayInstall) }
+        }
         busy = false
         if ok { return check() }
         guard mayInstall && !Sleep.hasRule else {
@@ -938,6 +1241,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func alert(_ text: String) {
+        guard openMenu == nil else { return closeMenu { self.alert(text) } }
         let alert = NSAlert()
         alert.messageText = "Wham"
         alert.informativeText = text
@@ -950,9 +1254,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 }
 
-// Open at login: SMAppService from macOS 13 on, a LaunchAgent before. When
-// macOS holds the item for approval (System Settings > Login Items), turning
-// it on opens that page.
+// Open at login: SMAppService from macOS 13 on, a LaunchAgent before. macOS
+// may hold the item for approval (System Settings > Login Items): turning it
+// on then says so, and askForApproval() opens that page.
 enum LoginItem {
     private static let agent = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/LaunchAgents/sh.wham.app.plist")
@@ -962,11 +1266,16 @@ enum LoginItem {
         return FileManager.default.fileExists(atPath: agent.path)
     }
 
-    static func set(_ on: Bool) throws {
+    // False when macOS holds the item for approval.
+    @discardableResult
+    static func set(_ on: Bool) throws -> Bool {
         if #available(macOS 13, *) {
-            if !on { return try SMAppService.mainApp.unregister() }
+            if !on {
+                try SMAppService.mainApp.unregister()
+                return true
+            }
             try SMAppService.mainApp.register()
-            if SMAppService.mainApp.status == .requiresApproval { SMAppService.openSystemSettingsLoginItems() }
+            return SMAppService.mainApp.status != .requiresApproval
         } else if on {
             let plist: [String: Any] = ["Label": "sh.wham.app", "ProgramArguments": ["/usr/bin/open", "-b", "sh.wham.app"], "RunAtLoad": true]
             try FileManager.default.createDirectory(at: agent.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -974,5 +1283,15 @@ enum LoginItem {
         } else {
             try FileManager.default.removeItem(at: agent)
         }
+        return true
     }
+
+    static func askForApproval() {
+        if #available(macOS 13, *) { SMAppService.openSystemSettingsLoginItems() }
+    }
+}
+
+// A menu item read again while its menu is open.
+final class LiveItem: NSMenuItem {
+    var refresh: (@MainActor (LiveItem) -> Void)?
 }
