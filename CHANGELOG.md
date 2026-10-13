@@ -5,6 +5,12 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.4.0 - 2026-10-13
+
+- Every option in the menu keeps it open now: Turn On, the lengths, Sound, Appearance, Battery Limit and the others change as you click, and the menu stays so you can pick another. A click outside closes it.
+- No Time Limit is always under the lengths now, checked while your Mac stays awake with no end. With Wham off, it turns Wham on with no end.
+- Monochrome and Compact no longer jump: colors and width change together over half a second, at your display's refresh rate.
+
 ## 1.3.1 - 2026-10-13
 
 - Check for Updates keeps the menu open now: the line itself shows Wham checking, with a small spinner, then says how it went.
