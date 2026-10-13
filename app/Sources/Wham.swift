@@ -1665,10 +1665,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // language too when Wham has the words); the journal keeps the English.
     private func alert(_ text: String, _ detail: String? = nil) {
         guard openMenu == nil else { return closeMenu { self.alert(text, detail) } }
-        Journal.note("alert", ["text": Words.say(text, detail.map { [$0] } ?? [], english: true)])
+        Journal.note("alert", ["text": Words.say(text, arguments: detail.map { [$0] } ?? [], english: true)])
         let alert = NSAlert()
         alert.messageText = "Wham"
-        alert.informativeText = Words.say(text, detail.map { [Words.say($0)] } ?? [])
+        alert.informativeText = Words.say(text, arguments: detail.map { [Words.say($0)] } ?? [])
         activate()
         alert.runModal()
     }

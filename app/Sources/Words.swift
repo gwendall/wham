@@ -7,9 +7,9 @@ import Foundation
 enum Words {
     static var english = false
 
-    static func say(_ text: String, _ args: CVarArg...) -> String { say(text, args) }
+    static func say(_ text: String, _ args: CVarArg...) -> String { say(text, arguments: args) }
 
-    static func say(_ text: String, _ args: [CVarArg], english: Bool = Words.english) -> String {
+    static func say(_ text: String, arguments args: [CVarArg], english: Bool = Words.english) -> String {
         let format = english ? text : Bundle.main.localizedString(forKey: text, value: text, table: nil)
         return args.isEmpty ? format : String(format: format, locale: locale(english: english), arguments: args)
     }
