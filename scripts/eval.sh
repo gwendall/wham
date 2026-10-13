@@ -333,6 +333,8 @@ waitflag 1
 until_ dog 1
 check "$(is "[ \"\$(flag)\" = 1 ] && dog")" "a click on the switch turns it on"
 check "$(is "logged ' app\[$pid\] flag on=yes why=switch ok=yes'")" "the journal says the switch did it"
+# Kept from App Nap while on, without holding a sleep assertion of its own.
+check "$(is "! pmset -g assertions | grep -q \"pid $pid(\"")" "on, the app holds no sleep assertion: the flag does it alone"
 killed=$pid
 stop
 waitflag 0

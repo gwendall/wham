@@ -69,6 +69,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var sensed: Sensed?
     private let connectivity = Connectivity()
     private var sampleTimer: Timer?
+    // While on, no App Nap: under a closed lid nothing of Wham shows, and a
+    // napping app's timers and events come late, its guards with them. No
+    // sleep assertion comes with it, the flag does that.
+    private var noNap: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         launched()
@@ -533,11 +537,16 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         if (state == true && lidClosed) != (sampleTimer != nil) { sampleWhileClosed(state == true && lidClosed) }
         guard state == true else {
             watchdog.standDown()
+            if let noNap { ProcessInfo.processInfo.endActivity(noNap) }
+            noNap = nil
             connectivity.stop()
             if offAt != nil { setOffAt(nil) }
             return
         }
         watchdog.arm()
+        if noNap == nil {
+            noNap = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep, reason: "Guarding the battery, the heat and the time")
+        }
         connectivity.start()
         let reading = Session.read(offAt: offAt)
         if let end = Session.end(reading) { return stop(end, reading: reading) }
