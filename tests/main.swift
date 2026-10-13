@@ -29,17 +29,22 @@ func check(_ condition: Bool, _ message: String, line: Int = #line) {
     }
 }
 
-// The pitch of a stretch of the chime, from its autocorrelation.
+// The pitch of a stretch of the chime, from its autocorrelation: its first
+// peak nearly as high as the highest, which may be a period or two further.
 func pitch(_ samples: [Float], from start: Double, length: Double) -> Double {
     let a = Int(start * Chime.rate), n = Int(length * Chime.rate)
     let window = Array(samples[a..<min(a + n, samples.count)])
-    var best = (lag: 0, score: -Float.infinity)
-    for lag in 20...80 {
+    let scores = (20...100).map { lag -> (lag: Int, score: Float) in
         var score: Float = 0
         for i in 0..<(window.count - lag) { score += window[i] * window[i + lag] }
-        if score > best.score { best = (lag, score) }
+        return (lag, score / Float(window.count - lag))
     }
-    return Chime.rate / Double(best.lag)
+    let best = scores.map(\.score).max() ?? 0
+    let peaks = scores.indices.filter { i in
+        scores[i].score >= 0.9 * best && (i == 0 || scores[i].score >= scores[i - 1].score)
+            && (i == scores.count - 1 || scores[i].score >= scores[i + 1].score)
+    }
+    return Chime.rate / Double(scores[peaks.first ?? 0].lag)
 }
 
 // Chime: four notes that climb to switch on and fall to switch off.
@@ -53,6 +58,26 @@ for on in [true, false] {
     check(abs(peak - (on ? 0.25 : 0.19)) < 0.001, "\(on ? "on" : "off") chime peaks at \(on ? 0.25 : 0.19)")
     check(abs(samples.first ?? 1) < 0.01 && abs(samples.last ?? 1) < 0.001, "\(on ? "on" : "off") chime starts and ends in silence")
 }
+// The menu's sounds: each its own, quieter than the switch's, in silence at
+// both ends.
+let sounds = Chime.Sound.all.map { (sound: $0, samples: Chime.samples($0)) }
+check(Set(sounds.map(\.samples)).count == sounds.count && Set(sounds.map(\.sound.name)).count == sounds.count,
+      "\(sounds.count) sounds, each its own")
+for (sound, samples) in sounds where sound != .on && sound != .off {
+    let peak = samples.map(abs).max() ?? 0
+    check(peak >= 0.07 && peak <= 0.1001 && abs(samples.first ?? 1) < 0.01 && abs(samples.last ?? 1) < 0.001,
+          "\(sound.name): under the switch's chime (peak \(String(format: "%.3f", peak))), in silence at both ends")
+}
+
+// Checked goes up, unchecked down, as the switch does; a refusal sits under
+// the key's E5.
+let checked = Chime.samples(.check(true)), unchecked = Chime.samples(.check(false))
+let ups = [pitch(checked, from: 0.005, length: 0.03), pitch(checked, from: 0.045, length: 0.03)]
+let downs = [pitch(unchecked, from: 0.005, length: 0.03), pitch(unchecked, from: 0.045, length: 0.03)]
+check(ups[1] > ups[0] * 1.3 && downs[0] > downs[1] * 1.3, "check climbs (\(ups.map { Int($0) }) Hz), uncheck falls (\(downs.map { Int($0) }) Hz)")
+let no = pitch(Chime.samples(.refused), from: 0.005, length: 0.04)
+check(no < Chime.root * 0.95, "refused sounds under E5 (\(Int(no)) Hz)")
+
 let wav = Chime.wav([0, 0.5, -0.5])
 check(wav.count == 44 + 6 && String(decoding: wav.prefix(4), as: UTF8.self) == "RIFF", "WAV header and size")
 

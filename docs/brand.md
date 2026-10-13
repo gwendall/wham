@@ -150,6 +150,21 @@ E5, G#5, B5, E6, 55 ms apart, the last note ringing 160 ms. It climbs to switch
 on and falls, a little softer, to switch off. No reverb, no effects. The source
 of truth is `app/Sources/Chime.swift`.
 
+The menu has four sounds, on the same wave, in the same key, shorter and
+quieter than the chime. They say what kind of thing a click did, not which
+option it was: the eye sees the rest.
+
+| Sound | When |
+|---|---|
+| Check: G#5 and E6, up | An option turned on: Monochrome, Compact, Sound, Open at Login, Stay On After Restart, Update Automatically; Wham up to date |
+| Uncheck: E6 and G#5, down | The same turned off (Sound unchecked is silent) |
+| Select: one B5 | A value picked (a length with Wham already on, a battery limit), Check for Updates, a link |
+| Refused: B4 down to A#4, out of the key | Too hot, the battery too low, an update that could not be had |
+
+Turning on, with a length or not, plays the on chime; Quit plays the off chime
+when Wham was on, and nothing otherwise. One sound plays at a time: the next
+one cuts it. `Wham --render-sounds <dir>` writes them all as WAV files.
+
 ## Motion
 
 Springs: things arrive on a spring (ω 16, ζ 0.72),
