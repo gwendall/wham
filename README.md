@@ -238,7 +238,7 @@ password). With Homebrew: `brew uninstall --zap wham`. With npm:
 You need the Xcode command line tools (`xcode-select --install`).
 
 ```sh
-scripts/test.sh     # chime, sudoers rule and its install, sessions, watchdog, sprites, CLI, shell scripts
+scripts/test.sh     # chime, sudoers rule and its install, sessions, watchdog, sprites, CLI, words in each language, shell scripts
 scripts/build.sh    # build/Wham.app, universal, signed ad hoc without a Developer ID
 scripts/eval.sh     # runs the app for real: budgets, and every switch, session, guard and exit on the real flag
 open build/Wham.app
@@ -247,6 +247,7 @@ open build/Wham.app
 | Path | What |
 | --- | --- |
 | `app/Sources` | The app: menu bar switch, toast, chime, `pmset` and sudoers, updates, CLI |
+| `app/Resources` | The icon, the pixel font, and the app's words in each language (`<language>.lproj/Localizable.strings`, the English text as the key) |
 | `install.sh`, `uninstall.sh` | What `curl wham.sh` and `curl wham.sh/uninstall` run |
 | `scripts/release.sh` | Tags a release; GitHub Actions (`release.yml`) runs `scripts/package.sh`, publishes it and updates the cask |
 | `packaging/wham.rb` | The Homebrew cask template |
@@ -279,8 +280,11 @@ click, and what Check for Updates says when there is nothing new or no answer
 (it needs the Developer ID certificate). `scripts/eval.sh` clicks the menu's
 options as a mouse would and checks that it stays open, that only a click
 outside closes it, and that its rows look like the menu's own; with
-`WHAM_SHOTS=dir`, it saves a picture of the menu at each step, which CI keeps
-for each macOS it runs.
+`WHAM_SHOTS=dir`, it saves a picture of the menu at each step, and of the menu
+and every kind of note in German, Japanese and French, which CI keeps for each
+macOS it runs. The evals and the tests run the app in English
+(`-AppleLanguages '(en)'`); to see it in another language, open it with
+`open build/Wham.app --args -AppleLanguages '(ja)'`.
 `scripts/sheet.sh` draws the switch in each of its looks, on a light and a dark
 menu bar, into `build/sheet.png` (`--film` for it turning on, frame by frame,
 `--looks` for each change of look).

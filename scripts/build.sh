@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds build/Wham.app: one universal binary (Apple silicon and Intel), the
-# pixel font, the icon, signed.
+# pixel font, the icon, the words in each language (<language>.lproj), signed.
 #
 #   scripts/build.sh                  sign with this Mac's Developer ID, or ad hoc without one
 #   SIGN=- scripts/build.sh           sign ad hoc (enough to run it on this Mac)
@@ -12,7 +12,7 @@ APP=build/Wham.app
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp app/Info.plist "$APP/Contents/Info.plist"
-cp app/Resources/* "$APP/Contents/Resources/"
+cp -R app/Resources/* "$APP/Contents/Resources/"
 
 plist="$APP/Contents/Info.plist"
 if [ -n "${VERSION:-}" ]; then

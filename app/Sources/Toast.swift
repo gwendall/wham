@@ -4,7 +4,7 @@ import QuartzCore
 
 // A pill that drops out of the menu bar under the switch and says, in plain
 // words, what the Mac will do now. On: a candy gradient with a pixel sun. Off: a
-// dark pill with a pixel moon. The title is in Silkscreen, a pixel face, and
+// dark pill with a pixel moon. The title is in pixel letters (`TitleFont`) and
 // comes in letter by letter; the line under it explains.
 // Core Animation only, so it runs at the display's refresh rate.
 @MainActor
@@ -28,45 +28,32 @@ final class Toast {
         }
     }
 
-    static let on = Style(
-        title: "MAC STAYS AWAKE", caption: "Even with the lid closed", sprite: Pixels.sun, spin: -.pi / 4,
+    static var on: Style { Style(
+        title: Words.say("MAC STAYS AWAKE"), caption: Words.say("Even with the lid closed"), sprite: Pixels.sun, spin: -.pi / 4,
         ink: Pixels.ink, captionInk: Pixels.ink.copy(alpha: 0.72)!, spriteInk: Pixels.ink,
-        fill: Pixels.candy, rim: nil, glow: Pixels.glow)
+        fill: Pixels.candy, rim: nil, glow: Pixels.glow) }
 
-    static let off = Style(
-        title: "MAC CAN SLEEP", caption: "Back to normal sleep", sprite: Pixels.moon, spin: .pi / 6,
+    static var off: Style { Style(
+        title: Words.say("MAC CAN SLEEP"), caption: Words.say("Back to normal sleep"), sprite: Pixels.moon, spin: .pi / 6,
         ink: .white, captionInk: CGColor(gray: 1, alpha: 0.6), spriteInk: Pixels.moonInk,
-        fill: [CGColor(gray: 0.08, alpha: 1)], rim: CGColor(gray: 1, alpha: 0.16), glow: nil)
+        fill: [CGColor(gray: 0.08, alpha: 1)], rim: CGColor(gray: 1, alpha: 0.16), glow: nil) }
 
     // Five minutes before a timed session ends, still on: the candy pill, with
     // the time it lets go.
-    static let soon = Style(
-        title: "5 MINUTES LEFT", caption: "Then back to normal sleep", sprite: Pixels.sun, spin: -.pi / 4,
+    static var soon: Style { Style(
+        title: Words.say("5 MINUTES LEFT"), caption: Words.say("Then back to normal sleep"), sprite: Pixels.sun, spin: -.pi / 4,
         ink: Pixels.ink, captionInk: Pixels.ink.copy(alpha: 0.72)!, spriteInk: Pixels.ink,
-        fill: Pixels.candy, rim: nil, glow: Pixels.glow)
+        fill: Pixels.candy, rim: nil, glow: Pixels.glow) }
 
     // The first launch, and opening Wham again: where it is and what it does.
-    static let hello = Style(
-        title: "HI, I'M WHAM", caption: "Click me to keep your Mac awake", sprite: Pixels.sun, spin: -.pi / 4,
-        ink: .white, captionInk: CGColor(gray: 1, alpha: 0.6), spriteInk: Pixels.candy[1],
-        fill: [CGColor(gray: 0.08, alpha: 1)], rim: CGColor(gray: 1, alpha: 0.16), glow: nil)
+    static var hello: Style { note(Words.say("HI, I'M WHAM"), Words.say("Click me to keep your Mac awake")) }
 
     // Anything else Wham has to say, about its updates: the hello pill's look.
     static func note(_ title: String, _ caption: String) -> Style {
-        Style(title: title, caption: caption, sprite: hello.sprite, spin: hello.spin, ink: hello.ink, captionInk: hello.captionInk,
-              spriteInk: hello.spriteInk, fill: hello.fill, rim: hello.rim, glow: hello.glow)
+        Style(title: title, caption: caption, sprite: Pixels.sun, spin: -.pi / 4, ink: .white, captionInk: CGColor(gray: 1, alpha: 0.6),
+              spriteInk: Pixels.candy[1], fill: [CGColor(gray: 0.08, alpha: 1)], rim: CGColor(gray: 1, alpha: 0.16), glow: nil)
     }
 
-    // Silkscreen draws on a grid of 8 pixels per em: at 16 pt one of its pixels is 2 pt.
-    static var fontURL = Bundle.main.url(forResource: "Silkscreen-Regular", withExtension: "ttf")
-    private static let pixel: CGFloat = 2
-    private static let titleFont: NSFont = {
-        if let url = fontURL, let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor],
-           let first = descriptors.first {
-            return CTFontCreateWithFontDescriptor(first, 8 * pixel, nil) as NSFont
-        }
-        return NSFont.monospacedSystemFont(ofSize: 14, weight: .bold)
-    }()
     private static let captionFont: NSFont = {
         let base = NSFont.systemFont(ofSize: 11.5, weight: .semibold)
         return base.fontDescriptor.withDesign(.rounded).flatMap { NSFont(descriptor: $0, size: 11.5) } ?? base
@@ -79,6 +66,9 @@ final class Toast {
     let host = NSView()
     private let panel = NSPanel(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
     private var generation = 0
+
+    // What the evals take a picture of.
+    var window: NSWindow { panel }
 
     init() {
         panel.isOpaque = false
@@ -99,11 +89,11 @@ final class Toast {
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let scale = NSScreen.screens.first(where: { $0.frame.intersects(anchor) })?.backingScaleFactor ?? panel.backingScaleFactor
 
-        // Silkscreen leaves two of its pixels between capitals: one is enough, as on wham.sh.
-        let titleLine = CTLineCreateWithAttributedString(NSAttributedString(string: style.title, attributes: [.font: Self.titleFont, .kern: -Self.pixel]))
+        let title = TitleFont.letters(style.title)
+        let titleLine = TitleFont.line(title)
         let titleWidth = CGFloat(CTLineGetTypographicBounds(titleLine, nil, nil, nil)).rounded(.up)
         let caption = Self.textImage(style.caption, font: Self.captionFont, color: style.captionInk, scale: scale, crisp: false)
-        let icon = CGFloat(style.sprite.count) * Self.pixel
+        let icon = CGFloat(style.sprite.count) * TitleFont.pixel
         // The sprite sits in the pill's round end, as far from its left edge as from the top and bottom.
         let padLeft = (Self.height - icon) / 2, gap: CGFloat = 11, padRight: CGFloat = 20
         let height = Self.height
@@ -166,7 +156,7 @@ final class Toast {
         // Title and caption, centered together. Every edge sits on a whole point,
         // so the pixel letters stay sharp.
         let textX = padLeft + icon + gap
-        let titleCap = 5 * Self.pixel // Silkscreen's capitals are 5 pixels tall
+        let titleCap = 5 * TitleFont.pixel // Silkscreen's capitals are 5 pixels tall
         let lineGap: CGFloat = 6
         let captionCap = Self.captionFont.capHeight.rounded()
         let block = titleCap + lineGap + captionCap
@@ -174,20 +164,19 @@ final class Toast {
         let captionBaseline = titleBaseline - lineGap - captionCap
 
         var letters: [CALayer] = []
-        var index = style.title.startIndex
-        while index < style.title.endIndex {
-            let next = style.title.index(after: index)
-            let character = String(style.title[index..<next])
-            let offset = CTLineGetOffsetForStringIndex(titleLine, style.title.utf16.distance(from: style.title.startIndex, to: index), nil)
-            if character != " ", let glyph = Self.textImage(character, font: Self.titleFont, color: style.ink, scale: scale, crisp: true) {
-                let letter = CALayer()
-                letter.contents = glyph.image
-                letter.contentsScale = scale
-                letter.frame = CGRect(x: textX + offset.rounded(), y: titleBaseline - glyph.descent, width: glyph.size.width, height: glyph.size.height)
-                pill.addSublayer(letter)
-                letters.append(letter)
-            }
-            index = next
+        for character in title where !character.text.allSatisfy(\.isWhitespace) {
+            // Silkscreen at the screen's scale; another face on a grid of whole
+            // points, enlarged without smoothing, so it is pixel letters too.
+            let pointScale = character.silkscreen ? scale : 1
+            guard let glyph = Self.textImage(character.text, font: character.font as NSFont, color: style.ink, scale: pointScale, crisp: true) else { continue }
+            let offset = CTLineGetOffsetForStringIndex(titleLine, character.offset, nil)
+            let letter = CALayer()
+            letter.contents = glyph.image
+            letter.contentsScale = pointScale
+            letter.magnificationFilter = .nearest
+            letter.frame = CGRect(x: textX + offset.rounded(), y: titleBaseline - glyph.descent, width: glyph.size.width, height: glyph.size.height)
+            pill.addSublayer(letter)
+            letters.append(letter)
         }
         let captionLayer = CALayer()
         if let caption {
@@ -296,5 +285,68 @@ final class Toast {
         animation.fillMode = .backwards
         animation.timingFunction = timing
         layer.add(animation, forKey: keyPath)
+    }
+}
+
+// The toast's title face. Silkscreen, a pixel font, draws Latin letters with
+// their accents; what it lacks (Japanese, Korean and Chinese, the odd Ÿ) comes
+// from a system face for the app's language, drawn on a grid of whole points
+// so it reads as pixel letters too. At 14 pt those faces stand about as tall as
+// Silkscreen's capitals and keep their strokes apart on such a grid, where
+// lighter cuts, and PingFang, run together.
+enum TitleFont {
+    static var url = Bundle.main.url(forResource: "Silkscreen-Regular", withExtension: "ttf")
+    // Silkscreen draws on a grid of 8 pixels per em: at 16 pt one of its pixels is 2 pt.
+    static let pixel: CGFloat = 2
+    static let silkscreen: CTFont = {
+        if let url, let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor],
+           let first = descriptors.first {
+            return CTFontCreateWithFontDescriptor(first, 8 * pixel, nil)
+        }
+        return NSFont.monospacedSystemFont(ofSize: 14, weight: .bold) as CTFont
+    }()
+    static let size: CGFloat = 14
+    static let faces = ["ja": "HiraginoSans-W6", "ko": "AppleSDGothicNeo-Bold", "zh-Hans": "STHeitiSC-Medium"]
+
+    struct Letter {
+        let text: String
+        let font: CTFont
+        let silkscreen: Bool
+        let offset: Int // in UTF-16 units, as Core Text counts
+    }
+
+    static func letters(_ title: String, language: String = Words.language) -> [Letter] {
+        var letters: [Letter] = [], offset = 0
+        for character in title {
+            let text = String(character)
+            let silkscreen = character.isWhitespace || has(Self.silkscreen, text)
+            letters.append(Letter(text: text, font: silkscreen ? Self.silkscreen : fallback(text, language: language),
+                                  silkscreen: silkscreen, offset: offset))
+            offset += text.utf16.count
+        }
+        return letters
+    }
+
+    // Silkscreen leaves two of its pixels between capitals: one is enough, as on wham.sh.
+    static func line(_ letters: [Letter]) -> CTLine {
+        let line = NSMutableAttributedString()
+        for letter in letters {
+            line.append(NSAttributedString(string: letter.text, attributes: [.font: letter.font, .kern: letter.silkscreen ? -pixel : 0]))
+        }
+        return CTLineCreateWithAttributedString(line)
+    }
+
+    // The language's face when it has the character, else the one macOS picks.
+    static func fallback(_ text: String, language: String) -> CTFont {
+        let named = faces[language].map { CTFontCreateWithName($0 as CFString, size, nil) }
+        if let named, CTFontCopyPostScriptName(named) as String == faces[language], has(named, text) { return named }
+        let base = named ?? NSFont.systemFont(ofSize: size, weight: .bold) as CTFont
+        return CTFontCreateForString(base, text as CFString, CFRange(location: 0, length: text.utf16.count))
+    }
+
+    static func has(_ font: CTFont, _ text: String) -> Bool {
+        let units = Array(text.utf16)
+        var glyphs = [CGGlyph](repeating: 0, count: units.count)
+        return CTFontGetGlyphsForCharacters(font, units, &glyphs, units.count) && !glyphs.contains(0)
     }
 }

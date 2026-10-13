@@ -92,8 +92,10 @@ enum Sleep {
 
     // What macOS shows above the password field: why Wham asks, and what it
     // can then do.
-    static let prompt = "Keeping your Mac awake with the lid closed takes a system setting that only an administrator can change. "
-        + "Wham asks once; after that, it can turn that one setting on and off, and nothing else."
+    static var prompt: String {
+        Words.say("Keeping your Mac awake with the lid closed takes a system setting that only an administrator can change. "
+            + "Wham asks once; after that, it can turn that one setting on and off, and nothing else.")
+    }
 
     static var installScript: String {
         "do shell script \"\(installShell())\" with administrator privileges with prompt \"\(prompt)\""

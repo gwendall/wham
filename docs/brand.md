@@ -26,6 +26,10 @@ Short, plain, friendly. Say what the Mac will do, not what the app is.
   even with the lid shut.
 - On: **MAC STAYS AWAKE** - Even with the lid closed
 - Off: **MAC CAN SLEEP** - Back to normal sleep
+- The app speaks the Mac's language: English, French, Spanish, German,
+  Italian, Portuguese, Japanese, Korean and Simplified Chinese, in the words
+  wham.sh uses, short, and as macOS names its own menus ("Open at Login").
+  "Wham" stays "Wham"; the `wham` command and the journal stay English.
 - The send-off, used once, near the bottom: "Close the lid and go. Your Mac
   won't need waking up."
 
@@ -52,7 +56,10 @@ is night.
 - Display: **Silkscreen** by Jason Kottke (SIL Open Font License 1.1),
   uppercase, at multiples of 8 px so its pixels stay whole. The font leaves two
   of its pixels between capitals; every size is tracked -1/8 em so they sit one
-  pixel apart.
+  pixel apart. Silkscreen has every Latin letter the app's languages need but
+  ẞ (German titles write SS); Japanese, Korean and Chinese titles take Hiragino
+  Sans W6, Apple SD Gothic Neo Bold and STHeiti Medium at 14 pt, drawn on a
+  grid of whole points so they read as pixel letters too.
 - Body: a rounded sans (SF Pro Rounded in the app, Nunito on the web).
 
 ## Sprites
