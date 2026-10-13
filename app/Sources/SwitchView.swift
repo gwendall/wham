@@ -166,6 +166,12 @@ final class SwitchView: NSView {
         needsLayout = true
     }
 
+    // Reduce Motion, in the system's Accessibility settings: changes jump to
+    // their end. The evals' WHAM_MOTION=1 moves anyway, to film a change on a
+    // Mac set so.
+    static let movesAnyway = ProcessInfo.processInfo.environment["WHAM_MOTION"] == "1"
+    static var reducesMotion: Bool { !movesAnyway && NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
+
     // From the menu's Appearance: animated, it moves there frame by frame,
     // and the status item takes each frame's itemLength.
     func setLook(_ newLook: Look, animated: Bool) {
@@ -174,7 +180,7 @@ final class SwitchView: NSView {
         for layer in [knob, hole, bar, ring, groove, candy, day, night] { layer.removeAllAnimations() }
         blendFrom = blend
         blendStart = CACurrentMediaTime()
-        if animated && hasShown && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        if animated && hasShown && !Self.reducesMotion {
             tick()
             startTicking()
         } else {
@@ -265,7 +271,7 @@ final class SwitchView: NSView {
 
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        if animate && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        if animate && !Self.reducesMotion {
             let toX = knobX(newState)
             if toX != fromX {
                 let move = spring("position.x", duration: 0.42, bounce: 0.2)
@@ -310,7 +316,7 @@ final class SwitchView: NSView {
         CATransaction.begin()
         CATransaction.setDisableActions(true)
         let path = drainedPath(), end = ringEnd(left)
-        if animated && state == true && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        if animated && state == true && !Self.reducesMotion {
             fade(bar, "path", from: fromPath, to: path, duration: 0.4)
             fade(ring, "strokeEnd", from: fromEnd, to: end, duration: 0.4)
             fade(groove, "opacity", from: fromGroove, to: grooveOpacity, duration: 0.4)

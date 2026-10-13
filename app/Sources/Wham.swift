@@ -766,6 +766,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 fflush(stdout)
             case ["Pause"]: break
             case ["Film", "Compact"], ["Film", "Monochrome"]:
+                print("motion: Reduce Motion \(NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? "on" : "off")\(SwitchView.movesAnyway ? ", moving anyway" : "")")
                 film = []
                 if path[1] == "Compact" { look.compact.toggle() } else { look.monochrome.toggle() }
                 perform(#selector(printFilm(_:)), with: path[1], afterDelay: 0.9, inModes: [.common])
@@ -936,12 +937,25 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return
             }
             let path = paths.removeFirst()
-            var titles = path[...], current = menu
+            var titles = path[...], current = menu, retried = false
             @MainActor func fail(_ why: String) {
+                if let window = Self.window(of: current) { _ = Self.shoot(window, "click-\(clicks + 1)-failed") }
                 print("click \(path.joined(separator: "/")): \(why)")
                 next()
             }
             @MainActor func step() {
+                // A pointer the menu did not follow (macOS 14 now and then):
+                // the whole path once more from the top, said on its own line.
+                @MainActor func again(_ why: String) -> Bool {
+                    guard !retried else { return false }
+                    retried = true
+                    print("retry \(path.joined(separator: "/")): \(why)")
+                    fflush(stdout)
+                    titles = path[...]
+                    current = menu
+                    step()
+                    return true
+                }
                 let title = titles.removeFirst()
                 guard let entry = current.items.first(where: { $0.title == title && !$0.isHidden }) else { return fail("no \(title)") }
                 if let row = entry.view as? MenuRow, titles.isEmpty, let window = row.window {
@@ -950,7 +964,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     // Only a row the menu itself has selected: a click on any
                     // other would be the menu's.
                     Self.waitFor(5, { current.highlightedItem === entry && row.highlighted }, poke: Self.nudge(frame, of: window)) {
-                        guard current.highlightedItem === entry else { return fail("\(title) did not highlight") }
+                        guard current.highlightedItem === entry else {
+                            if !again("\(title) did not highlight") { fail("\(title) did not highlight") }
+                            return
+                        }
                         Self.click(frame, of: window)
                         // Once a change of look has settled.
                         Self.after(0.8) {
@@ -965,7 +982,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 } else if let submenu = entry.submenu, let window = Self.window(of: current), let frame = Self.frame(of: title, in: window) {
                     Self.pointer(onto: frame, of: window)
                     Self.waitFor(5, { Self.window(of: submenu)?.isVisible == true }, poke: Self.nudge(frame, of: window)) {
-                        guard Self.window(of: submenu)?.isVisible == true else { return fail("\(title) did not open") }
+                        guard Self.window(of: submenu)?.isVisible == true else {
+                            if !again("\(title) did not open") { fail("\(title) did not open") }
+                            return
+                        }
                         current = submenu
                         step()
                     }
