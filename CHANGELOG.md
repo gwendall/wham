@@ -3,7 +3,7 @@
 What changed in each version of Wham, newest first. Also on
 [wham.sh/changelog](https://wham.sh/changelog), in nine languages.
 
-<!-- Made by site/scripts/changelog.mjs from site/messages/en.json: edit the changelog there. -->
+<!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
 ## 1.2.3 - 2026-10-13
 

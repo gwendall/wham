@@ -6,9 +6,8 @@
 # GitHub Actions does the rest (.github/workflows/release.yml): builds and
 # signs the app, has Apple notarize it, makes the disk image, publishes the
 # GitHub release and updates the Homebrew cask. The version comes from the tag,
-# its release notes from CHANGELOG.md, which must have it: write it first in
-# site/messages/en.json and every other language, then run
-# `node site/scripts/changelog.mjs`.
+# its release notes from CHANGELOG.md, which must have it: CHANGELOG.md is made
+# from the changelog on wham.sh, written first, in every language.
 set -eu
 cd "$(dirname "$0")/.."
 
@@ -23,8 +22,7 @@ tag="v${version#v}"
 git fetch -q origin
 [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ] || fail "main is not in sync with origin/main"
 ! git rev-parse -q --verify "refs/tags/$tag" >/dev/null || fail "$tag already exists"
-grep -q "^## ${tag#v} " CHANGELOG.md || fail "CHANGELOG.md has nothing for ${tag#v}: write it in site/messages first"
-node site/scripts/changelog.mjs --check >/dev/null || fail "CHANGELOG.md is not the site's changelog: run node site/scripts/changelog.mjs"
+grep -q "^## ${tag#v} " CHANGELOG.md || fail "CHANGELOG.md has nothing for ${tag#v}: write it on the website's changelog first"
 
 scripts/test.sh >/dev/null
 git tag -a "$tag" -m "Wham ${tag#v}"

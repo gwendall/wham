@@ -1,0 +1,22 @@
+name: Site
+
+# wham.sh serves install.sh, uninstall.sh and the Silkscreen font from this
+# repo, read from main when the site is built. When one of them changes on
+# main, this rebuilds the site, so it never serves an older copy.
+on:
+  push:
+    branches: [main]
+    paths:
+      - install.sh
+      - uninstall.sh
+      - app/Resources/Silkscreen-Regular.ttf
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rebuild wham.sh
+        env:
+          HOOK: ${{ secrets.SITE_DEPLOY_HOOK }}
+        run: curl -fsS -X POST "$HOOK" > /dev/null
