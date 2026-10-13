@@ -13,7 +13,8 @@
 #   and then, and only a click outside closes it; its rows look like the
 #   menu's own, titles, check marks and grays (with WHAM_SHOTS=dir, pictures
 #   of the menu go there, and of the menu and every kind of note in German,
-#   Japanese and French: the words fit, the letters draw)
+#   Japanese, French and Traditional Chinese: the words fit, the letters
+#   draw)
 # Where sudo sets the flag without a password (CI, or a Mac with Wham's rule),
 # on the kernel's real SleepDisabled flag:
 # - `wham on/off/toggle`, the switch and every menu item, and the app follows
@@ -24,8 +25,14 @@
 #   while the app was closed, the app opened by `wham on 2h` when it is not
 #   running
 # - the battery and heat guards, read from a stand-in (WHAM_FAKE_POWER), the
-#   menu's Battery Limit, and the real heat signal where macOS lets it be
-#   raised (CI)
+#   menu's Battery Limit, a charger too weak to keep up, and the real heat
+#   signal where macOS lets it be raised (CI)
+# - the lid, read from a stand-in (WHAM_FAKE_LID): sleep given back with the
+#   lid closed puts the Mac to sleep, once, not when `wham on` follows within
+#   seconds, and not when a monitor drives the closed lid
+# - a fuzz: a random walk of power, commands, timed sessions, limits, lid and
+#   kills, the flag checked after each step (WHAM_FUZZ_SEED replays one,
+#   WHAM_FUZZ_STEPS sets its length)
 # - `wham run`: exit statuses, Ctrl-C, hangups, kills, its watchdog
 # - however the app ends: killed while on or off, quit from its menu, quit from
 #   outside (back on at the next launch within a minute), a restart (back on
@@ -96,18 +103,21 @@ journal() { cat "$WHAM_LOG_DIR/Wham.1.log" "$WHAM_LOG_DIR/Wham.log" 2>/dev/null 
 logged() { journal | grep -Eq "$1"; }
 fake="$work/power"
 echo "ac 100" >"$fake"
+lid="$work/lid"
+echo open >"$lid"
+lidded=
 pid=
 guards=
 lang=
 
 # Opens the app, out of sight and silent, pressing the WHAM_PRESS steps $1 if
 # given, with the arguments after it, its battery and heat read from $fake
-# while $guards is set. It would look for an update after a minute: not
+# while $guards is set, its lid from $lid while $lidded is set. It would look for an update after a minute: not
 # before tomorrow here. It speaks English, which the checks read, or $lang.
 launch() {
   steps=${1:-}
   [ $# = 0 ] || shift
-  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} "$bin" -muted YES -updateDelay 86400 \
+  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} ${lidded:+"WHAM_FAKE_LID=$lid"} "$bin" -muted YES -updateDelay 86400 \
     -AppleLanguages "(${lang:-en})" "$@" >>"$work/out" 2>&1 &
   pid=$!
   sleep 1
@@ -630,6 +640,143 @@ launch "Battery Limit/10%"
 sleep 1.5
 check "$(is "! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" "back to 10%, the default, nothing stored"
 stop
+# A charger too weak for what the Mac does: plugged in, the battery runs down
+# all the same, and the limit holds as on battery. The refusal does not ask to
+# plug in a Mac that is.
+echo "ac 9 draining" >"$fake"
+WHAM_FAKE_POWER=$fake "$bin" on >/dev/null 2>"$work/err" && code=0 || code=$?
+check "$(is "[ $code = 1 ] && grep -q 'battery at 9%$' \"$work/err\" && [ \"\$(flag)\" = 0 ]")" \
+  "plugged into a charger too weak to keep up, at 9%: wham on refuses ($(cat "$work/err"))"
+echo "ac 50 draining" >"$fake"
+launch Switch
+waitflag 1
+echo "ac 10 draining" >"$fake"
+waitflag 0 5
+check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] session-ended reason=battery battery=10 limit=10% heat=[a-z]+ draining=yes'")" \
+  "and at 10% the app gives sleep back, the journal says the battery was running down"
+stop
+
+# The lid, from a stand-in (WHAM_FAKE_LID). The kernel weighs the lid only
+# when it moves: sleep given back under a closed lid, the app puts the Mac to
+# sleep five seconds on, as closing it would have (here the journal says so,
+# and the Mac stays up). Not with a monitor on the closed Mac, nor when Wham
+# is back on within the five seconds.
+lidded=1
+echo "ac 100" >"$fake"
+launch
+"$bin" on >/dev/null
+echo closed >"$lid"
+until_ "logged ' app\[$pid\] lid closed=yes'" 4
+echo "battery 9" >"$fake"
+waitflag 0 5
+until_ "logged ' app\[$pid\] mac action=\"put to sleep\"'" 8
+check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] mac action=\"put to sleep\" why=\"sleep given back under the closed lid\"'")" \
+  "the battery ends a session under a closed lid: five seconds on, the app puts the Mac to sleep"
+echo "ac 100" >"$fake"
+"$bin" on >/dev/null
+"$bin" off >/dev/null
+sleep 1
+"$bin" on >/dev/null
+sleep 6
+check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(journal | grep -c ' app\[$pid\] mac action=\"put to sleep\"')\" = 1 ]")" \
+  "wham off, then on again within five seconds: it stays up"
+echo "closed monitor" >"$lid"
+"$bin" off >/dev/null
+until_ "logged ' app\[$pid\] mac action=\"left awake\"'" 8
+check "$(is "logged ' app\[$pid\] mac action=\"left awake\" why=\"a monitor drives the closed lid\"' && [ \"\$(journal | grep -c ' app\[$pid\] mac action=\"put to sleep\"')\" = 1 ]")" \
+  "a monitor on the closed Mac: left awake, as macOS does"
+stop
+echo closed >"$lid"
+launch "Turn On,Terminate"
+until_ "! kill -0 $pid 2>/dev/null" 5
+check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] quit by=outside flag=off resume=\"within a minute\" then=\"sleep under the closed lid\"$'")" \
+  "quit from outside under a closed lid: once Wham is gone, the Mac goes to sleep"
+defaults delete sh.wham.app resumeBefore >/dev/null 2>&1 || true
+echo open >"$lid"
+stop
+
+# --- The fuzz: random sequences of what happens to a Mac running Wham, the
+# flag held at each step to what the rules say it must be. The power and the
+# heat (plugged in, on battery or draining, any charge, hot or not), wham on
+# (timed or not), off and toggle, the battery limit, the lid, waits, and the
+# app killed then opened again. WHAM_FUZZ_SEED=<seed> plays a run again,
+# WHAM_FUZZ_STEPS sets its length.
+seed=${WHAM_FUZZ_SEED:-$(date +%s)}
+first_seed=$seed
+roll() { seed=$(((seed * 1103515245 + 12345) % 2147483648)); r=$((seed / 65536 % $1)); }
+pick() { roll $#; shift "$r"; picked=$1; }
+power_kind=ac level=100 limit_now=10 want=0
+hot='' end_at='' did='' history='' broke=''
+"$bin" off >/dev/null
+launch
+# Whether the rules end a session now: the heat, the charge of a battery that
+# runs down, the time.
+ends() {
+  [ -n "$hot" ] && return 0
+  [ "$power_kind" != ac ] && [ "$limit_now" != 0 ] && [ "$level" -le "$limit_now" ] && return 0
+  [ -n "$end_at" ] && [ "$(date +%s)" -ge "$end_at" ] && return 0
+  return 1
+}
+# `wham on` or `wham toggle` from off, for $2 seconds if given: refused
+# (status 1) on the heat or the charge, whatever the time.
+turn_on() {
+  if (end_at= && ends); then expected=1; else expected=0 want=1 end_at=${2:+$(($(date +%s) + $2))}; fi
+  WHAM_FAKE_POWER=$fake "$bin" "$1" ${2:+"${2}s"} >/dev/null 2>&1 && code=0 || code=$?
+  [ "$code" = "$expected" ] || broke="wham $1${2:+ ${2}s} exited $code, not $expected"
+}
+step=0
+while [ "$step" -lt "${WHAM_FUZZ_STEPS:-30}" ] && [ -z "$broke" ]; do
+  step=$((step + 1))
+  settle=
+  roll 10
+  case $r in
+    0 | 1)
+      pick ac battery draining
+      power_kind=$picked
+      roll 101
+      level=$r
+      roll 6
+      hot=$([ "$r" = 0 ] && echo 1 || true)
+      case $power_kind in ac) words="ac $level" ;; battery) words="battery $level" ;; *) words="ac $level draining" ;; esac
+      echo "$words${hot:+ critical}" >"$fake"
+      did="power: $words${hot:+ critical}" settle=1 ;;
+    2) turn_on on; did="wham on" ;;
+    3) roll 7; length=$((r + 2)); turn_on on "$length"; did="wham on ${length}s" ;;
+    4) "$bin" off >/dev/null; want=0; did="wham off" ;;
+    5)
+      if [ "$want" = 1 ]; then "$bin" toggle >/dev/null; want=0; else turn_on toggle; fi
+      did="wham toggle" ;;
+    6)
+      pick 0 5 10 20 30
+      limit_now=$picked
+      if [ "$limit_now" = 10 ]; then defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true; else defaults write sh.wham.app batteryLimit -int "$limit_now"; fi
+      did="battery limit $limit_now" settle=1 ;;
+    7)
+      pick open closed "closed monitor"
+      echo "$picked" >"$lid"
+      did="lid $picked" settle=1 ;;
+    8) roll 4; sleep $((r + 1)); did="wait $((r + 1))s" ;;
+    *) stop; want=0; launch; did="app killed, opened again" ;;
+  esac
+  # The app reads what changed on its next look, within 3 s.
+  [ -z "$settle" ] || sleep 3
+  # A timed end due within 3 s: waited out, not raced.
+  if [ "$want" = 1 ] && [ -n "$end_at" ] && [ $((end_at - $(date +%s))) -le 3 ]; then
+    until [ "$(date +%s)" -gt "$end_at" ]; do sleep 0.2; done
+  fi
+  if [ "$want" = 1 ] && ends; then want=0; fi
+  [ "$want" = 1 ] || end_at=
+  waitflag "$want" 5
+  history="$history; $did"
+  [ "$(flag)" = "$want" ] || broke=${broke:-"after $did the flag is $(flag), not $want"}
+done
+check "$(is "[ -z \"$broke\" ]")" \
+  "fuzz: $step random steps, the flag as the rules say after each (WHAM_FUZZ_SEED=$first_seed${broke:+; $broke; steps$history})"
+"$bin" off >/dev/null
+stop
+defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true
+echo open >"$lid"
+lidded=
 guards=
 echo "ac 100" >"$fake"
 

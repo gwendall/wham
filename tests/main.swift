@@ -9,7 +9,7 @@ import Security
 // must not keep the watchdog's pipe open, then dies the hard way.
 if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--arm-and-die" {
     let watchdog = Watchdog()
-    watchdog.arm(command: "/usr/bin/touch '\(CommandLine.arguments[2])'")
+    watchdog.arm(command: "/usr/bin/touch '\(CommandLine.arguments[2])'", then: ":")
     let child = Process()
     child.executableURL = URL(fileURLWithPath: "/bin/sleep")
     child.arguments = ["5"]
@@ -196,6 +196,11 @@ check(Session.end(.init(now: now, onBattery: true, battery: 21, batteryLimit: 20
       "the battery limit moves where it ends")
 check(Session.end(.init(now: now, onBattery: false, battery: 3)) == nil && Session.end(.init(now: now, onBattery: true, battery: nil)) == nil,
       "plugged in, or without a battery, the charge does not matter")
+check(Session.end(.init(now: now, draining: true, battery: 10)) == .battery && Session.end(.init(now: now, draining: true, battery: 11)) == nil
+      && Session.end(.init(now: now, draining: true, battery: 3, batteryLimit: Session.never)) == nil,
+      "plugged into a charger too weak to keep up, the battery limit holds as on battery")
+check(Session.refusal(.battery, battery: 9) == "Battery at 9%, plug in first" && Session.refusal(.battery, battery: 9, pluggedIn: true) == "Battery at 9%",
+      "and the refusal does not ask to plug in a Mac that is")
 check(Session.end(.init(now: now, offAt: now, onBattery: true, battery: 3, critical: true)) == .heat, "the heat comes first")
 check(Session.end(.init(now: now, onBattery: true, battery: 0, batteryLimit: Session.never)) == nil
       && Session.end(.init(now: now, onBattery: true, battery: 1, critical: true, batteryLimit: Session.never)) == .heat
@@ -206,6 +211,7 @@ check(Session.why(.battery, battery: 9) == "Battery at 9%" && Session.refusal(.h
 let durations: [(String, TimeInterval?)] = [
     ("45m", 2700), ("2h", 7200), ("1h30m", 5400), ("1d", 86400), ("90s", 90), ("2H", 7200), ("0h5m", 300),
     ("", nil), ("2", nil), ("h", nil), ("m2", nil), ("30m1h", nil), ("1h1h", nil), ("0m", nil), ("1.5h", nil), ("-1h", nil), ("2 h", nil), ("1w", nil),
+    ("365d", 31_536_000), ("365d1s", nil), ("8760h", 31_536_000), ("99999999999999999999d", nil), (String(repeating: "9", count: 400) + "s", nil),
 ]
 for (text, seconds) in durations {
     check(Session.duration(text) == seconds, "'\(text)' is \(seconds.map { "\(Int($0)) s" } ?? "not a duration")")
@@ -218,6 +224,7 @@ check(Session.clock(tomorrow, now: now).count > Session.clock(tomorrow, now: tom
 let lefts: [(TimeInterval, String)] = [
     (7200, "2 hr"), (7080, "1 hr 58 min"), (7079.5, "1 hr 58 min"), (3601, "1 hr 1 min"), (2700, "45 min"),
     (59, "1 min"), (0.2, "1 min"), (-3, "1 min"), (86400, "24 hr"),
+    (8.64e24, Session.timeLeft(Session.longest)), (.infinity, Session.timeLeft(Session.longest)), (-.infinity, "1 min"), (.nan, "1 min"),
 ]
 for (seconds, words) in lefts {
     check(Session.timeLeft(seconds) == words, "\(seconds) s left: '\(Session.timeLeft(seconds))'")
@@ -234,6 +241,115 @@ check(Session.warnAt(from: noon, to: hourOn) == noon.addingTimeInterval(3300) &&
       "warned five minutes before the end")
 check(Session.warnAt(from: noon, to: noon.addingTimeInterval(599)) == nil && Session.warnAt(from: noon, to: nil) == nil,
       "not for a session under ten minutes, nor an untimed one")
+
+// The fuzz: the same rules held to their promises over thousands of random
+// cases, from a seed it prints (WHAM_FUZZ_SEED=<seed> plays a run again). Each
+// property is one check, with the first case that breaks it.
+struct Dice: RandomNumberGenerator {
+    var state: UInt64
+    // SplitMix64.
+    mutating func next() -> UInt64 {
+        state &+= 0x9E37_79B9_7F4A_7C15
+        var z = state
+        z = (z ^ (z >> 30)) &* 0xBF58_476D_1CE4_E5B9
+        z = (z ^ (z >> 27)) &* 0x94D0_49BB_1331_11EB
+        return z ^ (z >> 31)
+    }
+}
+let seed = ProcessInfo.processInfo.environment["WHAM_FUZZ_SEED"].flatMap { UInt64($0) } ?? UInt64.random(in: 0...UInt64.max)
+var dice = Dice(state: seed)
+print("fuzz seed \(seed)")
+func fuzz(_ property: String, cases: Int = 20000, _ broken: (inout Dice) -> String?) {
+    for _ in 0..<cases {
+        if let counterexample = broken(&dice) { return check(false, "\(property) (seed \(seed): \(counterexample))") }
+    }
+    check(true, "\(property) (\(cases) random cases)")
+}
+// Any reading: the charge anywhere from none to past full, any limit the menu
+// offers or not, the session's end anywhere from long ago to far ahead.
+func anyReading(_ dice: inout Dice) -> Session.Reading {
+    let ends: [Date?] = [nil, now, now.addingTimeInterval(.random(in: -172_800...172_800, using: &dice)), .distantPast, .distantFuture]
+    return Session.Reading(now: now, offAt: ends.randomElement(using: &dice)!, onBattery: .random(using: &dice), draining: .random(using: &dice),
+                           battery: Bool.random(using: &dice) ? nil : Int.random(in: -5...105, using: &dice), critical: Int.random(in: 0..<8, using: &dice) == 0,
+                           batteryLimit: (Session.batteryLimits + [Session.never, 1, 50, 100]).randomElement(using: &dice)!)
+}
+func describe(_ r: Session.Reading) -> String {
+    "offAt \(r.offAt.map { "\(Int($0.timeIntervalSince(r.now)))s" } ?? "none") battery \(r.onBattery) draining \(r.draining) "
+        + "charge \(r.battery.map(String.init) ?? "none") critical \(r.critical) limit \(r.batteryLimit) -> \(String(describing: Session.end(r)))"
+}
+// What must stop the Mac staying awake, said plainly: too hot, low on a
+// battery that runs down, or past its time.
+func mustEnd(_ r: Session.Reading) -> Bool {
+    r.critical || ((r.onBattery || r.draining) && r.batteryLimit != Session.never && (r.battery ?? .max) <= r.batteryLimit)
+        || (r.offAt.map { r.now >= $0 } ?? false)
+}
+fuzz("a session ends exactly when it must: never awake when it should not be, never cut short when it should not be") { dice in
+    let r = anyReading(&dice)
+    return (Session.end(r) != nil) == mustEnd(r) ? nil : describe(r)
+}
+fuzz("the heat always ends it, and says so first") { dice in
+    var r = anyReading(&dice)
+    r.critical = true
+    return Session.end(r) == .heat ? nil : describe(r)
+}
+fuzz("a battery low enough to end it ends it lower down too, and under any higher limit") { dice in
+    let r = anyReading(&dice)
+    guard Session.end(r) == .battery, let level = r.battery else { return nil }
+    var lower = r, higher = r
+    lower.battery = Int.random(in: -5...level, using: &dice)
+    higher.batteryLimit = max(r.batteryLimit, (Session.batteryLimits + [100]).randomElement(using: &dice)!)
+    return Session.end(lower) == .battery && Session.end(higher) == .battery ? nil : describe(r)
+}
+fuzz("charging, or under Battery Limit Never, the charge never ends it") { dice in
+    var charging = anyReading(&dice), never = anyReading(&dice)
+    (charging.onBattery, charging.draining) = (false, false)
+    never.batteryLimit = Session.never
+    return Session.end(charging) != .battery && Session.end(never) != .battery ? nil : describe(charging) + " / " + describe(never)
+}
+fuzz("past its end and nothing else, it ends on time; before it, it goes on") { dice in
+    var r = anyReading(&dice)
+    (r.critical, r.onBattery, r.draining) = (false, false, false)
+    let ahead = TimeInterval.random(in: 0.001...Session.longest, using: &dice)
+    r.offAt = now.addingTimeInterval(Bool.random(using: &dice) ? -ahead : ahead)
+    return Session.end(r) == (r.offAt! <= now ? .time : nil) ? nil : describe(r)
+}
+// Durations as typed: any text gives nothing or a length a session can have,
+// and any well-formed one gives its exact sum.
+let typed = "0123456789dhmsDHMS .-+:w١٣".map(String.init) + ["9999999999", "365", "8760", "1h30m"]
+fuzz("any text typed after wham on is a length from a second to a year, or refused") { dice in
+    let text = (0..<Int.random(in: 0...12, using: &dice)).map { _ in typed.randomElement(using: &dice)! }.joined()
+    guard let length = Session.duration(text) else { return nil }
+    return length.isFinite && length >= 1 && length <= Session.longest ? nil : "'\(text)' -> \(length)"
+}
+fuzz("any well-formed duration is its exact sum, a year at most") { dice in
+    let parts: [(String, TimeInterval)] = [("d", 86400), ("h", 3600), ("m", 60), ("s", 1)]
+    var text = "", sum: TimeInterval = 0
+    for (unit, seconds) in parts where Bool.random(using: &dice) {
+        let number = Int.random(in: 0...(Bool.random(using: &dice) ? 99 : 999_999), using: &dice)
+        text += "\(number)\(Bool.random(using: &dice) ? unit : unit.uppercased())"
+        sum += TimeInterval(number) * seconds
+    }
+    let expected: TimeInterval? = sum > 0 && sum <= Session.longest ? sum : nil
+    return Session.duration(text) == expected ? nil : "'\(text)' -> \(String(describing: Session.duration(text))), not \(String(describing: expected))"
+}
+fuzz("what is left reads as hours and minutes, at least a minute, however far or odd the end") { dice in
+    let seconds: TimeInterval = [.random(in: -1e6...1e6, using: &dice), .random(in: -1e30...1e30, using: &dice), .infinity, -.infinity, .nan,
+                                 Date.distantFuture.timeIntervalSinceNow].randomElement(using: &dice)!
+    let words = Session.timeLeft(seconds)
+    // Hours over a thousand in the Mac's own digit groups: "8,760", "8 760".
+    return words.range(of: #"^([1-9][\d\p{Zs},.]* hr( [1-9]\d? min)?|[1-9]\d? min)$"#, options: .regularExpression) != nil ? nil : "\(seconds) -> '\(words)'"
+}
+fuzz("the switch's candy stays between empty and whole, and the warning comes five minutes before a long enough end") { dice in
+    func someDate(_ dice: inout Dice) -> Date? {
+        Bool.random(using: &dice) ? nil : now.addingTimeInterval(.random(in: -1e7...1e7, using: &dice))
+    }
+    let start = someDate(&dice), end = someDate(&dice), at = someDate(&dice) ?? now
+    let left = Session.remaining(now: at, from: start, to: end)
+    let warn = Session.warnAt(from: start, to: end)
+    let warnOK = warn == nil ? (end == nil || (start.map { end!.timeIntervalSince($0) < 2 * Session.warning } ?? false))
+        : warn == end!.addingTimeInterval(-Session.warning) && (start.map { end!.timeIntervalSince($0) >= 2 * Session.warning } ?? true)
+    return (0...1).contains(left) && warnOK ? nil : "start \(String(describing: start)) end \(String(describing: end)) now \(at) -> \(left), warn \(String(describing: warn))"
+}
 
 // The watchdog gives sleep back when whoever armed it dies, here a stand-in
 // that touches a file, and does nothing once told to stand down.
@@ -263,8 +379,8 @@ check(barked.count == 1 && barked[0].range(of: #"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d
 check(orphan > 0 && kill(orphan, 0) == 0, "even with a child of the dead process still running (it does not hold the pipe)")
 if orphan > 0 { kill(orphan, SIGTERM) }
 let calm = Watchdog()
-calm.arm(command: "/usr/bin/touch '\(bark)'")
-calm.arm(command: "/usr/bin/touch '\(bark)-twice'")
+calm.arm(command: "/usr/bin/touch '\(bark)'", then: ":")
+calm.arm(command: "/usr/bin/touch '\(bark)-twice'", then: ":")
 check(calm.isArmed, "armed")
 // What a terminal sends a whole group on Ctrl-C, Ctrl-\\ or when it closes.
 let shells = shell("pgrep -f 'stand-down.*\(bark)'").output.split(separator: "\n").compactMap { Int32($0) }
@@ -273,6 +389,10 @@ usleep(200_000)
 check(shells.count == 1 && kill(shells[0], 0) == 0 && !fired(bark), "Ctrl-C, Ctrl-\\ and hangups do not set it off")
 calm.standDown()
 check(!calm.isArmed && !fired(bark) && !fired(bark + "-twice"), "stood down, it does nothing; armed twice, one watchdog")
+// Its step for a Mac under a closed lid, after it gave sleep back (not run
+// here: it would put this Mac to sleep).
+check(shell("/bin/sh -n -c \(Journal.shellQuote(Sleep.sleepUnderLidShell))").status == 0 && Sleep.sleepUnderLidShell.hasSuffix("pmset sleepnow"),
+      "the watchdog's step for a closed lid is sound shell, and ends in a sleep")
 usleep(200_000)
 check(shells.allSatisfy { kill($0, 0) != 0 }, "and it is gone")
 
