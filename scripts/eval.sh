@@ -57,7 +57,9 @@ start=$(flag)
 was=$(defaults read sh.wham.app offAt 2>/dev/null || true)
 limit=$(defaults read sh.wham.app batteryLimit 2>/dev/null || true)
 last=$(defaults read sh.wham.app lastVersion 2>/dev/null || true)
-looks=$(defaults export sh.wham.app - 2>/dev/null | plutil -extract monochrome raw - 2>/dev/null || true),$(defaults export sh.wham.app - 2>/dev/null | plutil -extract compact raw - 2>/dev/null || true),$(defaults export sh.wham.app - 2>/dev/null | plutil -extract stayOnAfterRestart raw - 2>/dev/null || true)
+mono=$(defaults read sh.wham.app monochrome 2>/dev/null || true)
+compact=$(defaults read sh.wham.app compact 2>/dev/null || true)
+restart=$(defaults read sh.wham.app stayOnAfterRestart 2>/dev/null || true)
 defaults delete sh.wham.app batteryLimit >/dev/null 2>&1 || true
 work=$(mktemp -d)
 fake="$work/power"
@@ -98,13 +100,10 @@ cleanup() {
   for key in offAt onAt resumeBefore resumeAtLogin batteryLimit monochrome compact stayOnAfterRestart; do
     defaults delete sh.wham.app "$key" >/dev/null 2>&1 || true
   done
-  # Monochrome, Compact and Stay On After Restart, as they were.
-  IFS=, read -r mono compact restart <<END
-$looks
-END
-  [ -z "$mono" ] || defaults write sh.wham.app monochrome -bool "$mono"
-  [ -z "$compact" ] || defaults write sh.wham.app compact -bool "$compact"
-  [ -z "$restart" ] || defaults write sh.wham.app stayOnAfterRestart -bool "$restart"
+  # Monochrome, Compact and Stay On After Restart, as they were (1 or 0).
+  [ -z "$mono" ] || defaults write sh.wham.app monochrome -bool "$([ "$mono" = 1 ] && echo yes || echo no)"
+  [ -z "$compact" ] || defaults write sh.wham.app compact -bool "$([ "$compact" = 1 ] && echo yes || echo no)"
+  [ -z "$restart" ] || defaults write sh.wham.app stayOnAfterRestart -bool "$([ "$restart" = 1 ] && echo yes || echo no)"
   [ -z "$limit" ] || defaults write sh.wham.app batteryLimit -int "$limit"
   if [ -n "$last" ]; then defaults write sh.wham.app lastVersion "$last"; else defaults delete sh.wham.app lastVersion >/dev/null 2>&1 || true; fi
   # The session that was running goes on to its end, through the Wham that
