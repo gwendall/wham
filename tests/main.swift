@@ -338,8 +338,8 @@ if kernelAnswers && (Sleep.isDisabled == true || shell("true", root: true).statu
     check(CLI.run(["run", "/bin/sh", "-c", "kill -TERM $$"]) == 128 + SIGTERM, "or 128 + the signal that killed it")
     check(CLI.run(["run", "wham-no-such-command"]) == 127, "127 for a command that does not exist")
     let ran = Journal.tail(200).filter { $0.contains(" run") }
-    check(ran.contains { $0.hasSuffix("run-ended program=sh status=3") || $0.contains("run-ended program=sh status=3 ") }
-          && !ran.contains { $0.contains("exit 3") || $0.contains("-c") },
+    check(ran.contains { $0.contains("run-ended program=sh status=3 ") }
+          && !ran.contains { $0.contains("exit 3") || $0.contains(" -c") || $0.contains("$$") },
           "the journal names the program wham run ran, not its arguments")
     check(Sleep.isDisabled == before, "and leaves sleep as it found it")
 } else {
