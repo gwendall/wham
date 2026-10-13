@@ -50,6 +50,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // For the evals' "Film": each frame of a change of look, when it was
     // drawn, the status item's width and how monochrome the switch was.
     private var film: [(time: CFTimeInterval, length: CGFloat, mono: CGFloat)]?
+    // The menus open now, submenus too, as their delegate hears it: a
+    // submenu's window just closed can still say it is visible.
+    private var shownMenus: Set<ObjectIdentifier> = []
     private var filmed = ""
     private var lidWasClosed = false
     // Set when macOS says it is about to restart, shut down or log out.
@@ -621,12 +624,14 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func menuWillOpen(_ menu: NSMenu) {
+        shownMenus.insert(ObjectIdentifier(menu))
         guard menu.supermenu == nil else { return }
         openMenu = menu
         updateRow = menu.items.lazy.compactMap { $0.view as? UpdateRow }.first
     }
 
     func menuDidClose(_ menu: NSMenu) {
+        shownMenus.remove(ObjectIdentifier(menu))
         // A submenu's rows lose their selection with it.
         for entry in menu.items { (entry.view as? MenuRow)?.highlighted = false }
         guard menu.supermenu == nil else { return }
@@ -969,7 +974,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     Self.pointer(onto: frame, of: window)
                     // Only a row the menu itself has selected: a click on any
                     // other would be the menu's.
-                    Self.waitFor(5, { current.highlightedItem === entry && row.highlighted }, poke: Self.nudge(frame, of: window)) {
+                    // A submenu that closes meanwhile ends the wait.
+                    let selected = { current.highlightedItem === entry && row.highlighted }
+                    Self.waitFor(5, { selected() || !self.shownMenus.contains(ObjectIdentifier(current)) }, poke: Self.nudge(frame, of: window)) {
                         guard current.highlightedItem === entry else {
                             if !again("\(title) did not highlight") { fail("\(title) did not highlight") }
                             return
@@ -987,8 +994,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     }
                 } else if let submenu = entry.submenu, let window = Self.window(of: current), let frame = Self.frame(of: title, in: window) {
                     Self.pointer(onto: frame, of: window)
-                    Self.waitFor(5, { Self.window(of: submenu)?.isVisible == true }, poke: Self.nudge(frame, of: window)) {
-                        guard Self.window(of: submenu)?.isVisible == true else {
+                    let shown = { self.shownMenus.contains(ObjectIdentifier(submenu)) && Self.window(of: submenu)?.isVisible == true }
+                    Self.waitFor(5, shown, poke: Self.nudge(frame, of: window)) {
+                        guard shown() else {
                             if !again("\(title) did not open") { fail("\(title) did not open") }
                             return
                         }
