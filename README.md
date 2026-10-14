@@ -111,8 +111,10 @@ monitor driving the closed Mac, it stays awake, as macOS has it. So a
 later, and your connection with it.
 
 With the lid closed and no other display, Wham turns the built-in screen off,
-which also locks your Mac as your Lock Screen settings say. And if Wham ever
-goes away while on (a crash, a force quit), sleep comes back within a second.
+which also locks your Mac as your Lock Screen settings say. Locking it
+yourself, with the Touch ID button or Control-Command-Q, does the same: the
+screen goes dark, your Mac stays awake behind the lock. And if Wham ever goes
+away while on (a crash, a force quit), sleep comes back within a second.
 
 From a terminal, the installer also gives you a `wham` command:
 
