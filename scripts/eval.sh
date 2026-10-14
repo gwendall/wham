@@ -217,8 +217,10 @@ stop
 # its menu offers it, and the switch carries a dot, its tooltip (which
 # VoiceOver reads) saying where to click. GitHub answers from a stand-in that
 # knows only /releases/latest: a download would fail, and the journal say so.
+# A plain TCPServer: http.server's looks up its own host name before it has a
+# port, which takes seconds on some runners.
 python3 -I -c '
-import http.server
+import http.server, socketserver
 class Latest(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         latest = self.path == "/releases/latest"
@@ -228,20 +230,21 @@ class Latest(http.server.BaseHTTPRequestHandler):
         self.end_headers()
     def log_message(self, *args):
         pass
-server = http.server.HTTPServer(("127.0.0.1", 0), Latest)
-print(server.server_port, flush=True)
+server = socketserver.TCPServer(("127.0.0.1", 0), Latest)
+print(server.server_address[1], flush=True)
 server.serve_forever()
 ' >"$work/port" &
 github=$!
-until_ "[ -s \"$work/port\" ]" 5
+until_ "[ -s \"$work/port\" ]" 15
+port=$(cat "$work/port")
 : >"$work/out"
 delay=1
-launch "Pause,Pause,Pause,Tip,Items" -updateBase "http://127.0.0.1:$(cat "$work/port")" -noAutoUpdate YES
+launch "Pause,Pause,Pause,Tip,Items" -updateBase "http://127.0.0.1:$port" -noAutoUpdate YES
 delay=
 until_ "grep -q '^items ' \"$work/out\"" 10
 tip=$(grep '^tip ' "$work/out" | tail -1)
-check "$(is "echo \"$tip\" | grep -q '^tip with dot: Wham is .* Wham 9.9.9 is out: right-click to update.$' && grep '^items ' \"$work/out\" | grep -q '| Update to Wham 9.9.9 |' && logged ' update-check asked=no latest=9.9.9 newer=yes .*automatic=no' && ! logged ' update-install '")" \
-  "a newer version, Update Automatically off: the menu offers it, the switch has a dot, its tooltip says to right-click (${tip:-no answer})"
+check "$(is "[ -n \"$port\" ] && echo \"$tip\" | grep -q '^tip with dot: Wham is .* Wham 9.9.9 is out: right-click to update.$' && grep '^items ' \"$work/out\" | grep -q '| Update to Wham 9.9.9 |' && logged ' update-check asked=no latest=9.9.9 newer=yes .*automatic=no' && ! logged ' update-install '")" \
+  "a newer version, Update Automatically off: the menu offers it, the switch has a dot, its tooltip says to right-click (port ${port:-none} | ${tip:-no answer} | $(journal | grep -E ' update-(check|install) ' | tail -2 | cut -d' ' -f4- | cut -c1-90 | paste -sd '|' - | sed 's/|/ | /g'))"
 stop
 kill "$github" 2>/dev/null || true
 github=
