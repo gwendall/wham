@@ -16,6 +16,9 @@ import QuartzCore
 // timed session the ring runs out like a timer's. A change of look moves
 // there at the display's refresh rate, colors, hole, track and the status
 // item's width together.
+//
+// An update waiting for a click puts a pixel dot on the track's top right
+// corner, cut out of the switch with a point of menu bar around it.
 final class SwitchView: NSView {
     struct Look: Equatable {
         var monochrome = false
@@ -40,6 +43,11 @@ final class SwitchView: NSView {
     private let day = CALayer()
     private let sun = CAShapeLayer()
     private let night = CAShapeLayer() // a disk with the moon cut out
+    private let body = CALayer() // the track and the knob, cut around the dot
+    private let cut = CALayer() // body's mask: all of it, less the dot's room
+    private let room = CAShapeLayer() // all of it with the dot's room cut out,
+    private let plug = CAShapeLayer() // and the room, which fades out as the dot comes
+    private let dot = CAShapeLayer()
     private var trackRect = NSRect.zero
     private var label = CGColor(gray: 0, alpha: 1)
     private var orange = CGColor(gray: 0, alpha: 1)
@@ -49,6 +57,7 @@ final class SwitchView: NSView {
     // The share of a timed session still to run; 1 when untimed.
     private(set) var left: CGFloat = 1
     private(set) var look = Look()
+    private(set) var badged = false
 
     // The look as drawn, from 0 to 1 toward monochrome and toward compact:
     // a change of look moves it there frame by frame, from where it is.
@@ -107,7 +116,17 @@ final class SwitchView: NSView {
         knob.addSublayer(day)
         knob.addSublayer(night)
 
-        for sublayer in [track, knob] { layer?.addSublayer(sublayer) }
+        for sublayer in [track, knob] { body.addSublayer(sublayer) }
+        room.fillRule = .evenOdd
+        for part in [room, plug] {
+            part.fillColor = CGColor(gray: 0, alpha: 1)
+            cut.addSublayer(part)
+        }
+        body.mask = cut
+        dot.bounds = CGRect(x: 0, y: 0, width: Self.dotSize, height: Self.dotSize)
+        dot.path = Pixels.path(Pixels.dot, origin: .zero)
+        dot.opacity = 0
+        for sublayer in [body, dot] { layer?.addSublayer(sublayer) }
         resolveColors()
     }
 
@@ -148,6 +167,20 @@ final class SwitchView: NSView {
         let size = trackSize, radius = size.height / 2
         trackRect = NSRect(x: snap((bounds.width - size.width) / 2), y: snap((bounds.height - size.height) / 2),
                            width: size.width, height: size.height)
+        body.frame = bounds
+        cut.frame = bounds
+        room.frame = bounds
+        plug.frame = bounds
+        // The dot's box in the track's top right corner, just off the curve:
+        // its room, a point wider all around, bites into the track.
+        let box = CGRect(x: trackRect.maxX - Self.dotSize, y: trackRect.maxY - Self.dotSize, width: Self.dotSize, height: Self.dotSize)
+        let roomOrigin = CGPoint(x: box.minX - 1, y: box.minY - 1)
+        let all = CGMutablePath()
+        all.addRect(bounds.insetBy(dx: -8, dy: -8))
+        all.addPath(Pixels.path(Pixels.dotRoom, origin: roomOrigin))
+        room.path = all
+        plug.path = Pixels.path(Pixels.dotRoom, origin: roomOrigin)
+        dot.position = CGPoint(x: box.midX, y: box.midY)
         track.frame = trackRect
         groove.path = CGPath(roundedRect: track.bounds, cornerWidth: radius, cornerHeight: radius, transform: nil)
         candy.frame = track.bounds
@@ -162,7 +195,7 @@ final class SwitchView: NSView {
     override func viewDidChangeBackingProperties() {
         super.viewDidChangeBackingProperties()
         let scale = window?.backingScaleFactor ?? 2
-        for sublayer in [track, groove, candy, drained, bar, ring, hole, knob, day, sun, night] { sublayer.contentsScale = scale }
+        for sublayer in [track, groove, candy, drained, bar, ring, hole, knob, day, sun, night, body, cut, room, plug, dot] { sublayer.contentsScale = scale }
         needsLayout = true
     }
 
@@ -385,6 +418,33 @@ final class SwitchView: NSView {
     // The soft track shows where the candy has drained, and when off.
     private var grooveOpacity: Float { state == true && left >= 1 ? 0 : 1 }
 
+    static let dotSize = CGFloat(Pixels.dot.count)
+
+    // An update waits for a click in the menu. The dot pops in on a spring,
+    // its room opening around it, and fades out once nothing waits.
+    func badge(_ on: Bool, animated: Bool) {
+        guard on != badged else { return }
+        badged = on
+        let fromScale = dot.presentation()?.value(forKeyPath: "transform.scale") as? CGFloat ?? (on ? 0 : 1)
+        let fromDot = dot.presentation()?.opacity ?? dot.opacity
+        let fromPlug = plug.presentation()?.opacity ?? plug.opacity
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        if animated && hasShown && !Self.reducesMotion {
+            if on {
+                let pop = spring("transform.scale", duration: 0.42, bounce: 0.35)
+                pop.fromValue = min(fromScale, 0.3)
+                pop.toValue = 1
+                dot.add(pop, forKey: "pop")
+            }
+            fade(dot, "opacity", from: fromDot, to: on ? 1 : 0, duration: on ? 0.12 : 0.24)
+            fade(plug, "opacity", from: fromPlug, to: on ? 0 : 1, duration: on ? 0.12 : 0.24)
+        }
+        dot.opacity = on ? 1 : 0
+        plug.opacity = on ? 0 : 1
+        CATransaction.commit()
+    }
+
     // The spring of CASpringAnimation(perceptualDuration:bounce:), which needs
     // macOS 14, from its stiffness and damping.
     private func spring(_ keyPath: String, duration: CGFloat, bounce: CGFloat) -> CASpringAnimation {
@@ -449,6 +509,7 @@ final class SwitchView: NSView {
         day.shadowOpacity = Float(0.3 * (1 - face))
         sun.fillColor = Self.mix(Pixels.ink, label, face)
         night.fillColor = ink
+        dot.fillColor = Self.mix(Pixels.glow, label, mono)
         night.opacity = on ? 0 : 1
         day.opacity = on ? 1 : 0
         track.mask = mono > 0 ? hole : nil

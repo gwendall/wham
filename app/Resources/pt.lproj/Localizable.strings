@@ -4,6 +4,7 @@
 "Battery at %@" = "Bateria em %@";
 "Your Mac got too hot" = "Seu Mac esquentou demais";
 "Battery at %@, plug in first" = "Bateria em %@, conecte o carregador antes";
+"Battery at %@, your charger can't keep up" = "Bateria em %@, seu carregador não está dando conta";
 "Your Mac is too hot right now" = "Seu Mac está quente demais agora";
 "%d min" = "%d min";
 "%d hr" = "%d h";
@@ -40,6 +41,7 @@
 "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off." = "O Wham está ativado até %@: seu Mac fica acordado, mesmo com a tampa fechada. Clique para desativar.";
 "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off." = "O Wham está ativado: seu Mac fica acordado, mesmo com a tampa fechada. Clique para desativar.";
 "Wham is off: your Mac sleeps as usual. Click to turn on." = "O Wham está desativado: seu Mac dorme como sempre. Clique para ativar.";
+"Wham %@ is out: right-click to update." = "O Wham %@ está disponível: clique com o botão direito para atualizar.";
 "Wham can't read your Mac's sleep setting" = "O Wham não consegue ler o ajuste de repouso do seu Mac";
 "Then back to normal sleep, at %@" = "Depois volta a dormir normalmente, às %@";
 "%1$@, stopped at %2$@" = "%1$@, desligado às %2$@";
@@ -76,8 +78,6 @@
 "In the menu bar's own color, like the icons around it." = "Na cor da própria barra de menus, como os ícones ao redor.";
 "As wide as an icon: the switch turns instead of sliding." = "Da largura de um ícone: o interruptor gira em vez de deslizar.";
 "Sleep on battery at" = "Na bateria, dormir com";
-"Never" = "Nunca";
-"On battery, your Mac stays awake until the battery runs out. Save your work first." = "Na bateria, seu Mac fica acordado até a bateria acabar. Salve seu trabalho antes.";
 "Until %@" = "Até %@";
 "Until you turn it off" = "Até você desativar";
 "Wham could not change its login item: %@" = "O Wham não conseguiu alterar o item de início de sessão: %@";

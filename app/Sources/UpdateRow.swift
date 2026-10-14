@@ -5,14 +5,15 @@ import AppKit
 @MainActor
 final class UpdateRow: MenuRow {
     enum State: Equatable, CustomStringConvertible {
-        case action(String)  // clickable: Check for Updates, Update to Wham 2.0
+        case action(String)  // clickable: Check for Updates
+        case offer(String)   // clickable, with the dot the switch shows: Update to Wham 2.0
         case busy(String)    // Checking for Updates…, Updating to Wham 2.0…
         case done(String)    // the latest already: gray, with a check
         case said(String)    // anything else that happened: gray
 
         var title: String {
             switch self {
-            case .action(let title), .busy(let title), .done(let title), .said(let title): return title
+            case .action(let title), .offer(let title), .busy(let title), .done(let title), .said(let title): return title
             }
         }
 
@@ -22,6 +23,7 @@ final class UpdateRow: MenuRow {
         var description: String {
             switch self {
             case .action: return "action: \(title)"
+            case .offer: return "offer: \(title)"
             case .busy: return "busy: \(title)"
             case .done: return "done: \(title)"
             case .said: return "said: \(title)"
@@ -31,6 +33,7 @@ final class UpdateRow: MenuRow {
         var content: Content {
             switch self {
             case .action: return Content(title: title)
+            case .offer: return Content(title: title, accessory: .dot)
             case .busy: return Content(title: title, enabled: false, accessory: .spinner)
             case .done: return Content(title: title, enabled: false, accessory: .done)
             case .said: return Content(title: title, enabled: false)

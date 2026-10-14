@@ -12,11 +12,11 @@ enum Session {
     enum End: Equatable { case time, battery, heat }
 
     // On battery, at or under this charge, Wham gives sleep back: 10% unless
-    // the menu's Battery Limit says otherwise. Never (0): the Mac stays awake
-    // until its battery runs out.
-    static let batteryLimits = [5, 10, 20, 30]
+    // the menu's Battery Limit says otherwise. 2% at the least: the flag also
+    // holds off macOS's own sleep on a nearly flat battery, and a Mac that
+    // runs flat loses what it had not saved, where one put to sleep keeps it.
+    static let batteryLimits = [2, 5, 10, 20, 30]
     static let defaultBatteryLimit = 10
-    static let never = 0
 
     struct Reading {
         var now = Date()
@@ -32,7 +32,7 @@ enum Session {
 
     static func end(_ reading: Reading) -> End? {
         if reading.critical { return .heat }
-        if reading.onBattery || reading.draining, reading.batteryLimit != never, let level = reading.battery, level <= reading.batteryLimit { return .battery }
+        if reading.onBattery || reading.draining, let level = reading.battery, level <= reading.batteryLimit { return .battery }
         if let offAt = reading.offAt, reading.now >= offAt { return .time }
         return nil
     }
@@ -51,20 +51,22 @@ enum Session {
                        critical: Heat.critical, batteryLimit: batteryLimit)
     }
 
-    // Why it ended, in a few words.
-    static func why(_ end: End, battery: Int?) -> String {
+    // Why it ended, in a few words. Plugged in and draining all the same:
+    // the charger is too weak for what the Mac is doing.
+    static func why(_ end: End, battery: Int?, draining: Bool = false) -> String {
         switch end {
         case .time: return Words.say("Time is up")
+        case .battery where draining: return Words.say("Battery at %@, your charger can't keep up", Words.percent(battery ?? batteryLimit))
         case .battery: return Words.say("Battery at %@", Words.percent(battery ?? batteryLimit))
         case .heat: return Words.say("Your Mac got too hot")
         }
     }
 
-    // Why it will not start. Plugged in already, the charge alone says it.
-    static func refusal(_ end: End, battery: Int?, pluggedIn: Bool = false) -> String {
+    // Why it will not start. Plugged in already, it does not ask to plug in.
+    static func refusal(_ end: End, battery: Int?, draining: Bool = false) -> String {
         switch end {
         case .time: return Words.say("Time is up")
-        case .battery where pluggedIn: return why(.battery, battery: battery)
+        case .battery where draining: return why(.battery, battery: battery, draining: true)
         case .battery: return Words.say("Battery at %@, plug in first", Words.percent(battery ?? batteryLimit))
         case .heat: return Words.say("Your Mac is too hot right now")
         }
@@ -153,12 +155,14 @@ enum Session {
         set { set("onAt", newValue.map { $0 as NSDate }) }
     }
 
-    // Only the menu's values count: anything else is the default.
+    // Only the menu's values count: anything else is the default. Never (0),
+    // which Wham 1.5 to 1.7 offered, is the lowest one now.
     static var batteryLimit: Int {
         get {
             CFPreferencesAppSynchronize(domain)
             let value = CFPreferencesCopyAppValue("batteryLimit" as CFString, domain) as? Int
-            return value.flatMap { batteryLimits.contains($0) || $0 == never ? $0 : nil } ?? defaultBatteryLimit
+            if value == 0 { return batteryLimits[0] }
+            return value.flatMap { batteryLimits.contains($0) ? $0 : nil } ?? defaultBatteryLimit
         }
         set { set("batteryLimit", newValue == defaultBatteryLimit ? nil : newValue as NSNumber) }
     }
