@@ -24,6 +24,10 @@ if CommandLine.arguments.count == 3 && CommandLine.arguments[1] == "--arm-and-di
 // writes; the run above inherits it).
 let journalDir = NSTemporaryDirectory() + "wham-journal-\(getpid())"
 setenv("WHAM_LOG_DIR", journalDir, 1)
+// And the preferences the app shares with `wham`: never the app's own, which
+// a Wham running on this Mac reads every tick.
+let prefs = "sh.wham.tests-\(getpid())"
+setenv("WHAM_PREFS", prefs, 1)
 // The checks read Wham's words in English, whatever this Mac speaks.
 Words.english = true
 
@@ -421,29 +425,27 @@ unsetenv("WHAM_FAKE_POWER")
 try? FileManager.default.removeItem(atPath: standIn)
 
 // A timed session's end and start, and the battery limit, shared through the
-// app's preferences. Put back as they were.
-let saved = (Session.offAt, Session.onAt), savedLimit = Session.batteryLimit
+// app's preferences (the tests' own here).
+check(Session.domain as String == prefs, "the tests keep their preferences apart from the app's")
 let start = Date(timeIntervalSince1970: now.timeIntervalSince1970.rounded())
 let end = start.addingTimeInterval(3600)
 Session.setEnd(end, now: start)
-check(Session.offAt == end && Session.onAt == start && shell("defaults read sh.wham.app offAt").status == 0
-      && shell("defaults read sh.wham.app onAt").status == 0, "the end and the start are shared through preferences")
+check(Session.offAt == end && Session.onAt == start && shell("defaults read \(prefs) offAt").status == 0
+      && shell("defaults read \(prefs) onAt").status == 0, "the end and the start are shared through preferences")
 Session.setEnd(nil)
-check(Session.offAt == nil && Session.onAt == nil && shell("defaults read sh.wham.app offAt 2>/dev/null").status != 0
-      && shell("defaults read sh.wham.app onAt 2>/dev/null").status != 0, "and cleared")
-Session.offAt = saved.0
-Session.onAt = saved.1
+check(Session.offAt == nil && Session.onAt == nil && shell("defaults read \(prefs) offAt 2>/dev/null").status != 0
+      && shell("defaults read \(prefs) onAt 2>/dev/null").status != 0, "and cleared")
 Session.batteryLimit = 20
-check(Session.batteryLimit == 20 && shell("defaults read sh.wham.app batteryLimit").output.hasPrefix("20"), "the battery limit is shared")
+check(Session.batteryLimit == 20 && shell("defaults read \(prefs) batteryLimit").output.hasPrefix("20"), "the battery limit is shared")
 check(CLI.help.contains("at 20% or less"), "wham help says the limit")
-_ = shell("defaults write sh.wham.app batteryLimit -int 7")
+_ = shell("defaults write \(prefs) batteryLimit -int 7")
 check(Session.batteryLimit == Session.defaultBatteryLimit, "a limit the menu does not offer counts as the default")
 Session.batteryLimit = Session.never
-check(Session.batteryLimit == Session.never && shell("defaults read sh.wham.app batteryLimit").output.hasPrefix("0")
+check(Session.batteryLimit == Session.never && shell("defaults read \(prefs) batteryLimit").output.hasPrefix("0")
       && CLI.help.contains("until the battery runs out") && !CLI.help.contains("% or less"), "Never is kept, and wham help says it")
 Session.batteryLimit = Session.defaultBatteryLimit
-check(shell("defaults read sh.wham.app batteryLimit 2>/dev/null").status != 0, "the default is not stored")
-Session.batteryLimit = savedLimit
+check(shell("defaults read \(prefs) batteryLimit 2>/dev/null").status != 0, "the default is not stored")
+_ = shell("defaults delete \(prefs) 2>/dev/null; rm -f ~/Library/Preferences/\(prefs).plist")
 
 // The command line.
 check(CLI.commands.isSuperset(of: ["on", "off", "toggle", "status", "version", "help"]), "CLI knows its commands")
