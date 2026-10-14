@@ -4,6 +4,7 @@
 "Battery at %@" = "Batterie à %@";
 "Your Mac got too hot" = "Votre Mac a trop chauffé";
 "Battery at %@, plug in first" = "Batterie à %@, branchez le Mac d’abord";
+"Battery at %@, your charger can't keep up" = "Batterie à %@, votre chargeur ne suit pas";
 "Your Mac is too hot right now" = "Votre Mac est trop chaud pour l’instant";
 "%d min" = "%d min";
 "%d hr" = "%d h";
@@ -40,6 +41,7 @@
 "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham est activé jusqu’à %@ : votre Mac reste éveillé, même capot fermé. Cliquez pour désactiver.";
 "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham est activé : votre Mac reste éveillé, même capot fermé. Cliquez pour désactiver.";
 "Wham is off: your Mac sleeps as usual. Click to turn on." = "Wham est désactivé : votre Mac se met en veille comme d’habitude. Cliquez pour activer.";
+"Wham %@ is out: right-click to update." = "Wham %@ est disponible : faites un clic droit pour mettre à jour.";
 "Wham can't read your Mac's sleep setting" = "Wham ne peut pas lire le réglage de veille de votre Mac";
 "Then back to normal sleep, at %@" = "Puis retour à la veille normale, à %@";
 "%1$@, stopped at %2$@" = "%1$@, arrêté à %2$@";
@@ -76,8 +78,6 @@
 "In the menu bar's own color, like the icons around it." = "Dans la couleur de la barre des menus, comme les icônes autour.";
 "As wide as an icon: the switch turns instead of sliding." = "Aussi large qu’une icône : l’interrupteur tourne au lieu de glisser.";
 "Sleep on battery at" = "Mettre en veille sur batterie à";
-"Never" = "Jamais";
-"On battery, your Mac stays awake until the battery runs out. Save your work first." = "Sur batterie, votre Mac reste éveillé jusqu’à ce que la batterie soit vide. Enregistrez votre travail avant.";
 "Until %@" = "Jusqu’à %@";
 "Until you turn it off" = "Jusqu’à ce que vous le désactiviez";
 "Wham could not change its login item: %@" = "Wham n’a pas pu modifier son ouverture avec la session : %@";

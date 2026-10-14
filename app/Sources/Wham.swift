@@ -196,9 +196,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // The words the journal uses.
     nonisolated private static func flagWord(_ state: Bool?) -> String { state.map { $0 ? "on" : "off" } ?? "unreadable" }
 
-    private static var limitWord: String {
-        Session.batteryLimit == Session.never ? "never" : "\(Session.batteryLimit)%"
-    }
+    private static var limitWord: String { "\(Session.batteryLimit)%" }
 
     private static var heatWord: String {
         switch ProcessInfo.processInfo.thermalState {
@@ -364,6 +362,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // download is on wham.sh.
         guard replaceable else { return settle((Words.say("CAN'T UPDATE ITSELF"), Words.say("Get Wham %@ at wham.sh", newer), nil, .select), openSite: true) }
         installing = newer
+        describe()
         if let updateRow {
             updateRow.state = updateState
         } else if asked {
@@ -386,6 +385,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func settle(_ note: (title: String, caption: String, row: UpdateRow.State?, sound: Chime.Sound)?, openSite: Bool = false) {
         updating = false
         installing = nil
+        describe()
         let told = asked
         asked = false
         guard told, let note else {
@@ -519,17 +519,30 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func show(_ state: Bool?) {
         if state == true { drain() }
         toggleView.show(state, animated: true)
-        let tip: String
-        switch state {
+        describe()
+        refreshMenu()
+    }
+
+    // A newer version found and not being installed waits for a click in
+    // the menu (Update Automatically is off, or it could not install): the
+    // switch carries a dot, and its tooltip, which VoiceOver reads, says
+    // where to click.
+    private var waiting: String? { installing == nil ? available : nil }
+
+    // The switch's tooltip and its dot, as Wham and the update stand.
+    private func describe() {
+        toggleView.badge(waiting != nil, animated: true)
+        var tip: String
+        switch toggleView.state {
         case true? where offAt != nil:
             tip = Words.say("Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off.", Session.clock(offAt!))
         case true?: tip = Words.say("Wham is on: your Mac stays awake, even with the lid closed. Click to turn off.")
         case false?: tip = Words.say("Wham is off: your Mac sleeps as usual. Click to turn on.")
         case nil: tip = Words.say("Wham can't read your Mac's sleep setting")
         }
+        if let waiting { tip += " " + Words.say("Wham %@ is out: right-click to update.", waiting) }
         item.button?.setAccessibilityLabel(tip)
         item.button?.toolTip = tip
-        refreshMenu()
     }
 
     // On every change: the tick, the power source, the heat, the lid, the
@@ -575,7 +588,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func stop(_ end: Session.End, reading: Session.Reading) {
-        let caption = Session.why(end, battery: reading.battery)
+        let caption = Session.why(end, battery: reading.battery, draining: reading.draining)
         Journal.note("session-ended", ["reason": "\(end)", "battery": reading.battery, "limit": Self.limitWord, "heat": Self.heatWord,
                                        "draining": reading.draining ? true : nil])
         ended = (caption, Date())
@@ -589,7 +602,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         guard let end = Session.end(reading) else { return false }
         Journal.note("refused", ["reason": "\(end)", "battery": reading.battery, "limit": Self.limitWord, "heat": Self.heatWord,
                                  "draining": reading.draining ? true : nil])
-        let refusal = Session.refusal(end, battery: reading.battery, pluggedIn: reading.draining)
+        let refusal = Session.refusal(end, battery: reading.battery, draining: reading.draining)
         if openMenu != nil { said = refusal }
         announce(false, caption: refusal, sound: .refused)
         refreshMenu()
@@ -761,7 +774,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let now = Date()
         let lines = [Words.say("Mac sleeps as usual"), Self.awake(until: nil)]
             + [1, 2, 4, 8].map { Self.awake(until: now.addingTimeInterval(TimeInterval($0) * 3600), now: now.addingTimeInterval(60)) }
-            + [Session.End.battery, .heat].map { Session.refusal($0, battery: 100) }
+            + [Session.End.battery, .heat].map { Session.refusal($0, battery: 100) } + [Session.refusal(.battery, battery: 100, draining: true)]
         menu.minimumWidth = MenuRow.width(for: lines)
         adopt(menu)
         refresh(menu)
@@ -824,7 +837,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var updateState: UpdateRow.State {
         if let installing { return .busy(Line.updating(to: installing)) }
         if updating { return .busy(Line.checking) }
-        return .action(available.map { Line.update(to: $0) } ?? Line.check)
+        return available.map { .offer(Line.update(to: $0)) } ?? .action(Line.check)
     }
 
     // What the update row says, each line written once.
@@ -976,15 +989,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         header.isEnabled = false
         header.offStateImage = Self.blankState
         limits.addItem(header)
-        let never = Words.say("Never")
-        let titles = Session.batteryLimits.map(Words.percent) + [never]
+        let titles = Session.batteryLimits.map(Words.percent)
         for percent in Session.batteryLimits {
             limits.addItem(row(titles) { .init(title: Words.percent(percent), checked: percent == Session.batteryLimit) } click: { [unowned self] in setBatteryLimit(percent) })
         }
-        limits.addItem(.separator())
-        limits.addItem(row(titles, tip: Words.say("On battery, your Mac stays awake until the battery runs out. Save your work first.")) {
-            .init(title: never, checked: Session.batteryLimit == Session.never)
-        } click: { [unowned self] in setBatteryLimit(Session.never) })
         return limits
     }
 
@@ -997,6 +1005,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     // WHAM_CLICKS lists, "Rows" draws the menu's own rows next to rows of
     // Wham's, "Status" prints the menu's first line and its lengths, "Items"
     // the menu's items, "Look" the appearance and the status item's width,
+    // "Tip" the switch's tooltip and whether it carries the update's dot,
     // "Film/Compact" or "Film/Monochrome" changes the look and prints its
     // frames, "Pictures" takes pictures of the menu and the notes, and
     // "Pause" waits a step.
@@ -1015,6 +1024,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 NSApp.terminate(nil)
             case ["Look"]:
                 print("look", lookLine)
+                fflush(stdout)
+            case ["Tip"]:
+                print("tip \(toggleView.badged ? "with" : "without") dot: \(item.button?.toolTip ?? "")")
                 fflush(stdout)
             case ["Pause"]: break
             case ["Film", "Compact"], ["Film", "Monochrome"]:
@@ -1133,6 +1145,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
             ("off", Toast.off),
             ("soon", Toast.soon.saying(Words.say("Then back to normal sleep, at %@", Session.clock(now.addingTimeInterval(300), now: now)))),
             ("refused", Toast.off.saying(Session.refusal(.battery, battery: 9))),
+            ("charger", Toast.off.saying(Session.why(.battery, battery: 9, draining: true))),
             ("hello", Toast.hello),
             ("update", Toast.note(Words.say("CAN'T UPDATE ITSELF"), Words.say("Get Wham %@ at wham.sh", "10.10.10"))),
         ]

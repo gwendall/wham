@@ -4,6 +4,7 @@
 "Battery at %@" = "배터리 %@";
 "Your Mac got too hot" = "Mac이 너무 뜨거워졌습니다";
 "Battery at %@, plug in first" = "배터리 %@, 먼저 전원을 연결하세요";
+"Battery at %@, your charger can't keep up" = "배터리 %@, 충전기 출력이 부족합니다";
 "Your Mac is too hot right now" = "지금은 Mac이 너무 뜨겁습니다";
 "%d min" = "%d분";
 "%d hr" = "%d시간";
@@ -40,6 +41,7 @@
 "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham이 %@까지 켜져 있습니다: 디스플레이를 닫아도 Mac이 깨어 있습니다. 클릭하면 꺼집니다.";
 "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham이 켜져 있습니다: 디스플레이를 닫아도 Mac이 깨어 있습니다. 클릭하면 꺼집니다.";
 "Wham is off: your Mac sleeps as usual. Click to turn on." = "Wham이 꺼져 있습니다: Mac이 평소처럼 잠자기에 들어갑니다. 클릭하면 켜집니다.";
+"Wham %@ is out: right-click to update." = "Wham %@ 버전을 사용할 수 있습니다: 오른쪽 클릭하여 업데이트하세요.";
 "Wham can't read your Mac's sleep setting" = "Wham이 Mac의 잠자기 설정을 읽을 수 없습니다";
 "Then back to normal sleep, at %@" = "%@에 평소처럼 잠자기로 돌아갑니다";
 "%1$@, stopped at %2$@" = "%1$@, %2$@에 멈췄습니다";
@@ -76,8 +78,6 @@
 "In the menu bar's own color, like the icons around it." = "주변 아이콘처럼 메뉴 막대 색으로 표시합니다.";
 "As wide as an icon: the switch turns instead of sliding." = "아이콘만 한 너비로, 스위치가 밀리는 대신 돌아갑니다.";
 "Sleep on battery at" = "배터리 사용 시 잠자기 시점";
-"Never" = "안 함";
-"On battery, your Mac stays awake until the battery runs out. Save your work first." = "배터리 사용 중에는 배터리가 다 닳을 때까지 Mac이 깨어 있습니다. 먼저 작업을 저장하세요.";
 "Until %@" = "%@까지";
 "Until you turn it off" = "끌 때까지";
 "Wham could not change its login item: %@" = "Wham의 로그인 항목을 변경하지 못했습니다: %@";

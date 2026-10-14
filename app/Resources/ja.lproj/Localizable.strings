@@ -4,6 +4,7 @@
 "Battery at %@" = "バッテリー残量%@";
 "Your Mac got too hot" = "Macが熱くなりすぎました";
 "Battery at %@, plug in first" = "バッテリー残量%@。先に電源につないでください";
+"Battery at %@, your charger can't keep up" = "バッテリー残量%@。電源アダプタの出力が足りません";
 "Your Mac is too hot right now" = "Macが今は熱すぎます";
 "%d min" = "%d分";
 "%d hr" = "%d時間";
@@ -40,6 +41,7 @@
 "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off." = "Whamは%@までオン：フタを閉じてもMacは起きたままです。クリックでオフにします。";
 "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off." = "Whamはオン：フタを閉じてもMacは起きたままです。クリックでオフにします。";
 "Wham is off: your Mac sleeps as usual. Click to turn on." = "Whamはオフ：Macは通常どおりスリープします。クリックでオンにします。";
+"Wham %@ is out: right-click to update." = "Wham %@が利用可能です：右クリックでアップデートできます。";
 "Wham can't read your Mac's sleep setting" = "WhamはMacのスリープ設定を読み取れません";
 "Then back to normal sleep, at %@" = "%@に通常のスリープに戻ります";
 "%1$@, stopped at %2$@" = "%1$@、%2$@に停止";
@@ -76,8 +78,6 @@
 "In the menu bar's own color, like the icons around it." = "まわりのアイコンと同じ、メニューバーの色で表示します。";
 "As wide as an icon: the switch turns instead of sliding." = "アイコンと同じ幅。スイッチはスライドせずに回転します。";
 "Sleep on battery at" = "バッテリー駆動時にスリープする残量";
-"Never" = "しない";
-"On battery, your Mac stays awake until the battery runs out. Save your work first." = "バッテリー駆動中は、バッテリーが切れるまでMacが起きたままになります。先に作業を保存してください。";
 "Until %@" = "%@まで";
 "Until you turn it off" = "オフにするまで";
 "Wham could not change its login item: %@" = "Whamのログイン項目を変更できませんでした：%@";

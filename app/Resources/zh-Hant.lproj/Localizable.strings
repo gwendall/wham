@@ -4,6 +4,7 @@
 "Battery at %@" = "電量 %@";
 "Your Mac got too hot" = "Mac 過熱了";
 "Battery at %@, plug in first" = "電量 %@，請先接上電源";
+"Battery at %@, your charger can't keep up" = "電量 %@，充電器功率不足";
 "Your Mac is too hot right now" = "Mac 現在太熱了";
 "%d min" = "%d 分鐘";
 "%d hr" = "%d 小時";
@@ -40,6 +41,7 @@
 "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham 已開啟，直到 %@：闔蓋時 Mac 仍會保持喚醒。點一下即可關閉。";
 "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham 已開啟：闔蓋時 Mac 仍會保持喚醒。點一下即可關閉。";
 "Wham is off: your Mac sleeps as usual. Click to turn on." = "Wham 已關閉：Mac 照常睡眠。點一下即可開啟。";
+"Wham %@ is out: right-click to update." = "Wham %@ 已推出：按右鍵即可更新。";
 "Wham can't read your Mac's sleep setting" = "Wham 無法讀取 Mac 的睡眠設定";
 "Then back to normal sleep, at %@" = "%@ 恢復正常睡眠";
 "%1$@, stopped at %2$@" = "%1$@，已於 %2$@ 停止";
@@ -76,8 +78,6 @@
 "In the menu bar's own color, like the icons around it." = "使用選單列本身的顏色，和周圍的圖示一致。";
 "As wide as an icon: the switch turns instead of sliding." = "和圖示一樣寬：開關改成旋轉，而不是滑動。";
 "Sleep on battery at" = "使用電池時，睡眠於電量";
-"Never" = "永不";
-"On battery, your Mac stays awake until the battery runs out. Save your work first." = "使用電池時，Mac 會一直保持喚醒，直到電量耗盡。請先儲存好你的工作。";
 "Until %@" = "直到 %@";
 "Until you turn it off" = "直到你關閉它";
 "Wham could not change its login item: %@" = "Wham 無法更改其登入項目：%@";

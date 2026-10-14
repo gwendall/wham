@@ -4,6 +4,7 @@
 "Battery at %@" = "Battery at %@";
 "Your Mac got too hot" = "Your Mac got too hot";
 "Battery at %@, plug in first" = "Battery at %@, plug in first";
+"Battery at %@, your charger can't keep up" = "Battery at %@, your charger can't keep up";
 "Your Mac is too hot right now" = "Your Mac is too hot right now";
 "%d min" = "%d min";
 "%d hr" = "%d hr";
@@ -40,6 +41,7 @@
 "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham is on until %@: your Mac stays awake, even with the lid closed. Click to turn off.";
 "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off." = "Wham is on: your Mac stays awake, even with the lid closed. Click to turn off.";
 "Wham is off: your Mac sleeps as usual. Click to turn on." = "Wham is off: your Mac sleeps as usual. Click to turn on.";
+"Wham %@ is out: right-click to update." = "Wham %@ is out: right-click to update.";
 "Wham can't read your Mac's sleep setting" = "Wham can't read your Mac's sleep setting";
 "Then back to normal sleep, at %@" = "Then back to normal sleep, at %@";
 "%1$@, stopped at %2$@" = "%1$@, stopped at %2$@";
@@ -76,8 +78,6 @@
 "In the menu bar's own color, like the icons around it." = "In the menu bar's own color, like the icons around it.";
 "As wide as an icon: the switch turns instead of sliding." = "As wide as an icon: the switch turns instead of sliding.";
 "Sleep on battery at" = "Sleep on battery at";
-"Never" = "Never";
-"On battery, your Mac stays awake until the battery runs out. Save your work first." = "On battery, your Mac stays awake until the battery runs out. Save your work first.";
 "Until %@" = "Until %@";
 "Until you turn it off" = "Until you turn it off";
 "Wham could not change its login item: %@" = "Wham could not change its login item: %@";

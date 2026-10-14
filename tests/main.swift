@@ -201,16 +201,17 @@ check(Session.end(.init(now: now, onBattery: true, battery: 21, batteryLimit: 20
 check(Session.end(.init(now: now, onBattery: false, battery: 3)) == nil && Session.end(.init(now: now, onBattery: true, battery: nil)) == nil,
       "plugged in, or without a battery, the charge does not matter")
 check(Session.end(.init(now: now, draining: true, battery: 10)) == .battery && Session.end(.init(now: now, draining: true, battery: 11)) == nil
-      && Session.end(.init(now: now, draining: true, battery: 3, batteryLimit: Session.never)) == nil,
+      && Session.end(.init(now: now, draining: true, battery: 2, batteryLimit: 2)) == .battery,
       "plugged into a charger too weak to keep up, the battery limit holds as on battery")
-check(Session.refusal(.battery, battery: 9) == "Battery at 9%, plug in first" && Session.refusal(.battery, battery: 9, pluggedIn: true) == "Battery at 9%",
-      "and the refusal does not ask to plug in a Mac that is")
+check(Session.refusal(.battery, battery: 9) == "Battery at 9%, plug in first"
+      && Session.refusal(.battery, battery: 9, draining: true) == "Battery at 9%, your charger can't keep up",
+      "and the refusal does not ask to plug in a Mac that is, it says the charger can't keep up")
 check(Session.end(.init(now: now, offAt: now, onBattery: true, battery: 3, critical: true)) == .heat, "the heat comes first")
-check(Session.end(.init(now: now, onBattery: true, battery: 0, batteryLimit: Session.never)) == nil
-      && Session.end(.init(now: now, onBattery: true, battery: 1, critical: true, batteryLimit: Session.never)) == .heat
-      && Session.end(.init(now: now, offAt: now, onBattery: true, battery: 1, batteryLimit: Session.never)) == .time,
-      "Battery Limit Never: the battery never ends it, the heat and the time still do")
-check(Session.why(.battery, battery: 9) == "Battery at 9%" && Session.refusal(.heat, battery: nil).contains("too hot"), "it says why")
+check(Session.batteryLimits.min() == 2 && Session.end(.init(now: now, onBattery: true, battery: 3, batteryLimit: 2)) == nil
+      && Session.end(.init(now: now, onBattery: true, battery: 2, batteryLimit: 2)) == .battery,
+      "the lowest Battery Limit, 2%, still lets the Mac sleep before the battery runs out")
+check(Session.why(.battery, battery: 9) == "Battery at 9%" && Session.why(.battery, battery: 9, draining: true) == "Battery at 9%, your charger can't keep up"
+      && Session.refusal(.heat, battery: nil).contains("too hot"), "it says why")
 
 let durations: [(String, TimeInterval?)] = [
     ("45m", 2700), ("2h", 7200), ("1h30m", 5400), ("1d", 86400), ("90s", 90), ("2H", 7200), ("0h5m", 300),
@@ -275,7 +276,7 @@ func anyReading(_ dice: inout Dice) -> Session.Reading {
     let ends: [Date?] = [nil, now, now.addingTimeInterval(.random(in: -172_800...172_800, using: &dice)), .distantPast, .distantFuture]
     return Session.Reading(now: now, offAt: ends.randomElement(using: &dice)!, onBattery: .random(using: &dice), draining: .random(using: &dice),
                            battery: Bool.random(using: &dice) ? nil : Int.random(in: -5...105, using: &dice), critical: Int.random(in: 0..<8, using: &dice) == 0,
-                           batteryLimit: (Session.batteryLimits + [Session.never, 1, 50, 100]).randomElement(using: &dice)!)
+                           batteryLimit: (Session.batteryLimits + [1, 50, 100]).randomElement(using: &dice)!)
 }
 func describe(_ r: Session.Reading) -> String {
     "offAt \(r.offAt.map { "\(Int($0.timeIntervalSince(r.now)))s" } ?? "none") battery \(r.onBattery) draining \(r.draining) "
@@ -284,7 +285,7 @@ func describe(_ r: Session.Reading) -> String {
 // What must stop the Mac staying awake, said plainly: too hot, low on a
 // battery that runs down, or past its time.
 func mustEnd(_ r: Session.Reading) -> Bool {
-    r.critical || ((r.onBattery || r.draining) && r.batteryLimit != Session.never && (r.battery ?? .max) <= r.batteryLimit)
+    r.critical || ((r.onBattery || r.draining) && (r.battery ?? .max) <= r.batteryLimit)
         || (r.offAt.map { r.now >= $0 } ?? false)
 }
 fuzz("a session ends exactly when it must: never awake when it should not be, never cut short when it should not be") { dice in
@@ -304,11 +305,10 @@ fuzz("a battery low enough to end it ends it lower down too, and under any highe
     higher.batteryLimit = max(r.batteryLimit, (Session.batteryLimits + [100]).randomElement(using: &dice)!)
     return Session.end(lower) == .battery && Session.end(higher) == .battery ? nil : describe(r)
 }
-fuzz("charging, or under Battery Limit Never, the charge never ends it") { dice in
-    var charging = anyReading(&dice), never = anyReading(&dice)
+fuzz("charging, the charge never ends it") { dice in
+    var charging = anyReading(&dice)
     (charging.onBattery, charging.draining) = (false, false)
-    never.batteryLimit = Session.never
-    return Session.end(charging) != .battery && Session.end(never) != .battery ? nil : describe(charging) + " / " + describe(never)
+    return Session.end(charging) != .battery ? nil : describe(charging)
 }
 fuzz("past its end and nothing else, it ends on time; before it, it goes on") { dice in
     var r = anyReading(&dice)
@@ -440,9 +440,11 @@ check(Session.batteryLimit == 20 && shell("defaults read \(prefs) batteryLimit")
 check(CLI.help.contains("at 20% or less"), "wham help says the limit")
 _ = shell("defaults write \(prefs) batteryLimit -int 7")
 check(Session.batteryLimit == Session.defaultBatteryLimit, "a limit the menu does not offer counts as the default")
-Session.batteryLimit = Session.never
-check(Session.batteryLimit == Session.never && shell("defaults read \(prefs) batteryLimit").output.hasPrefix("0")
-      && CLI.help.contains("until the battery runs out") && !CLI.help.contains("% or less"), "Never is kept, and wham help says it")
+_ = shell("defaults write \(prefs) batteryLimit -int 0")
+check(Session.batteryLimit == 2 && CLI.help.contains("at 2% or less"), "Never, which 1.5 to 1.7 offered, counts as 2%, and wham help says it")
+Session.batteryLimit = 2
+check(Session.batteryLimit == 2 && shell("defaults read \(prefs) batteryLimit").output.hasPrefix("2"), "2% is kept")
+check(CLI.help.contains("after wham off") && CLI.help.contains("over SSH"), "wham help says wham off puts a Mac under a closed lid to sleep")
 Session.batteryLimit = Session.defaultBatteryLimit
 check(shell("defaults read \(prefs) batteryLimit 2>/dev/null").status != 0, "the default is not stored")
 _ = shell("defaults delete \(prefs) 2>/dev/null; rm -f ~/Library/Preferences/\(prefs).plist")

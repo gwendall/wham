@@ -94,18 +94,21 @@ again (a timed session keeps its end).
 Wham also lets go on its own, and the menu says why:
 
 - **Time is up**, when you turned it on for a while.
-- **On battery, at 10%**, or at 5, 20 or 30% (Battery Limit, in the menu), and
-  the same on a charger too weak to keep up. Your
+- **On battery, at 10%**, or at 2, 5, 20 or 30% (Battery Limit, in the menu),
+  and the same on a charger too weak to keep up, which Wham then says. Your
   Mac sleeps with your work saved instead of running flat, and Wham will not
-  turn back on until you plug in. Battery Limit: **Never** keeps it awake until
-  the battery runs out: save your work first.
+  turn back on until you plug in. There is no Never: with Wham on, macOS's
+  own sleep on a nearly flat battery is off too, so 2% is the last moment
+  your Mac can still go to sleep safely.
 - **Your Mac gets critically hot.** Wham is for desks, docks and shelves, where
   air moves; in a closed bag an awake Mac has nowhere to put its heat. Turn it
   off before you pack up.
 
 When Wham lets go under a closed lid, your Mac goes to sleep, as closing the
 lid would have made it: macOS only weighs the lid when it moves. With a
-monitor driving the closed Mac, it stays awake, as macOS has it.
+monitor driving the closed Mac, it stays awake, as macOS has it. So a
+`wham off` typed over SSH to a closed Mac puts it to sleep a few seconds
+later, and your connection with it.
 
 With the lid closed and no other display, Wham turns the built-in screen off,
 which also locks your Mac as your Lock Screen settings say. And if Wham ever
@@ -182,7 +185,8 @@ the watchdog to stand down. `wham run` keeps one too.
   developer and that it runs, and swaps it in; on stays on through the update.
   **Check for Updates** in the menu asks right away, and says how it went
   right there, without closing the menu. **Update Automatically**
-  turns the swap off: Wham then only offers the new version in its menu.
+  turns the swap off: Wham then only offers the new version in its menu,
+  and puts a dot on the switch until you take it (right-click, then Update).
   What changed in each one is in [CHANGELOG.md](CHANGELOG.md) and on
   [wham.sh/changelog](https://wham.sh/changelog).
 - Every release is built from this repo, signed with Developer ID
@@ -288,8 +292,8 @@ minutes, open it, and it tells you whether the Mac slept, whether the screen
 went dark and whether it locked.
 `scripts/update-test.sh` updates a 1.0.99 copy to 9.9.9 from a local stand-in
 for GitHub, checks that a copy signed by someone else is refused, that with
-Update Automatically off the menu offers the new version and installs it on a
-click, and what Check for Updates says when there is nothing new or no answer
+Update Automatically off the switch carries a dot, the menu offers the new
+version and installs it on a click, and what Check for Updates says when there is nothing new or no answer
 (it needs the Developer ID certificate). `scripts/eval.sh` clicks the menu's
 options as a mouse would and checks that it stays open, that only a click
 outside closes it, and that its rows look like the menu's own; with

@@ -15,6 +15,9 @@
 #   of the menu go there, and of the menu and every kind of note in German,
 #   Japanese, French and Traditional Chinese: the words fit, the letters
 #   draw)
+# - a newer version with Update Automatically off: nothing downloaded, the
+#   menu offers it, the switch carries a dot and its tooltip says to
+#   right-click; no dot without one
 # Where sudo sets the flag without a password (CI, or a Mac with Wham's rule),
 # on the kernel's real SleepDisabled flag:
 # - `wham on/off/toggle`, the switch and every menu item, and the app follows
@@ -112,15 +115,17 @@ lidded=
 pid=
 guards=
 lang=
+delay=
+github=
 
 # Opens the app, out of sight and silent, pressing the WHAM_PRESS steps $1 if
 # given, with the arguments after it, its battery and heat read from $fake
 # while $guards is set, its lid from $lid while $lidded is set. It would look for an update after a minute: not
-# before tomorrow here. It speaks English, which the checks read, or $lang.
+# before tomorrow here, or $delay seconds. It speaks English, which the checks read, or $lang.
 launch() {
   steps=${1:-}
   [ $# = 0 ] || shift
-  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} ${lidded:+"WHAM_FAKE_LID=$lid"} "$bin" -muted YES -updateDelay 86400 \
+  env ${steps:+"WHAM_PRESS=$steps"} ${guards:+"WHAM_FAKE_POWER=$fake"} ${lidded:+"WHAM_FAKE_LID=$lid"} "$bin" -muted YES -updateDelay "${delay:-86400}" \
     -AppleLanguages "(${lang:-en})" "$@" >>"$work/out" 2>&1 &
   pid=$!
   sleep 1
@@ -144,6 +149,7 @@ stop() {
 dog() { pgrep -P "$pid" -f stand-down >/dev/null 2>&1; }
 cleanup() {
   stop
+  [ -z "$github" ] || kill "$github" 2>/dev/null || true
   [ "$(flag)" = "$start" ] || sudo -n /usr/bin/pmset -a disablesleep "$start" >/dev/null 2>&1 \
     || echo "note: could not put SleepDisabled back to $start"
   for key in offAt onAt resumeBefore resumeAtLogin batteryLimit monochrome compact stayOnAfterRestart; do
@@ -207,6 +213,47 @@ until_ "logged ' update-check '" 2
 check "$(is "logged ' app\[[0-9]+\] launch version=[^ ]+ build=[0-9]+ macos=[0-9.]+ arch=[a-z0-9_-]+ model=[^ ]+ path=' && logged ' app\[[0-9]+\] settings sound=' && logged ' update-check asked=yes failure=\"curl exited [0-9]+\"'")" \
   "the journal says the launch, the settings and how the check went ($(journal | grep -E ' launch | update-check ' | cut -d' ' -f4- | cut -c1-90 | paste -sd '|' - | sed 's/|/ | /g'))"
 stop
+# A newer version out, with Update Automatically off: Wham downloads nothing,
+# its menu offers it, and the switch carries a dot, its tooltip (which
+# VoiceOver reads) saying where to click. GitHub answers from a stand-in that
+# knows only /releases/latest: a download would fail, and the journal say so.
+# A plain TCPServer: http.server's looks up its own host name before it has a
+# port, which takes seconds on some runners.
+python3 -I -c '
+import http.server, socketserver
+class Latest(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        latest = self.path == "/releases/latest"
+        self.send_response(302 if latest else 404)
+        if latest:
+            self.send_header("Location", "/releases/tag/v9.9.9")
+        self.end_headers()
+    def log_message(self, *args):
+        pass
+server = socketserver.TCPServer(("127.0.0.1", 0), Latest)
+print(server.server_address[1], flush=True)
+server.serve_forever()
+' >"$work/port" &
+github=$!
+until_ "[ -s \"$work/port\" ]" 15
+port=$(cat "$work/port")
+: >"$work/out"
+delay=1
+launch "Pause,Pause,Pause,Tip,Items" -updateBase "http://127.0.0.1:$port" -noAutoUpdate YES
+delay=
+until_ "grep -q '^items ' \"$work/out\"" 10
+tip=$(grep '^tip ' "$work/out" | tail -1)
+check "$(is "[ -n \"$port\" ] && echo \"$tip\" | grep -q '^tip with dot: Wham is .* Wham 9.9.9 is out: right-click to update.$' && grep '^items ' \"$work/out\" | grep -q '| Update to Wham 9.9.9 |' && logged ' update-check asked=no latest=9.9.9 newer=yes .*automatic=no' && ! logged ' update-install '")" \
+  "a newer version, Update Automatically off: the menu offers it, the switch has a dot, its tooltip says to right-click (port ${port:-none} | ${tip:-no answer} | $(journal | grep -E ' update-(check|install) ' | tail -2 | cut -d' ' -f4- | cut -c1-90 | paste -sd '|' - | sed 's/|/ | /g'))"
+stop
+kill "$github" 2>/dev/null || true
+github=
+: >"$work/out"
+launch Tip
+until_ "grep -q '^tip ' \"$work/out\"" 5
+tip=$(grep '^tip ' "$work/out" | tail -1)
+check "$(is "echo \"$tip\" | grep -q '^tip without dot: Wham is ' && ! echo \"$tip\" | grep -q 'right-click'")" "no newer version, no dot (${tip:-no answer})"
+stop
 # Every option, clicked in the open menu as a mouse would: the menu stays
 # open, the option checks or unchecks there and then, the switch changes at
 # once, and only a click outside closes the menu. The battery is the
@@ -258,7 +305,7 @@ if [ -n "${WHAM_SHOTS:-}" ]; then
     if echo "$pictured" | grep -q 'not drawn'; then
       echo "skip the pictures in $lang (${pictured})"
     else
-      check "$(is "echo \"$pictured\" | grep -q '^pictures $lang: 10 saved' && [ -s \"$WHAM_SHOTS/$lang-toast-update.png\" ]")" \
+      check "$(is "echo \"$pictured\" | grep -q '^pictures $lang: 11 saved' && [ -s \"$WHAM_SHOTS/$lang-toast-update.png\" ]")" \
         "the menu and the notes in $lang, pictured (${pictured:-no answer})"
     fi
     stop
@@ -647,18 +694,21 @@ waitflag 1 4
 check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 5 ]")" "Battery Limit 5%: stays awake at 8%"
 stop
 waitflag 0
-echo "battery 1" >"$fake"
-launch "Battery Limit/Never,Switch"
+# The lowest, 2%: a Mac put to sleep there keeps what it had not saved,
+# one run flat does not. Never, which Wham 1.5 to 1.7 offered, counts as 2%.
+echo "battery 3" >"$fake"
+launch "Battery Limit/2%,Switch"
 waitflag 1 4
 sleep 3
-check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 0 ] && logged ' app\[$pid\] setting battery-limit=never$'")" \
-  "Battery Limit Never: stays awake at 1%, until the battery runs out"
-check "$(is "\"$bin\" help | grep -q 'until the battery runs out' && WHAM_FAKE_POWER=$fake \"$bin\" on >/dev/null 2>&1")" "wham help says it, and wham on turns on at 1%"
-echo "battery 1 critical" >"$fake"
+check "$(is "[ \"\$(flag)\" = 1 ] && [ \"\$(defaults read sh.wham.app batteryLimit)\" = 2 ] && logged ' app\[$pid\] setting battery-limit=2%$'")" \
+  "Battery Limit 2%, the lowest: stays awake at 3%"
+echo "battery 2" >"$fake"
 waitflag 0 5
-check "$(is "[ \"\$(flag)\" = 0 ]")" "the heat still ends it"
+check "$(is "[ \"\$(flag)\" = 0 ] && grep -q '^toast MAC CAN SLEEP: Battery at 2%' \"$work/out\"")" "and gives sleep back at 2%"
 stop
 waitflag 0
+defaults write sh.wham.app batteryLimit -int 0
+check "$(is "\"$bin\" help | grep -q 'at 2% or less'")" "Never, from Wham 1.5 to 1.7, counts as 2%, and wham help says it"
 launch "Battery Limit/10%"
 sleep 1.5
 check "$(is "! defaults read sh.wham.app batteryLimit >/dev/null 2>&1")" "back to 10%, the default, nothing stored"
@@ -668,15 +718,15 @@ stop
 # plug in a Mac that is.
 echo "ac 9 draining" >"$fake"
 WHAM_FAKE_POWER=$fake "$bin" on >/dev/null 2>"$work/err" && code=0 || code=$?
-check "$(is "[ $code = 1 ] && grep -q 'battery at 9%$' \"$work/err\" && [ \"\$(flag)\" = 0 ]")" \
-  "plugged into a charger too weak to keep up, at 9%: wham on refuses ($(cat "$work/err"))"
+check "$(is "[ $code = 1 ] && grep -q \"battery at 9%, your charger can't keep up$\" \"$work/err\" && [ \"\$(flag)\" = 0 ]")" \
+  "plugged into a charger too weak to keep up, at 9%: wham on refuses, and says why ($(cat "$work/err"))"
 echo "ac 50 draining" >"$fake"
 launch Switch
 waitflag 1
 echo "ac 10 draining" >"$fake"
 waitflag 0 5
-check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] session-ended reason=battery battery=10 limit=10% heat=[a-z]+ draining=yes'")" \
-  "and at 10% the app gives sleep back, the journal says the battery was running down"
+check "$(is "[ \"\$(flag)\" = 0 ] && logged ' app\[$pid\] session-ended reason=battery battery=10 limit=10% heat=[a-z]+ draining=yes' && grep -q \"^toast MAC CAN SLEEP: Battery at 10%, your charger can't keep up\" \"$work/out\"")" \
+  "and at 10% the app gives sleep back, says the charger can't keep up, the journal that the battery was running down"
 stop
 
 # The lid, from a stand-in (WHAM_FAKE_LID). The kernel weighs the lid only

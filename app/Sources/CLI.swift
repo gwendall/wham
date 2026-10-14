@@ -91,7 +91,7 @@ enum CLI {
         guard let end = Session.end(reading) else { return nil }
         Journal.note("refused", ["reason": "\(end)", "battery": reading.battery, "limit": reading.batteryLimit,
                                  "draining": reading.draining ? true : nil])
-        let text = Session.refusal(end, battery: reading.battery, pluggedIn: reading.draining)
+        let text = Session.refusal(end, battery: reading.battery, draining: reading.draining)
         return text.prefix(1).lowercased() + text.dropFirst()
     }
 
@@ -213,25 +213,15 @@ enum CLI {
       wham log [50]      the last lines of Wham's journal, to see what happened
       wham version
 
-    \(guards)
+    On battery at \(Session.batteryLimit)% or less (Battery Limit, in the menu), or when your
+    Mac gets critically hot, Wham lets it sleep.
+
+    Under a closed lid, your Mac goes to sleep a few seconds after wham off or the
+    end of a session, as closing the lid would have made it: over SSH, that cuts
+    your connection. With a monitor driving the closed Mac, it stays awake.
 
     The menu bar app does the same with one click. https://wham.sh
     """ }
-
-    // When Wham lets the Mac sleep on its own, with the menu's Battery Limit.
-    private static var guards: String {
-        let limit = Session.batteryLimit
-        guard limit != Session.never else {
-            return """
-            When your Mac gets critically hot, Wham lets it sleep. On battery, it stays
-            awake until the battery runs out (Battery Limit: Never, in the menu).
-            """
-        }
-        return """
-        On battery at \(limit)% or less (Battery Limit, in the menu), or when your
-        Mac gets critically hot, Wham lets it sleep.
-        """
-    }
 }
 
 // The command `wham run` waits on, for the signal handlers (which cannot capture).

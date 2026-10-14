@@ -33,6 +33,27 @@ enum Pixels {
         "....###....",
     ]
 
+    // The menu bar item's update dot, and its room: the dot and a point
+    // around it, so the switch keeps clear of it.
+    static let dot = [
+        ".####.",
+        "######",
+        "######",
+        "######",
+        "######",
+        ".####.",
+    ]
+    static let dotRoom = [
+        "..####..",
+        ".######.",
+        "########",
+        "########",
+        "########",
+        "########",
+        ".######.",
+        "..####..",
+    ]
+
     static let ink = CGColor(srgbRed: 0x1a / 255, green: 0x0b / 255, blue: 0x17 / 255, alpha: 1)
     static let candy = [
         CGColor(srgbRed: 1, green: 0x7a / 255, blue: 0xd9 / 255, alpha: 1),

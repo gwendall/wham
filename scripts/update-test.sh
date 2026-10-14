@@ -7,8 +7,8 @@
 #   9.9.9, with the kernel's sleep flag left as it was: when on, the old copy's
 #   watchdog stands down and the new copy puts out its own
 # - a 9.9.9 not signed by Wham's developer is downloaded and refused
-# - with Update Automatically off, 1.0.99 downloads nothing and its menu offers
-#   Update to Wham 9.9.9, which installs it
+# - with Update Automatically off, 1.0.99 downloads nothing, its switch carries
+#   a dot, and its menu offers Update to Wham 9.9.9, which installs it
 # - Check for Updates says when the copy is the latest, and when GitHub does
 #   not answer; clicked in the open menu, its line says it is checking, then
 #   up to date or updating, and the menu stays open
@@ -160,9 +160,10 @@ quit
 
 # Update Automatically off: it still asks, downloads nothing, and offers the
 # new version in its menu; a click on it installs it anyway.
-run "Pause,Pause,Items,Update to Wham 9.9.9" -updateBase "$base" -updateDelay 1 -noAutoUpdate YES
+run "Pause,Pause,Tip,Items,Update to Wham 9.9.9" -updateBase "$base" -updateDelay 1 -noAutoUpdate YES
 for _ in $(seq 100); do said "^items" && break; sleep 0.1; done
 check "$(is "grep -q '^/releases/latest' \"$work/requests\" && ! downloaded")" "Update Automatically off: 1.0.99 asks for the latest, downloads nothing"
+check "$(is "said '^tip with dot: .* Wham 9.9.9 is out: right-click to update.$'")" "its switch carries a dot, its tooltip says to right-click ($(sed -n 's/^tip //p' "$work/out"))"
 check "$(is "said '| Update to Wham 9.9.9 |'")" "and its menu offers it ($(sed -n 's/^items //p' "$work/out" | tr '|' '\n' | grep -i -E 'update|new' | tr '\n' '|'))"
 for _ in $(seq 600); do
   now=$(running)

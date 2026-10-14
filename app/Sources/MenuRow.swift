@@ -20,7 +20,7 @@ class MenuRow: NSView {
         var accessory = Accessory.none
     }
 
-    enum Accessory { case none, spinner, done }
+    enum Accessory { case none, spinner, done, dot }
 
     var content: Content { didSet { if content != oldValue { restyle() } } }
     // Read again by reload(), while the menu is open.
@@ -57,8 +57,8 @@ class MenuRow: NSView {
     }()
     static var height: CGFloat { modern ? 24 : 22 }
     private static let guessedTitleX: CGFloat = modern ? 22 : 21
-    // The spinner, or the gray check of a version up to date, and what is
-    // around it; a title's or a detail's distance from the right edge, as
+    // The spinner, the gray check of a version up to date, or the dot of
+    // one waiting, and what is around it; a title's or a detail's distance from the right edge, as
     // the menu's own; a detail's least distance from its title.
     private static let side: CGFloat = 16
     private static let gap: CGFloat = 6
@@ -83,6 +83,7 @@ class MenuRow: NSView {
     private let check = NSImageView()
     private let spinner = NSProgressIndicator()
     private let done = NSImageView()
+    private let dot = CAShapeLayer() // the switch's own, in the selection's text color there
     private var remeasuring = false
 
     init(_ content: Content, width: CGFloat) {
@@ -108,6 +109,10 @@ class MenuRow: NSView {
         done.image = NSImage(systemSymbolName: "checkmark", accessibilityDescription: nil)
         done.contentTintColor = .tertiaryLabelColor
         for view in [label, detail, check, spinner, done] as [NSView] { ink.addSubview(view) }
+        ink.wantsLayer = true
+        dot.path = Pixels.path(Pixels.dot, origin: .zero)
+        dot.bounds = CGRect(x: 0, y: 0, width: SwitchView.dotSize, height: SwitchView.dotSize)
+        ink.layer?.addSublayer(dot)
         addSubview(selection)
         addSubview(ink)
         setAccessibilityElement(true)
@@ -135,6 +140,13 @@ class MenuRow: NSView {
         check.isHidden = !content.checked
         if content.accessory == .spinner { spinner.startAnimation(nil) } else { spinner.stopAnimation(nil) }
         done.isHidden = content.accessory != .done
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        dot.isHidden = content.accessory != .dot
+        effectiveAppearance.performAsCurrentDrawingAppearance {
+            dot.fillColor = selection.isHidden ? Pixels.glow : NSColor.selectedMenuItemTextColor.cgColor
+        }
+        CATransaction.commit()
         // Its menu item says the same: what the keyboard types to, and the
         // state VoiceOver reads.
         enclosingMenuItem?.title = content.title
@@ -204,6 +216,11 @@ class MenuRow: NSView {
             let box = NSRect(x: bounds.maxX - Self.trailing - side, y: (bounds.height - side) / 2, width: side, height: side)
             spinner.frame = box
             done.frame = box
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            dot.position = CGPoint(x: box.midX, y: box.midY)
+            dot.contentsScale = window?.backingScaleFactor ?? 2
+            CATransaction.commit()
             right = box.minX - Self.gap
         }
         if content.detail != nil {
