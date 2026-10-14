@@ -5,6 +5,13 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.8.0 - 2026-10-14
+
+- When an update waits for you (Update Automatically is off, or Wham could not install it), the switch in the menu bar now carries a small pink dot, and its tooltip says to right-click. In the menu, the Update to Wham line has the same dot.
+- Battery Limit no longer has a Never: while Wham is on, macOS's own sleep on a nearly flat battery is off too, so your Mac ran flat and lost what it had not saved. The lowest limit is now 2%, the last moment your Mac can still go to sleep safely, and a Never you had picked is now 2%.
+- On a charger too weak to keep up, Wham now says it is the charger, when it lets your Mac sleep and when it will not turn on, instead of giving only the charge.
+- `wham help` now says that with the lid closed, `wham off` or the end of a session puts your Mac to sleep a few seconds later: over SSH, your connection goes with it.
+
 ## 1.7.0 - 2026-10-14
 
 - Wham speaks Traditional Chinese too, as written in Taiwan and Hong Kong, and draws it in the notes' pixel letters.
