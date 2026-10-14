@@ -132,9 +132,10 @@ enum Session {
 
     // The app and the `wham` command share the session's end and start, and
     // the battery limit, through the app's preferences; the command posts
-    // `changed` after writing.
+    // `changed` after writing. The tests keep theirs in a domain of their own
+    // (WHAM_PREFS): a Wham running on the same Mac reads these every tick.
     static let changed = Notification.Name("sh.wham.app.session")
-    private static let domain = "sh.wham.app" as CFString
+    static let domain = (ProcessInfo.processInfo.environment["WHAM_PREFS"] ?? "sh.wham.app") as CFString
 
     // Starts a timed session's clock now, ending at `end`, or drops it (nil).
     static func setEnd(_ end: Date?, now: Date = Date()) {
