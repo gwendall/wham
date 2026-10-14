@@ -172,6 +172,7 @@ writes to. However Wham ends, macOS closes the pipe and the shell runs
 | Lid closed, no other display | Three seconds later, turns the built-in screen off (`pmset displaysleepnow`), which locks the Mac as Lock Screen in System Settings says | Lid test: says whether the screen went dark and the Mac locked |
 | Lid closed on a MacBook driving a monitor | Leaves the screens alone | `Screen.builtInAloneAndLit` |
 | Screen Sharing wakes the screen afterwards | Not fought: Wham acts once per lid close | Code |
+| Lid open, locked with the Touch ID button or Control-Command-Q | The Mac stays awake behind the lock: the screen goes dark, nothing sleeps | By hand: a MacBook Pro on macOS 27.0.1, locked with the Touch ID button for 3 hours, no sleep in `pmset -g log`, no network change in Wham's journal |
 
 ## What Wham cannot change
 
