@@ -824,6 +824,9 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Its sound comes as it says how the check went, a second at least
         // after it started.
         row.onChange = { [weak self] state in
+            // What the evals read: the row's words as they change.
+            print("row \(state)")
+            fflush(stdout)
             if case .done = state { self?.play(.check(true)) }
             if case .said = state { self?.play(.refused) }
         }
