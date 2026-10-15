@@ -735,7 +735,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
         let sound = Words.say("Sound")
         menu.addItem(row([sound]) { [unowned self] in .init(title: sound, checked: !muted) } click: { [unowned self] in
-            // Turned on, it says so; turned off, it is quiet already.
+            // Heard both ways: the last sound before the quiet, as any toggle's.
+            if !muted { play(.check(false)) }
             muted.toggle()
             Journal.note("setting", ["sound": !muted])
             if !muted { play(.check(true)) }
@@ -823,8 +824,6 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // Its sound comes as it says how the check went, a second at least
         // after it started.
         row.onChange = { [weak self] state in
-            print("row \(state)")
-            fflush(stdout)
             if case .done = state { self?.play(.check(true)) }
             if case .said = state { self?.play(.refused) }
         }

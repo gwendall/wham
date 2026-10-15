@@ -5,6 +5,10 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.8.1 - 2026-10-15
+
+- Turning Sound off in the menu now plays one last sound, as every other switch does, so you hear that it took.
+
 ## 1.8.0 - 2026-10-14
 
 - When an update waits for you (Update Automatically is off, or Wham could not install it), the switch in the menu bar now carries a small pink dot, and its tooltip says to right-click. In the menu, the Update to Wham line has the same dot.
