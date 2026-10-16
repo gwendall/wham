@@ -15,8 +15,12 @@ cp app/Info.plist "$APP/Contents/Info.plist"
 cp -R app/Resources/* "$APP/Contents/Resources/"
 
 plist="$APP/Contents/Info.plist"
-if [ -n "${VERSION:-}" ]; then
-  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${VERSION#v}" "$plist"
+# The version: VERSION's, else the last release's tag, so a local build
+# reads as the release it comes from (and never as an older one that would
+# offer an update forever).
+version=${VERSION:-$(git describe --tags --abbrev=0 --match 'v*' 2>/dev/null || true)}
+if [ -n "$version" ]; then
+  /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString ${version#v}" "$plist"
 fi
 build_number=$(git rev-list --count HEAD 2>/dev/null || echo 1)
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $build_number" "$plist"

@@ -66,6 +66,8 @@ enum Update {
     // Downloads `version` and puts it where `app` is. Nil once done, or the
     // step that failed, for the journal.
     static func install(_ version: String, over app: URL) -> String? {
+        // Never over a build from source, whatever asked.
+        guard isGenuine(app) else { return "not a signed release" }
         let files = FileManager.default
         // A folder on the app's own volume, so the swap is a rename.
         guard let folder = try? files.url(for: .itemReplacementDirectory, in: .userDomainMask, appropriateFor: app, create: true) else {
