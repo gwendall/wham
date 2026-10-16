@@ -5,6 +5,12 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.8.2 - 2026-10-16
+
+- Only one Wham runs at a time: opening a second copy brings back the first, so you never see two switches.
+- Open at Login follows Wham: if the copy that turned it on has moved, the one in Applications takes over.
+- Wham never installs an update over a copy it didn't come from, such as one built from source.
+
 ## 1.8.1 - 2026-10-15
 
 - Turning Sound off in the menu now plays one last sound, as every other switch does, so you hear that it took.
