@@ -3,9 +3,9 @@
 //
 //   swift scripts/icon.swift <out-dir>
 //
-// Writes <out-dir>/AppIcon.icns and <out-dir>/icon-1024.png. Small sizes use
-// the 11 x 11 menu bar sun; from 64 px up the sun gets its face. Cells: '#' ink,
-// 'o' butter, 'p' pink.
+// Writes <out-dir>/AppIcon.icns and <out-dir>/icon-1024.png. From 64 px up the
+// sun has its full face; from 32 px, a small one (the site's favicon); under
+// that, the 11 x 11 menu bar sun. Cells: '#' ink, 'o' butter, 'p' pink.
 import AppKit
 
 let face = [
@@ -32,7 +32,24 @@ let face = [
     "..........#..........",
 ]
 
+// The small face: the same eyes and laughing mouth, 13 x 13.
 let small = [
+    "......#......",
+    "..#.......#..",
+    "....#####....",
+    "...#ooooo#...",
+    "..#ooooooo#..",
+    "..#o#ooo#o#..",
+    "#.#ooooooo#.#",
+    "..#oo###oo#..",
+    "..#ooo#ooo#..",
+    "...#ooooo#...",
+    "....#####....",
+    "..#.......#..",
+    "......#......",
+]
+
+let tiny = [
     ".....#.....",
     ".#...#...#.",
     "..#.....#..",
@@ -85,13 +102,17 @@ func render(_ size: Int) -> CGImage {
     context.restoreGState()
 
     // The sun, on whole pixels.
-    let sprite = size >= 64 ? face : small
+    let sprite = size >= 64 ? face : size >= 32 ? small : tiny
     let cells = sprite.count
     // Whole pixels per cell, and as many pixels on each side of the sun: the
     // nearest cell size whose sun leaves an even margin.
     let target = body.width * 0.66 / CGFloat(cells)
     var cell = target.rounded()
-    if (size - Int(cell) * cells) % 2 != 0 { cell += target > cell ? 1 : -1 }
+    if (size - Int(cell) * cells) % 2 != 0 {
+        // Never bigger than the squircle: an uneven margin rather than rays cut off.
+        let up = cell + 1
+        cell = target > cell && up * CGFloat(cells) <= body.width ? up : (cell > 1 ? cell - 1 : cell)
+    }
     cell = max(1, cell)
     let side = cell * CGFloat(cells)
     let origin = CGPoint(x: ((s - side) / 2).rounded(), y: ((s - side) / 2).rounded())
