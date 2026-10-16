@@ -105,8 +105,9 @@ Moon (off):
 
 App icon: the sun with a face, wide awake and pleased about it, on a candy
 squircle. 21 x 21, `#` ink, `o` butter, `p` blush; one cheek pixel on each side,
-clear of the mouth. Under 64 px the icon uses the 11 x 11 sun with a butter
-center instead. The source of truth is `scripts/icon.swift`.
+clear of the mouth. From 32 to 63 px it uses a small face, 13 x 13, the same
+one as the site's favicon and logo; under 32 px, the 11 x 11 sun with a butter
+center. The source of truth is `scripts/icon.swift`.
 
 ```
 ..........#..........
