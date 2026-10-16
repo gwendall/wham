@@ -16,6 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # build.sh reads the version from the last tag
       - name: Compiles for macOS 11 (both architectures)
         run: |
           swiftc -swift-version 5 -target arm64-apple-macos11.0 -typecheck app/Sources/*.swift

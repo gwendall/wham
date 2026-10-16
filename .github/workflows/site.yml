@@ -19,4 +19,6 @@ jobs:
       - name: Rebuild wham.sh
         env:
           HOOK: ${{ secrets.SITE_DEPLOY_HOOK }}
-        run: curl -fsS -X POST "$HOOK" > /dev/null
+        run: |
+          [ -n "$HOOK" ] || { echo "No SITE_DEPLOY_HOOK: nothing to rebuild."; exit 0; }
+          curl -fsS -X POST "$HOOK" > /dev/null

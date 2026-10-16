@@ -75,6 +75,20 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var noNap: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // One Wham at a time: two would show two switches and fight over the
+        // flag. The copy on the disk image doesn't count, quitting as this one
+        // (moved to Applications) opens; nor does a test's copy, which runs
+        // beside the real one on purpose (scripts/update-test.sh, eval.sh).
+        let underTest = ProcessInfo.processInfo.environment.keys.contains { $0.hasPrefix("WHAM_") }
+            || UserDefaults.standard.string(forKey: "updateBase") != nil
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "sh.wham.app")
+            .filter { $0.processIdentifier != getpid() && !underTest }
+            .filter { other in !(other.bundleURL.map { Self.isTemporary($0.path) } ?? false) || Self.runsFromTemporaryCopy }
+        if let other = others.first {
+            other.activate()
+            NSApp.terminate(nil)
+            return
+        }
         let cutShort = launched()
         if Self.runsFromTemporaryCopy && offerToMove() { return }
         guard let button = item.button else { return }
@@ -145,6 +159,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         // first launch on (the menu can turn this off), and say hello once. The
         // first launch of a newer version says which one it is.
         if !Self.runsFromTemporaryCopy {
+            LoginItem.follow()
             let defaults = UserDefaults.standard
             let updated = Update.isUpdate(to: running, from: defaults.string(forKey: "lastVersion"), ranBefore: defaults.bool(forKey: "loginItemSet"))
             defaults.set(running, forKey: "lastVersion")
@@ -267,9 +282,10 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     // Opened from the disk image (or from Downloads, which macOS runs from a
     // hidden copy), Wham could not open at login. Offers to move it.
-    private static var runsFromTemporaryCopy: Bool {
-        let path = Bundle.main.bundlePath
-        return path.hasPrefix("/Volumes/") || path.contains("/AppTranslocation/")
+    private static var runsFromTemporaryCopy: Bool { isTemporary(Bundle.main.bundlePath) }
+
+    private static func isTemporary(_ path: String) -> Bool {
+        path.hasPrefix("/Volumes/") || path.contains("/AppTranslocation/")
     }
 
     private func offerToMove() -> Bool {
@@ -1754,15 +1770,34 @@ enum LoginItem {
         return FileManager.default.fileExists(atPath: agent.path)
     }
 
+    // Open at login opens the copy that turned it on. When Wham has moved
+    // since (a build replaced by the app from wham.sh, a copy dragged
+    // elsewhere), the copy in Applications takes it over, so the Mac doesn't
+    // start an old Wham, or none.
+    static func follow() {
+        guard #available(macOS 13, *) else { return }
+        let path = Bundle.main.bundlePath
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        guard SMAppService.mainApp.status == .enabled,
+              path.hasPrefix("/Applications/") || path.hasPrefix(home + "/Applications/"),
+              UserDefaults.standard.string(forKey: "loginPath") != path else { return }
+        try? SMAppService.mainApp.unregister()
+        let moved = (try? SMAppService.mainApp.register()) != nil
+        if moved { UserDefaults.standard.set(path, forKey: "loginPath") }
+        Journal.note("setting", ["open-at-login": moved, "moved": true])
+    }
+
     // False when macOS holds the item for approval.
     @discardableResult
     static func set(_ on: Bool) throws -> Bool {
         if #available(macOS 13, *) {
             if !on {
                 try SMAppService.mainApp.unregister()
+                UserDefaults.standard.removeObject(forKey: "loginPath")
                 return true
             }
             try SMAppService.mainApp.register()
+            UserDefaults.standard.set(Bundle.main.bundlePath, forKey: "loginPath")
             return SMAppService.mainApp.status != .requiresApproval
         } else if on {
             let plist: [String: Any] = ["Label": "sh.wham.app", "ProgramArguments": ["/usr/bin/open", "-b", "sh.wham.app"], "RunAtLoad": true]
