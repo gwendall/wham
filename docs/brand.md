@@ -49,7 +49,9 @@ Short, plain, friendly. Say what the Mac will do, not what the app is.
 | blush | `#ff8fc8` | its cheeks and tongue |
 | glow | `rgba(255, 3, 180, 0.45)` | the glow under candy elements |
 
-The candy gradient runs left to right: pink, yellow, cyan. "On" is candy, "off"
+The candy gradient runs from left to right on long things (the switch, the
+pill, words), and from the top left to the bottom right on square ones (the
+icon): pink, yellow, cyan. "On" is candy, "off"
 is night.
 
 ## Type
