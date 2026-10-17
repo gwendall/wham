@@ -294,7 +294,7 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         ask.informativeText = Words.say("Wham is running from the disk image. From Applications it can open at login and stay in your menu bar.")
         ask.addButton(withTitle: Words.say("Move to Applications"))
         ask.addButton(withTitle: Words.say("Not Now"))
-        activate()
+        Front.bring(ask)
         guard ask.runModal() == .alertFirstButtonReturn else {
             Journal.note("move", ["answer": "not now"])
             return false
@@ -1749,12 +1749,8 @@ final class Wham: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let alert = NSAlert()
         alert.messageText = "Wham"
         alert.informativeText = Words.say(text, arguments: detail.map { [Words.say($0)] } ?? [])
-        activate()
+        Front.bring(alert)
         alert.runModal()
-    }
-
-    private func activate() {
-        if #available(macOS 14, *) { NSApp.activate() } else { NSApp.activate(ignoringOtherApps: true) }
     }
 }
 
