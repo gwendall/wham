@@ -5,6 +5,11 @@ What changed in each version of Wham, newest first. Also on
 
 <!-- Made from the changelog on wham.sh: edit it there, not here. -->
 
+## 1.8.3 - 2026-10-18
+
+- Wham's alerts, such as the offer to move it to Applications, now always come to the front. Before, they could open behind the app you were using.
+- In Finder lists and at the Dock's small sizes, the icon's pixel sun keeps its smile.
+
 ## 1.8.2 - 2026-10-16
 
 - Only one Wham runs at a time: opening a second copy brings back the first, so you never see two switches.
