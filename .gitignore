@@ -7,3 +7,4 @@ node_modules/
 npm/install.sh
 npm/uninstall.sh
 npm/LICENSE
+.build/
